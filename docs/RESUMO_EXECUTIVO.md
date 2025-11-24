@@ -4,7 +4,6 @@
 
 **Objetivo**: Reduzir custos humanos na anotação de datasets usando múltiplas LLMs com análise de consenso.
 
-**Pesquisador**: Gabriel Catizani  
 **Data**: Novembro 2025
 
 ---
@@ -48,30 +47,40 @@ Quando não há consenso claro (ex: empate 2-2-1):
 
 ### Módulos Principais
 
-1. **llm_annotator.py** (370 linhas)
+1. **src/llm_annotation_system/llm_annotator.py**
    - Gerenciamento de múltiplas LLMs
    - Sistema de cache para economizar API calls
    - Suporte para diferentes prompts (zero-shot, few-shot, CoT)
 
-2. **consensus_analyzer.py** (280 linhas)
+2. **src/llm_annotation_system/consensus_analyzer.py**
    - Cálculo de todas as métricas de consenso
    - Identificação de instâncias problemáticas
    - Análise de padrões de discordância
 
-3. **visualizer.py** (320 linhas)
+3. **src/llm_annotation_system/visualizer.py**
    - Heatmaps de concordância
    - Distribuições de consenso
    - Matrizes de confusão
    - Dashboard interativo (Plotly)
 
-4. **config.py** (200 linhas)
-   - Prompts otimizados com técnicas de prompt engineering
-   - Configurações de todos os modelos
-   - Parâmetros do experimento
+4. **src/config/**
+   - `prompts.py`: Prompts otimizados com técnicas de prompt engineering
+   - `llm_configs.py`: Configurações de todos os modelos
+   - `experiment.py`: Parâmetros do experimento
+   - `dataset_config.py`: Configuração de datasets HuggingFace
+
+### Scripts de Execução
+
+1. **src/main.py**: Exemplo básico de uso
+2. **src/main_huggingface.py**: Script principal com integração HuggingFace
+   - Modo descobrir: Explora estrutura de datasets
+   - Modo básico: Fluxo completo de anotação
+   - Modo customizado: Carregamento personalizado
+   - Modo múltiplos: Processamento em batch
 
 ### Notebook de Análise
 
-**analise_consenso_llms.ipynb**: Notebook completo com:
+**src/notebooks/analise_consenso_llms.ipynb**: Notebook completo com:
 - Setup e configuração
 - Execução passo a passo
 - Análises detalhadas
@@ -81,14 +90,40 @@ Quando não há consenso claro (ex: empate 2-2-1):
 
 ---
 
+## 🤗 Integração com HuggingFace
+
+### Funcionalidades
+
+1. **Discovery Mode**: Descobre automaticamente a estrutura de datasets
+2. **Dataset Completo**: Combina múltiplos splits (train/test/validation)
+3. **Ground Truth Opcional**: Validação automática quando labels disponíveis
+4. **Cache Local**: Datasets baixados uma vez, reutilizados sempre
+5. **Configuração Simples**: Sistema de configuração em `dataset_config.py`
+
+### Fluxo de Trabalho
+
+```bash
+# 1. Descobrir estrutura
+poetry run python src/main_huggingface.py --modo descobrir --dataset waashk/X
+
+# 2. Configurar em src/config/dataset_config.py
+# (usa sugestão gerada automaticamente)
+
+# 3. Executar
+poetry run python src/main_huggingface.py --modo basico
+```
+
+---
+
 ## 📊 Outputs Gerados
 
 ### Dados
 
-1. **annotated_dataset_complete.csv**: Dataset completo com todas anotações
-2. **high_confidence_annotations.csv**: Anotações com consenso ≥ 80%
-3. **needs_human_review.csv**: Casos problemáticos que precisam revisão
-4. **experiment_summary.json**: Sumário estatístico completo
+1. **dataset_anotado_final.csv**: Dataset completo com anotações finais
+2. **annotations_complete.csv**: Todas as anotações detalhadas
+3. **high_confidence_annotations.csv**: Anotações com consenso ≥ 80%
+4. **needs_human_review.csv**: Casos problemáticos que precisam revisão
+5. **experiment_summary.json**: Sumário estatístico completo
 
 ### Métricas
 
@@ -131,6 +166,11 @@ Quando não há consenso claro (ex: empate 2-2-1):
    - Comparação de estratégias
    - Recomendações baseadas em métricas
 
+5. **Validação com ground truth**
+   - Cálculo automático de accuracy quando labels disponíveis
+   - Classification report completo
+   - Identificação de categorias problemáticas
+
 ### 🔄 Para Discussão
 
 1. **Threshold ideal de consenso**
@@ -141,7 +181,7 @@ Quando não há consenso claro (ex: empate 2-2-1):
 2. **Casos 2-2-1 ou similares**
    - Revisão humana vs. voto majoritário vs. remover
    - Custo-benefício de cada estratégia
-   - Validação com ground truth
+   - Validação empírica necessária
 
 3. **Few-shot learning**
    - Adicionar exemplos melhora consenso?
@@ -153,6 +193,11 @@ Quando não há consenso claro (ex: empate 2-2-1):
    - É possível usar menos modelos mantendo qualidade?
    - Cache reduz custos significativamente?
 
+5. **Generalização entre domínios**
+   - Metodologia funciona em diferentes tipos de classificação?
+   - Adaptações necessárias por domínio?
+   - Transferência de configurações ótimas
+
 ---
 
 ## 📈 Métricas de Sucesso
@@ -161,6 +206,7 @@ Quando não há consenso claro (ex: empate 2-2-1):
 
 - **Taxa de consenso alto** (≥80%): Indica % de instâncias confiáveis
 - **Cohen's Kappa médio**: Indica concordância geral (>0.6 é bom)
+- **Accuracy vs ground truth**: Quando labels disponíveis
 - **Redução de custo humano**: % de instâncias que não precisam revisão
 - **Tempo de anotação**: Comparado com anotação manual
 
@@ -169,54 +215,60 @@ Quando não há consenso claro (ex: empate 2-2-1):
 - **Confiabilidade das anotações**: Validação com ground truth
 - **Estabilidade dos modelos**: Variação interna baixa
 - **Identificação de casos difíceis**: Sistema detecta ambiguidades
+- **Usabilidade**: Facilidade de uso e configuração
 
 ---
 
 ## 🚀 Próximos Passos
 
-### Curto Prazo
+### Curto Prazo (1-2 semanas)
 
-1. **Validação com ground truth**
-   - Comparar anotações automáticas com labels verdadeiros
-   - Calcular accuracy, precision, recall
-   - Identificar tipos de erros
+1. **Executar em dataset real**
+   - Usar datasets do HuggingFace
+   - Começar com amostra pequena (100-500 instâncias)
+   - Validar que metodologia funciona
 
 2. **Otimização de prompts**
    - Testar few-shot learning
    - Comparar diferentes templates
    - Validar Chain-of-Thought
 
-3. **Experimentos com parâmetros**
-   - Análise sistemática de impacto
-   - Identificar configurações ótimas
-   - Documentar trade-offs
+3. **Análise de custos real**
+   - Documentar custos de API
+   - Medir impacto do cache
+   - Comparar com anotação humana
 
-### Médio Prazo
+### Médio Prazo (1-2 meses)
 
 1. **Escalar para datasets maiores**
    - Testar com 1000+ instâncias
    - Análise de custos em escala
    - Otimização de performance
 
-2. **Domínios diferentes**
-   - Testar em outras tarefas (NER, sumarização, etc.)
+2. **Validação com ground truth**
+   - Comparar anotações com labels verdadeiros
+   - Calcular accuracy, precision, recall, F1
+   - Identificar tipos de erros
+
+3. **Domínios diferentes**
+   - Testar em outras tarefas de classificação
    - Avaliar generalização da metodologia
    - Adaptar para casos específicos
 
-3. **Sistema de produção**
-   - Pipeline automatizado
-   - Interface para revisão humana
-   - Monitoramento de qualidade
-
-### Longo Prazo
+### Longo Prazo (3-6 meses)
 
 1. **Publicação**
    - Paper descrevendo metodologia
    - Resultados comparativos
    - Contribuições para a área
 
-2. **Ferramenta open-source**
-   - Disponibilizar código
+2. **Sistema de produção**
+   - Pipeline automatizado completo
+   - Interface para revisão humana
+   - Monitoramento de qualidade
+
+3. **Ferramenta open-source**
+   - Código disponibilizado no GitHub
    - Documentação completa
    - Comunidade de usuários
 
@@ -224,15 +276,23 @@ Quando não há consenso claro (ex: empate 2-2-1):
 
 ## 💰 Análise de Custos (Estimativa)
 
-### Por Instância
+### Por Instância (5 modelos, 3 repetições cada)
 
-- GPT-4 Turbo: ~$0.01 (3 repetições)
+- GPT-4 Turbo: ~$0.01
 - GPT-3.5 Turbo: ~$0.001
 - Claude 3 Opus: ~$0.015
 - Claude 3 Sonnet: ~$0.003
 - Gemini Pro: ~$0.0005
 
-**Total/instância**: ~$0.03 (5 modelos, 3 repetições cada)
+**Total/instância**: ~$0.03
+
+### Por Dataset
+
+| Tamanho | Chamadas API | Custo sem Cache | Custo com Cache |
+|---------|--------------|-----------------|-----------------|
+| 100 textos | 1.500 | $3-5 | $2-3 |
+| 1.000 textos | 15.000 | $30-50 | $18-30 |
+| 10.000 textos | 150.000 | $300-500 | $180-300 |
 
 ### Comparação com Anotação Humana
 
@@ -244,7 +304,8 @@ Quando não há consenso claro (ex: empate 2-2-1):
 
 - Cache reduz custos em ~40%
 - Usar apenas 3 modelos: -40% custo
-- Modelos mais baratos primeiro: -60% custo
+- Começar com modelos baratos: -60% custo inicial
+- Revisão humana apenas casos problemáticos: +90% economia final
 
 ---
 
@@ -252,28 +313,36 @@ Quando não há consenso claro (ex: empate 2-2-1):
 
 ### Para o Orientador
 
-1. **Este resumo executivo**
-2. **Notebook completo**: `analise_consenso_llms.ipynb`
-3. **Dashboard interativo**: Visualização dinâmica dos resultados
-4. **Sumário JSON**: Métricas quantitativas
+1. **Este resumo executivo** (`docs/RESUMO_EXECUTIVO.md`)
+2. **Notebook completo**: `src/notebooks/analise_consenso_llms.ipynb`
+3. **Dashboard interativo**: `results/figures/interactive_dashboard.html`
+4. **Sumário JSON**: `results/final/experiment_summary.json`
+
+### Documentação
+
+1. **README.md**: Visão geral e instalação
+2. **docs/INSTRUCOES.md**: Guia completo de uso
+3. **docs/GUIA_HUGGINGFACE.md**: Integração com HuggingFace
+4. **docs/QUICKSTART.md**: Início rápido
 
 ### Para Banca/Publicação
 
 1. Metodologia detalhada
 2. Resultados experimentais
 3. Comparação com baselines
-4. Análise de custos
-5. Código open-source
+4. Análise de custos real
+5. Código open-source no GitHub
 
 ---
 
 ## 🎓 Contribuições Científicas
 
 1. **Metodologia sistemática** para anotação com múltiplas LLMs
-2. **Framework de análise de consenso** com múltiplas métricas
+2. **Framework de análise de consenso** com múltiplas métricas estatísticas
 3. **Estratégias de resolução de conflitos** validadas empiricamente
-4. **Análise de custo-benefício** de diferentes abordagens
-5. **Sistema completo e reproduzível** disponível open-source
+4. **Integração com HuggingFace** para facilitar adoção
+5. **Análise de custo-benefício** de diferentes abordagens
+6. **Sistema completo e reproduzível** disponível open-source
 
 ---
 
@@ -283,24 +352,89 @@ Quando não há consenso claro (ex: empate 2-2-1):
 2. Vale a pena investir em few-shot learning?
 3. Como validar em domínios específicos?
 4. Estratégia de publicação (venue, timing)?
-5. Possibilidade de parceria com empresas?
+5. Quais datasets HuggingFace usar para validação?
+6. Possibilidade de parceria com empresas?
+7. Como lidar com casos onde ground truth também é ambíguo?
 
 ---
 
-**Preparado por**: Gabriel Catizani  
-**Data**: Novembro 2025  
-**Contato**: [seu-email]
+## 🔧 Tecnologias Utilizadas
+
+### Core
+- **Python 3.9+**
+- **Poetry**: Gerenciamento de dependências
+- **Jupyter**: Notebooks interativos
+
+### APIs LLM
+- **OpenAI API**: GPT-4, GPT-3.5
+- **Anthropic API**: Claude 3 (Opus, Sonnet)
+- **Google Generative AI**: Gemini Pro
+- **Cohere API**: (opcional)
+
+### Análise e Visualização
+- **pandas, numpy**: Manipulação de dados
+- **scikit-learn, scipy**: Métricas estatísticas
+- **matplotlib, seaborn**: Gráficos estáticos
+- **plotly**: Dashboards interativos
+
+### Integração
+- **datasets**: HuggingFace Datasets
+- **huggingface-hub**: Hub de datasets
 
 ---
 
 ## ✅ Checklist de Entrega
 
+### Sistema
 - [x] Sistema completo implementado
-- [x] Notebook de análise documentado
-- [x] Visualizações geradas
-- [x] README com instruções
 - [x] Código modular e bem estruturado
+- [x] Integração com HuggingFace
+- [x] Sistema de cache implementado
+- [x] Múltiplas estratégias de resolução
+
+### Documentação
+- [x] README com instruções completas
+- [x] Notebook de análise documentado
+- [x] Guia de uso HuggingFace
 - [x] Exemplos de uso
-- [ ] Validação com ground truth
-- [ ] Análise de custos real
-- [ ] Comparação com baselines
+- [x] Resumo executivo
+
+### Análise
+- [x] Visualizações implementadas
+- [x] Dashboard interativo
+- [x] Métricas estatísticas completas
+- [ ] Validação com ground truth (em andamento)
+- [ ] Análise de custos real (próximo passo)
+- [ ] Comparação com baselines (futuro)
+
+### Publicação
+- [ ] Experimentos em datasets reais
+- [ ] Resultados documentados
+- [ ] Paper rascunho
+- [ ] Código no GitHub
+
+---
+
+**Data de atualização**: Novembro 2025
+
+---
+
+## 📖 Referências e Recursos
+
+### Documentação do Projeto
+- [README.md](../README.md) - Visão geral
+- [INSTRUCOES.md](INSTRUCOES.md) - Guia de uso
+- [GUIA_DATASETS.md](GUIA_DATASETS.md) - Integração HF
+- [QUICKSTART.md](QUICKSTART.md) - Início rápido
+
+### Código Principal
+- `src/llm_annotation_system/` - Sistema principal
+- `src/config/` - Configurações
+- `src/main_huggingface.py` - Script principal
+
+### Notebooks
+- `src/notebooks/analise_consenso_llms.ipynb` - Análise completa
+
+---
+
+**Preparado para discussão e validação com orientador** ✅

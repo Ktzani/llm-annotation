@@ -1,107 +1,92 @@
-# 📝 Instruções Específicas para Gabriel Catizani
+# 📝 Instruções de Uso do Sistema
 
-## 🎯 O Que Você Tem Agora
+## 🎯 O Que Você Tem
 
-Implementei um **sistema completo e profissional** para sua pesquisa em anotação automática com LLMs. O código está bem estruturado, documentado e pronto para apresentar ao seu orientador.
+Um **sistema completo e profissional** para anotação automática com LLMs. O código está bem estruturado, documentado e pronto para uso em pesquisa.
 
 ---
 
-## 📦 Arquivos Entregues
+## 📦 Estrutura do Projeto
 
-### Código Principal (4 módulos)
+### Código Principal
 
-1. **config.py** (6.2 KB)
-   - Prompts otimizados com prompt engineering
-   - Configurações de todos os modelos LLM
-   - Parâmetros do experimento
-   - Estratégias de resolução de conflitos
+**src/config/** - Configurações centralizadas
+- `prompts.py` - Templates de prompts otimizados
+- `llm_configs.py` - Configuração de todos os modelos LLM
+- `experiment.py` - Parâmetros do experimento
+- `evaluation.py` - Métricas de avaliação
+- `conflict_resolution.py` - Estratégias de resolução de conflitos
+- `dataset_config.py` - ⭐ Configuração de datasets HuggingFace
 
-2. **llm_annotator.py** (17 KB)
-   - Classe principal LLMAnnotator
-   - Gerencia múltiplas LLMs simultaneamente
-   - Sistema de cache para economizar API calls
-   - Suporte para diferentes prompts e parâmetros
+**src/llm_annotation_system/** - Código principal
+- `llm_annotator.py` - Classe principal para anotação
+- `consensus_analyzer.py` - Análise de consenso e métricas
 
-3. **consensus_analyzer.py** (16 KB)
-   - Classe ConsensusAnalyzer
-   - Calcula todas as métricas (Cohen's Kappa, Fleiss, etc.)
-   - Identifica instâncias problemáticas
-   - Gera relatório completo
 
-4. **visualizer.py** (18 KB)
-   - Classe ConsensusVisualizer
-   - Gera todos os gráficos
-   - Dashboard interativo com Plotly
-   - Exporta em múltiplos formatos
+**src/utils/** - Utilitarios
+- `data_loader.py` - 
+- `visualizer.py` - Geração de visualizações e dashboards
 
-### Notebooks e Scripts
+### Scripts de Execução
 
-5. **analise_consenso_llms.ipynb** (27 KB) ⭐ **PRINCIPAL**
-   - Notebook completo com análise passo a passo
-   - Explicações detalhadas
-   - Visualizações inline
-   - Interpretação de resultados
-   - **Use este para apresentar ao orientador**
+- `src/main.py` - Exemplo básico de uso
+- `src/main_huggingface.py` - ⭐ Script principal com HuggingFace
 
-6. **exemplo_uso.py** (4.5 KB)
-   - Script de exemplo pronto para executar
-   - Demonstra uso completo do sistema
+### Notebooks
+
+- `src/notebooks/analise_consenso_llms.ipynb` - ⭐ Notebook completo
 
 ### Documentação
 
-7. **README.md** (6 KB)
-   - Documentação completa do projeto
-   - Guia de instalação e uso
-   - FAQ e troubleshooting
-
-8. **QUICKSTART.md** (2.7 KB)
-   - Guia rápido para começar
-   - 3 opções de uso
-   - Dicas e otimizações
-
-9. **RESUMO_EXECUTIVO.md** (8 KB)
-   - Sumário executivo para o orientador
-   - Metodologia detalhada
-   - Resultados esperados
-   - Próximos passos
-
-10. **requirements.txt** (373 B)
-    - Todas as dependências necessárias
-
+- `docs/README.md` - Documentação técnica completa
+- `docs/RESUMO_EXECUTIVO.md` - Sumário executivo
 ---
 
 ## 🚀 Como Começar
 
-### Passo 1: Baixar Arquivos
-
-Todos os arquivos estão em `/mnt/user-data/outputs/llm_annotation_system/`
-
-### Passo 2: Instalar Dependências
+### Passo 1: Instalar Dependências
 
 ```bash
-pip install -r requirements.txt
+poetry install
 ```
 
-### Passo 3: Configurar API Keys
+### Passo 2: Configurar API Keys
 
-Você precisa de API keys para:
-- OpenAI (GPT-4, GPT-3.5)
-- Anthropic (Claude 3)
-- Google (Gemini)
+Crie arquivo `.env` na raiz:
 
-Crie um arquivo `.env`:
 ```env
-OPENAI_API_KEY=sua-key
-ANTHROPIC_API_KEY=sua-key
-GOOGLE_API_KEY=sua-key
+OPENAI_API_KEY=sua-key-openai
+ANTHROPIC_API_KEY=sua-key-anthropic
+GOOGLE_API_KEY=sua-key-google
 ```
 
-### Passo 4: Executar
+### Passo 3: Escolher Modo de Uso
 
-**RECOMENDADO**: Use o notebook Jupyter
+#### Opção A: Com Datasets HuggingFace (RECOMENDADO)
 
 ```bash
-jupyter notebook analise_consenso_llms.ipynb
+# 1. Descobrir estrutura do seu dataset
+poetry run python src/main_huggingface.py --modo descobrir --dataset waashk/seu-dataset
+
+# 2. Configurar em src/config/dataset_config.py
+# (use a sugestão gerada pelo comando acima)
+
+# 3. Executar anotação
+poetry run python src/main_huggingface.py --modo basico
+```
+
+#### Opção B: Com Dados Locais
+
+```bash
+# Executar exemplo básico
+poetry run python src/main.py
+```
+
+#### Opção C: Notebook Jupyter
+
+```bash
+# Abrir notebook
+poetry run jupyter notebook src/notebooks/analise_consenso_llms.ipynb
 ```
 
 ---
@@ -110,284 +95,315 @@ jupyter notebook analise_consenso_llms.ipynb
 
 ### 1. Anotação Automática
 
-- ✅ 5 LLMs anotam cada texto
-- ✅ Cada LLM anota 3x (validação interna)
-- ✅ Total: 15 anotações por instância
+- ✅ Múltiplas LLMs anotam cada texto
+- ✅ Cada LLM anota múltiplas vezes (validação interna)
+- ✅ Total: 15 anotações por instância (5 LLMs × 3 repetições)
 - ✅ Sistema de cache (não repete chamadas)
 
 ### 2. Análise de Consenso
 
 - ✅ Calcula consenso entre LLMs
 - ✅ Calcula consenso interno de cada LLM
-- ✅ Identifica casos problemáticos (2-2-1, etc.)
-- ✅ Métricas estatísticas completas
+- ✅ Identifica casos problemáticos (2-2-1, empates, etc.)
+- ✅ Métricas estatísticas completas (Cohen's Kappa, Fleiss', etc.)
 
-### 3. Validação de Parâmetros
+### 3. Validação com Ground Truth (Opcional)
+
+- ✅ Se dataset tem labels, valida automaticamente
+- ✅ Calcula accuracy, precision, recall, F1
+- ✅ Gera classification report
+- ✅ Identifica categorias problemáticas
+
+### 4. Validação de Parâmetros
 
 - ✅ Testa diferentes temperaturas
 - ✅ Testa diferentes top_p
 - ✅ Analisa impacto nas anotações
 - ✅ "LLM hacking" para otimização
 
-### 4. Visualizações
+### 5. Visualizações
 
-- ✅ Heatmap de concordância
+- ✅ Heatmap de concordância entre modelos
 - ✅ Distribuição de consenso
 - ✅ Matriz de confusão
 - ✅ Comparação de modelos
-- ✅ Dashboard interativo
+- ✅ Dashboard interativo (HTML)
 
-### 5. Outputs
+### 6. Outputs Gerados
 
-- ✅ CSVs com todas as anotações
-- ✅ CSVs com alta confiança (consenso ≥80%)
-- ✅ CSVs com casos para revisão
-- ✅ JSON com sumário estatístico
-- ✅ PNGs com gráficos
-- ✅ HTML com dashboard interativo
+**CSVs:**
+- `dataset_anotado_final.csv` - Dataset final anotado
+- `annotations_complete.csv` - Todas as anotações detalhadas
+- `high_confidence_annotations.csv` - Consenso ≥ 80%
+- `needs_human_review.csv` - Casos problemáticos
+- `pairwise_agreement.csv` - Acordo entre pares de modelos
+- `confusion_matrix.csv` - Matriz de confusão
+
+**Visualizações:**
+- `agreement_heatmap.png` - Heatmap de concordância
+- `consensus_distribution.png` - Distribuição de consenso
+- `model_comparison.png` - Comparação de modelos
+- `interactive_dashboard.html` - ⭐ Dashboard interativo
+
+**Resumos:**
+- `experiment_summary.json` - Estatísticas completas
+
+---
+
+## 🤗 Usar Datasets do HuggingFace
+
+### Fluxo Completo
+
+#### 1. Descobrir Estrutura
+
+```bash
+poetry run python src/main_huggingface.py --modo descobrir --dataset waashk/seu-dataset
+```
+
+**Output:**
+```
+📋 Estrutura do dataset:
+   Colunas: ['text', 'label', 'id']
+   
+📝 Primeiros 3 exemplos...
+
+💡 Sugestão de configuração:
+"seu_dataset": {
+    "path": "waashk/seu-dataset",
+    "text_column": "text",
+    ...
+}
+```
+
+#### 2. Configurar Dataset
+
+Edite `src/config/dataset_config.py`:
+
+```python
+HUGGINGFACE_DATASETS = {
+    "meu_dataset": {
+        "path": "waashk/nome-do-dataset",
+        "text_column": "text",              # Da descoberta
+        "label_column": "label",            # Opcional (para validação)
+        "categories": None,                  # Extrair automaticamente
+        "combine_splits": ["train", "test"], # Dataset completo!
+        "sample_size": 100,                  # Começar pequeno
+        "description": "Descrição do dataset"
+    },
+}
+```
+
+#### 3. Executar
+
+```bash
+poetry run python src/main_huggingface.py --modo basico
+```
+
+### Casos de Uso
+
+**Dataset com Labels (Validação):**
+```python
+"dataset_validacao": {
+    "path": "waashk/dataset-com-labels",
+    "text_column": "text",
+    "label_column": "label",  # ← Tem ground truth
+    "categories": None,       # Extrair das labels
+    "combine_splits": ["train", "test"],
+    "sample_size": None,
+}
+```
+**Resultado:** Sistema calcula accuracy automaticamente!
+
+**Dataset sem Labels (Anotação Pura):**
+```python
+"dataset_novo": {
+    "path": "waashk/textos-novos",
+    "text_column": "content",
+    "label_column": None,     # ← Sem labels
+    "categories": ["A", "B", "C"],  # ← Você define
+    "split": "train",
+    "sample_size": None,
+}
+```
+**Resultado:** Apenas anotações, sem validação
 
 ---
 
 ## 💡 Dicas Importantes
 
-### Para Começar com Poucos Custos
+### Para Reduzir Custos
 
-1. **Use amostra pequena primeiro**
-   - Teste com 10-20 textos
-   - Valide que está funcionando
-   - Depois escale
+1. **Sempre começar com amostra pequena**
+   ```python
+   "sample_size": 100  # ← Validar antes de escalar
+   ```
 
-2. **Use modelos mais baratos**
-   - Comece com: GPT-3.5, Claude Sonnet, Gemini
-   - Depois adicione GPT-4 e Claude Opus
+2. **Usar modelos mais baratos primeiro**
+   - Teste com: GPT-3.5, Claude Sonnet, Gemini
+   - Depois adicione: GPT-4, Claude Opus
 
-3. **Aproveite o cache**
+3. **Aproveitar o cache**
    - Sistema salva respostas automaticamente
    - Não repete chamadas de API
-   - Economiza muito dinheiro
+   - Economiza ~40% em custos
 
 ### Para Melhorar Qualidade
 
-1. **Ajuste os prompts** em `config.py`
-   - Adicione exemplos (few-shot)
-   - Teste Chain-of-Thought
+1. **Ajustar prompts** em `src/config/prompts.py`
+   - Adicione exemplos (few-shot learning)
+   - Teste Chain-of-Thought para casos complexos
    - Seja específico nas instruções
 
-2. **Teste diferentes configurações**
-   - Use `test_param_variations=True`
-   - Analise qual funciona melhor
-   - Documente seus achados
+2. **Testar diferentes configurações**
+   ```python
+   df = annotator.annotate_dataset(
+       texts=texts,
+       test_param_variations=True  # ← Testa variações
+   )
+   ```
 
-3. **Analise casos problemáticos**
+3. **Analisar casos problemáticos**
    - Arquivo `needs_human_review.csv`
    - Entenda por que não há consenso
-   - Ajuste prompts ou categorias
+   - Ajuste prompts ou categorias conforme necessário
+
+### Para Datasets Grandes
+
+1. **Processar em batches**
+   ```python
+   batch_size = 500
+   for i in range(0, len(texts), batch_size):
+       batch = texts[i:i+batch_size]
+       # Processar batch...
+   ```
+
+2. **Usar cache eficientemente**
+   - Cache fica em `data/.cache/huggingface/`
+   - Datasets baixados uma vez ficam em cache
 
 ---
 
-## 🎓 Para Apresentar ao Orientador
+## 🎓 Material para Apresentação
 
-### Material Pronto
+### Arquivos Prontos
 
-1. **RESUMO_EXECUTIVO.md**
-   - Leia e customize conforme necessário
-   - Adicione resultados reais quando tiver
+1. **docs/RESUMO_EXECUTIVO.md**
+   - Sumário executivo do projeto
+   - Metodologia detalhada
+   - Resultados esperados
 
-2. **analise_consenso_llms.ipynb**
+2. **src/notebooks/analise_consenso_llms.ipynb**
    - Execute e gere os resultados
    - Salve com outputs visíveis
-   - Apresente este notebook
+   - Use para apresentação
 
-3. **Dashboard Interativo**
-   - Em `results/figures/interactive_dashboard.html`
+3. **results/figures/interactive_dashboard.html**
+   - Dashboard interativo
    - Abra no navegador
-   - Mostre as visualizações
+   - Demonstre as análises
 
-### Pontos para Discutir
+### Pontos para Discussão
 
-1. **Metodologia implementada**
-   - Multi-LLM com consenso
-   - Validação interna
-   - Estratégias de resolução
+1. **Metodologia Implementada**
+   - Multi-LLM com análise de consenso
+   - Validação interna por repetições
+   - Estratégias de resolução de conflitos
 
-2. **Questões de pesquisa**
-   - Threshold ideal de consenso?
-   - O que fazer com casos 2-2-1?
-   - Few-shot learning ajuda?
+2. **Questões de Pesquisa**
+   - Qual threshold ideal de consenso?
+   - Como lidar com casos 2-2-1?
+   - Few-shot learning melhora resultados?
+   - Qual configuração de parâmetros é melhor?
 
-3. **Próximos passos**
-   - Validar com ground truth
-   - Testar em dataset maior
+3. **Resultados e Validação**
+   - Comparação com ground truth
+   - Análise de concordância entre modelos
+   - Custos vs qualidade
+
+4. **Próximos Passos**
+   - Validar em dataset maior
    - Otimizar custos
-
-4. **Publicação**
-   - Onde submeter?
-   - Quando?
-   - Colaborações?
+   - Preparar publicação
 
 ---
 
-## ✉️ Email Sugerido para Celso e Washington
+## 🔧 Customizações
 
-```
-Assunto: Validação de Prompt para Anotação Automática com LLMs
+### Adicionar Novos Modelos
 
-Olá Celso e Washington,
-
-Estou desenvolvendo uma metodologia para anotação automática de datasets 
-usando múltiplas LLMs com análise de consenso. Implementei um sistema 
-completo que testa diferentes prompts e configurações.
-
-Poderiam revisar o prompt base que estou usando? Está no arquivo config.py, 
-linha 18 (BASE_ANNOTATION_PROMPT). Quero garantir que estou seguindo as 
-melhores práticas de prompt engineering para classificação de textos.
-
-Principais pontos:
-- Prompt zero-shot com instruções claras
-- Suporte para few-shot (adicionar exemplos)
-- Chain-of-Thought para casos complexos
-
-Agradeço muito o feedback de vocês!
-
-Abraço,
-Gabriel Catizani
-```
-
----
-
-## 🔧 Customizações Possíveis
-
-### 1. Adicionar Novos Modelos
-
-Edite `config.py` e adicione em `LLM_CONFIGS`:
+Em `src/config/llm_configs.py`:
 
 ```python
-"novo-modelo": {
-    "provider": "openai",  # ou anthropic, google
+LLM_CONFIGS["novo-modelo"] = {
+    "provider": "openai",  # ou "anthropic", "google"
     "model_name": "nome-exato-do-modelo",
-    "default_params": {"temperature": 0.0, "max_tokens": 50},
+    "default_params": {
+        "temperature": 0.0,
+        "max_tokens": 50,
+    },
+    "alternative_params": {
+        "temperature": [0.0, 0.3, 0.5],  # Para testes
+    }
 }
 ```
 
-### 2. Mudar Categorias
+### Customizar Prompts
 
-No notebook ou script:
-
-```python
-categories = ["Sua", "Lista", "De", "Categorias"]
-```
-
-### 3. Customizar Prompts
-
-Edite `config.py`:
+Em `src/config/prompts.py`:
 
 ```python
 BASE_ANNOTATION_PROMPT = """
-Seu prompt customizado aqui
+Seu prompt customizado aqui.
+
+**Text to classify:**
 {text}
+
+**Available Categories:**
 {categories}
 """
 ```
 
-### 4. Ajustar Parâmetros
+### Ajustar Parâmetros do Experimento
 
-Em `config.py` → `EXPERIMENT_CONFIG`:
+Em `src/config/experiment.py`:
 
 ```python
-"num_repetitions_per_llm": 5,  # Aumentar repetições
-"consensus_threshold": 0.7,     # Mudar threshold
-"no_consensus_strategy": "...", # Mudar estratégia
+EXPERIMENT_CONFIG = {
+    "num_repetitions_per_llm": 5,      # Mais repetições
+    "consensus_threshold": 0.7,         # Threshold diferente
+    "test_param_variations": True,      # Testar variações
+}
 ```
 
 ---
 
 ## 📈 Estimativa de Custos
 
-### Dataset Pequeno (100 textos)
+| Dataset | Chamadas API | Custo Estimado |
+|---------|--------------|----------------|
+| 100 textos | ~1.500 | $3-5 |
+| 1.000 textos | ~15.000 | $30-50 |
+| 10.000 textos | ~150.000 | $300-500 |
 
-- 5 modelos × 3 repetições = 15 anotações/texto
-- Total: 1.500 chamadas de API
-- **Custo estimado: $3-5**
+**Com cache e otimizações:** Redução de ~40%
 
-### Dataset Médio (1.000 textos)
-
-- Total: 15.000 chamadas de API
-- Com cache: ~10.000 chamadas únicas
-- **Custo estimado: $30-50**
-
-### Dataset Grande (10.000 textos)
-
-- Total: 150.000 chamadas
-- Com cache e otimizações: ~100.000
-- **Custo estimado: $300-500**
-
-**Dica**: Comece pequeno, valide a metodologia, depois escale.
+**Dica:** Comece pequeno, valide metodologia, depois escale.
 
 ---
 
-## ✅ Checklist de Validação
+## ✅ Checklist
 
-Antes de apresentar ao orientador:
+Antes de executar em produção:
 
-- [ ] Instalei todas as dependências
-- [ ] Configurei minhas API keys
-- [ ] Executei o notebook com dataset de teste
-- [ ] Gerei todas as visualizações
-- [ ] Analisei os resultados
-- [ ] Li o RESUMO_EXECUTIVO.md
-- [ ] Customizei para meu caso específico
-- [ ] Documentei achados importantes
-- [ ] Preparei perguntas para discussão
-
----
-
-## 🎯 Próximos Passos Sugeridos
-
-### Curto Prazo (1-2 semanas)
-
-1. Teste com seu dataset real (amostra pequena)
-2. Valide que a metodologia faz sentido
-3. Ajuste prompts e parâmetros
-4. Apresente resultados preliminares ao orientador
-
-### Médio Prazo (1-2 meses)
-
-1. Execute em dataset completo
-2. Valide com ground truth
-3. Compare diferentes estratégias
-4. Documente resultados para paper
-
-### Longo Prazo (3-6 meses)
-
-1. Escreva o paper
-2. Prepare apresentação
-3. Submeta para conferência/journal
-4. Disponibilize código open-source
+- [ ] Dependências instaladas (`poetry install`)
+- [ ] API keys configuradas no `.env`
+- [ ] Dataset estruturado ou configurado (`dataset_config.py`)
+- [ ] Testado com amostra pequena (`sample_size: 100`)
+- [ ] Prompts revisados e otimizados
+- [ ] Categorias bem definidas
+- [ ] Resultados validados em amostra
+- [ ] Entendido custos estimados
+- [ ] Backup dos dados importantes
 
 ---
 
-## 📞 Precisa de Ajuda?
-
-Se tiver dúvidas:
-
-1. Consulte o README.md
-2. Veja exemplos no notebook
-3. Analise o código (bem comentado)
-4. Teste com datasets pequenos primeiro
-
----
-
-## 🎉 Conclusão
-
-Você agora tem um **sistema completo e profissional** para sua pesquisa. 
-O código é modular, bem documentado, e pronto para apresentação acadêmica.
-
-**Boa sorte com sua pesquisa!** 🚀
-
-Você tem uma metodologia sólida, implementação robusta, e material excelente 
-para apresentar ao seu orientador e eventualmente publicar.
-
----
-
-Gabriel Catizani, espero que este sistema atenda suas necessidades. Qualquer dúvida, 
-é só perguntar! 😊
