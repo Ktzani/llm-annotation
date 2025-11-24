@@ -4,12 +4,10 @@ Consensus Analyzer - Módulo para análise de consenso entre LLMs
 
 import numpy as np
 import pandas as pd
-from typing import List, Dict, Tuple
+from typing import List, Dict
 from collections import Counter
 from scipy.stats import entropy
-from sklearn.metrics import cohen_kappa_score, confusion_matrix
-import itertools
-
+from sklearn.metrics import cohen_kappa_score
 
 class ConsensusAnalyzer:
     """

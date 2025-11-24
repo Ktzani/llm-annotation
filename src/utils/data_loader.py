@@ -2,7 +2,13 @@ from typing import List, Dict, Optional, Tuple
 from datasets import load_dataset
 import pandas as pd
 
-from src.config.dataset_config import HUGGINGFACE_DATASETS
+import sys
+from pathlib import Path as PathLib
+
+config_path = PathLib(__file__).parent.parent / 'config'
+sys.path.insert(0, str(config_path))
+
+from datasets import HUGGINGFACE_DATASETS
 
 def load_hf_dataset(
     dataset_name: str,

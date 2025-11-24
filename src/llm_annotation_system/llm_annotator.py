@@ -6,12 +6,14 @@ import os
 import json
 import time
 import hashlib
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Any, Optional
 from pathlib import Path
 import pandas as pd
-import numpy as np
 from tqdm import tqdm
-from collections import Counter, defaultdict
+from collections import Counter
+
+import sys
+from pathlib import Path as PathLib
 
 # Import LLM providers
 try:
@@ -29,14 +31,13 @@ try:
 except ImportError:
     genai = None
 
-from config import (
-    BASE_ANNOTATION_PROMPT,
-    FEW_SHOT_PROMPT,
-    COT_PROMPT,
-    LLM_CONFIGS,
-    EXPERIMENT_CONFIG,
-)
+# Adicionar diretório de config ao path
+config_path = PathLib(__file__).parent.parent / 'config'
+sys.path.insert(0, str(config_path))
 
+from prompts import BASE_ANNOTATION_PROMPT, FEW_SHOT_PROMPT, COT_PROMPT
+from llms import LLM_CONFIGS
+from experiment import EXPERIMENT_CONFIG
 
 class LLMAnnotator:
     """
