@@ -9,9 +9,9 @@ from tqdm import tqdm
 from collections import Counter
 from loguru import logger
 
-from llm_provider import LLMProvider
-from cache_manager import CacheManager, LangChainCacheManager
-from response_processor import ResponseProcessor
+from llm_annotation_system.core.llm_provider import LLMProvider
+from llm_annotation_system.core.cache_manager import CacheManager, LangChainCacheManager
+from llm_annotation_system.core.response_processor import ResponseProcessor
 from annotation_engine import AnnotationEngine
 
 import sys

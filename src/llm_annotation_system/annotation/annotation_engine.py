@@ -6,9 +6,9 @@ import time
 from typing import List, Dict, Optional
 from loguru import logger
 
-from llm_annotation_system.annotation.llm_provider import LLMProvider
-from llm_annotation_system.annotation.cache_manager import CacheManager
-from llm_annotation_system.annotation.response_processor import ResponseProcessor
+from llm_annotation_system.core.llm_provider import LLMProvider
+from llm_annotation_system.core.cache_manager import CacheManager
+from llm_annotation_system.core.response_processor import ResponseProcessor
 
 import sys
 from pathlib import Path
