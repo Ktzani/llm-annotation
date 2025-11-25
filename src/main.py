@@ -20,9 +20,9 @@ sys.path.insert(0, str(Path(__file__).parent / 'llm_annotation_system'))
 sys.path.insert(0, str(Path(__file__).parent / 'config'))
 sys.path.insert(0, str(Path(__file__).parent / 'utils'))
 
-from src.llm_annotation_system.llm_annotator import LLMAnnotator
-from src.llm_annotation_system.consensus_analyzer import ConsensusAnalyzer
-from src.utils.data_loader import load_hf_dataset, list_available_datasets
+from llm_annotator_refactored import LLMAnnotator
+from consensus_analyzer_refactored import ConsensusAnalyzer
+from data_loader import load_hf_dataset, list_available_datasets
 
 
 def exemplo_teste():
@@ -52,12 +52,24 @@ def exemplo_teste():
     logger.info(f"Modelos: {models}")
     logger.info(f"Textos: {len(texts)}")
     
+    # OPÇÃO 1: Usar parâmetros padrão (temp=0)
     annotator = LLMAnnotator(
         models=models,
         categories=categories,
-        api_keys=None,  # Open-source não precisa
-        use_langchain_cache=True
+        api_keys=None,
+        use_langchain_cache=True,
+        use_alternative_params=False  # Padrão
     )
+    
+    # OPÇÃO 2: Usar alternative_params (temp=0, 0.3, 0.5)
+    # Descomente para testar variações:
+    # annotator = LLMAnnotator(
+    #     models=models,
+    #     categories=categories,
+    #     api_keys=None,
+    #     use_langchain_cache=True,
+    #     use_alternative_params=True  # Expande para 9 modelos (3 base + 6 variações)
+    # )
     
     df = annotator.annotate_dataset(texts, num_repetitions=3)
     df = annotator.calculate_consensus(df)
@@ -139,6 +151,8 @@ def main():
                         help='Modo de execução')
     parser.add_argument('--dataset', type=str, default='agnews',
                         help='Nome do dataset (para modo huggingface)')
+    parser.add_argument('--alternative-params', action='store_true',
+                        help='Usar alternative params (temp=0, 0.3, 0.5)')
     
     args = parser.parse_args()
     
@@ -146,11 +160,18 @@ def main():
         logger.info("Datasets disponíveis:")
         for dataset in list_available_datasets():
             logger.info(f"  - {dataset}")
+        
+        logger.info("\n💡 Para mais opções, use main_huggingface.py")
+        logger.info("   poetry run python src/main_huggingface.py --help")
         return
     
     if args.mode == 'teste':
         exemplo_teste()
+    
     elif args.mode == 'huggingface':
+        logger.info("💡 Para mais opções com HuggingFace, use main_huggingface.py")
+        logger.info("   poetry run python src/main_huggingface.py --modo anotar --dataset agnews")
+        logger.info("\nExecutando anotação básica...")
         usar_huggingface(args.dataset)
 
 

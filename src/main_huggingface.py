@@ -1,301 +1,313 @@
 """
-Exemplo de uso do sistema com datasets do HuggingFace (waashk)
+Main HuggingFace - Sistema de Anotação com Datasets HuggingFace (waashk)
 
-Este script demonstra como carregar seus datasets do HuggingFace
-e executar o sistema de anotação automática.
-
-Execute: python src/main_huggingface.py
+Modelos: Apenas Open-Source (Llama 3, Mistral, Qwen 2)
 """
 
 import sys
-import os
+import argparse
 from pathlib import Path
+from loguru import logger
 
-# Adicionar diretórios ao path
-sys.path.insert(0, str(Path(__file__).parent / "llm_annotation_system"))
-sys.path.insert(0, str(Path(__file__).parent / "config"))
-sys.path.insert(0, str(Path(__file__).parent / "utils"))
-
-from llm_annotator import LLMAnnotator
-from consensus_analyzer import ConsensusAnalyzer
-from visualizer import ConsensusVisualizer
-from dataset_config import (
-    load_hf_dataset,
-    load_hf_dataset_as_dataframe,
-    list_available_datasets,
-    discover_dataset_structure,
-    save_annotated_dataset
+# Configurar logging
+logger.remove()
+logger.add(
+    sys.stdout,
+    format="<green>{time:HH:mm:ss}</green> | <level>{level: <8}</level> | <level>{message}</level>",
+    level="INFO"
 )
-from dotenv import load_dotenv
 
-# Carregar variáveis de ambiente
-load_dotenv()
+# Setup paths
+sys.path.insert(0, str(Path(__file__).parent / 'llm_annotation_system'))
+sys.path.insert(0, str(Path(__file__).parent / 'config'))
+sys.path.insert(0, str(Path(__file__).parent / 'utils'))
+
+from llm_annotator_refactored import LLMAnnotator
+from consensus_analyzer_refactored import ConsensusAnalyzer
+from data_loader import load_hf_dataset, list_available_datasets, discover_dataset_structure
 
 
-def main_exemplo_basico():
+def executar_anotacao(
+    dataset_name: str,
+    use_alternative_params: bool = False,
+    num_repetitions: int = 3
+):
     """
-    Exemplo 1: Carregar dataset do HuggingFace e anotar
+    Executa anotação completa de um dataset
+    
+    Args:
+        dataset_name: Nome do dataset
+        use_alternative_params: Se True, usa variações de temperatura
+        num_repetitions: Número de repetições por modelo
     """
-    print("\n" + "="*80)
-    print(" " * 20 + "ANOTAÇÃO COM DATASETS HUGGINGFACE")
-    print("="*80)
     
-    # 1. LISTAR DATASETS DISPONÍVEIS
-    print("\n1. Datasets configurados:")
-    for ds_name in list_available_datasets():
-        print(f"   • {ds_name}")
+    logger.info(f"Dataset: {dataset_name}")
     
-    # 2. CARREGAR DATASET
-    print("\n2. Carregando dataset...")
-    
-    # OPÇÃO A: Usar dataset pré-configurado
-    dataset_name = "exemplo_com_labels"  # AJUSTE para seu dataset
-    
-    # OPÇÃO B: Ou descobrir estrutura primeiro (descomente)
-    # discover_dataset_structure("waashk/seu-dataset")
-    # return
-    
-    texts, categories, ground_truth = load_hf_dataset(dataset_name)
-    
-    # 3. CONFIGURAR API KEYS
-    print("\n3. Configurando modelos...")
-    api_keys = {
-        "openai": os.getenv("OPENAI_API_KEY", "sua-api-key"),
-        "anthropic": os.getenv("ANTHROPIC_API_KEY", "sua-api-key"),
-        "google": os.getenv("GOOGLE_API_KEY", "sua-api-key"),
-    }
-    
+    # Modelos open-source
     models = [
-        "gpt-4-turbo",
-        "claude-3-opus",
-        "gemini-pro",
+        "llama3-8b",      # Meta Llama 3 8B
+        "mistral-7b",     # Mistral 7B
+        "qwen2-7b",       # Qwen 2 7B (excelente PT-BR)
     ]
     
-    # 4. INICIALIZAR ANOTADOR
-    print("\n4. Inicializando anotador...")
+    # Carregar dataset
+    logger.info("Carregando dataset do HuggingFace...")
+    texts, categories, ground_truth = load_hf_dataset(dataset_name)
+    
+    logger.info(f"Textos: {len(texts)}")
+    logger.info(f"Categorias: {categories}")
+    logger.info(f"Ground truth: {'Sim' if ground_truth else 'Não'}")
+    
+    # Inicializar anotador
+    logger.info("Inicializando anotador...")
     annotator = LLMAnnotator(
         models=models,
         categories=categories,
-        api_keys=api_keys,
-        cache_dir="./cache",
-        results_dir="./results"
+        api_keys=None,  # Open-source não precisa
+        use_langchain_cache=True,
+        use_alternative_params=use_alternative_params
     )
     
-    # 5. ANOTAR DATASET
-    print("\n5. Iniciando anotação...")
-    print(f"   → {len(texts)} textos")
-    print(f"   → {len(models)} modelos")
-    print(f"   → 3 repetições por modelo")
+    if use_alternative_params:
+        logger.warning(f"Alternative params ativado: {len(annotator.models)} variações")
     
-    df_annotations = annotator.annotate_dataset(
-        texts=texts,
-        num_repetitions=3,
-        test_param_variations=False,
-    )
+    # Anotar
+    logger.info("Iniciando anotação...")
+    logger.info(f"  Modelos: {len(annotator.models)}")
+    logger.info(f"  Repetições: {num_repetitions}")
+    logger.info(f"  Total anotações: {len(texts) * len(annotator.models) * num_repetitions}")
     
-    # 6. CALCULAR CONSENSO
-    print("\n6. Calculando consenso...")
-    df_with_consensus = annotator.calculate_consensus(df_annotations)
+    df = annotator.annotate_dataset(texts, num_repetitions=num_repetitions)
     
-    # 7. ADICIONAR GROUND TRUTH (se disponível)
+    # Adicionar ground truth
     if ground_truth:
-        print("\n7. Adicionando ground truth para validação...")
-        df_with_consensus['ground_truth'] = ground_truth
-        
-        # Calcular accuracy
-        from sklearn.metrics import accuracy_score, classification_report
-        
-        accuracy = accuracy_score(
-            df_with_consensus['ground_truth'],
-            df_with_consensus['most_common_annotation']
-        )
-        
-        print(f"\n📊 VALIDAÇÃO COM GROUND TRUTH:")
-        print(f"   Accuracy do consenso: {accuracy:.2%}")
-        
-        print(f"\n   Relatório detalhado:")
-        print(classification_report(
-            df_with_consensus['ground_truth'],
-            df_with_consensus['most_common_annotation'],
-            target_names=categories
-        ))
+        df['ground_truth'] = ground_truth
     
-    # 8. ANÁLISE DETALHADA
-    print("\n8. Gerando análise de consenso...")
-    analyzer = ConsensusAnalyzer(categories=categories)
+    # Calcular consenso
+    logger.info("Calculando consenso...")
+    df = annotator.calculate_consensus(df)
     
-    consensus_cols = [col for col in df_with_consensus.columns 
-                      if '_consensus' in col and '_score' not in col]
+    # Análise
+    logger.info("Gerando relatório de consenso...")
+    analyzer = ConsensusAnalyzer(categories)
+    consensus_cols = [col for col in df.columns if '_consensus' in col and '_score' not in col]
     
     report = analyzer.generate_consensus_report(
-        df=df_with_consensus,
+        df=df,
         annotator_cols=consensus_cols,
         output_dir="./results"
     )
     
-    # 9. VISUALIZAÇÕES
-    print("\n9. Gerando visualizações...")
-    visualizer = ConsensusVisualizer(output_dir="./results/figures")
+    # Resultados
+    logger.success("\n" + "="*80)
+    logger.success("RESULTADOS")
+    logger.success("="*80 + "\n")
     
-    visualizer.plot_agreement_heatmap(report['pairwise_agreement'])
-    visualizer.plot_consensus_distribution(df_with_consensus)
-    visualizer.plot_model_comparison(df_with_consensus, models=models)
-    visualizer.create_interactive_dashboard(df_with_consensus, report)
+    logger.info("📊 Consenso:")
+    logger.info(f"  Média: {df['consensus_score'].mean():.2%}")
+    logger.info(f"  Alto (≥80%): {(df['consensus_score'] >= 0.8).sum()}/{len(df)}")
+    logger.info(f"  Médio (60-80%): {((df['consensus_score'] >= 0.6) & (df['consensus_score'] < 0.8)).sum()}/{len(df)}")
+    logger.info(f"  Baixo (<60%): {(df['consensus_score'] < 0.6).sum()}/{len(df)}")
+    logger.info(f"  Problemáticos: {df['is_problematic'].sum()}/{len(df)}")
     
-    # 10. SALVAR RESULTADOS
-    print("\n10. Salvando resultados...")
-    save_annotated_dataset(
-        df_with_consensus,
-        output_path="./results/dataset_anotado_final.csv"
-    )
+    logger.info(f"\n📈 Fleiss' Kappa: {report['fleiss_kappa']:.3f} ({report['fleiss_interpretation']})")
     
-    # 11. SUMÁRIO FINAL
-    print("\n" + "="*80)
-    print(" " * 30 + "SUMÁRIO FINAL")
-    print("="*80)
-    
-    print(f"\n📊 Estatísticas:")
-    print(f"   • Total de textos: {len(df_with_consensus)}")
-    print(f"   • Modelos usados: {len(models)}")
-    print(f"   • Categorias: {len(categories)}")
-    
-    print(f"\n🎯 Consenso:")
-    print(f"   • Consenso médio: {df_with_consensus['consensus_score'].mean():.2%}")
-    print(f"   • Alto consenso (≥80%): {(df_with_consensus['consensus_score'] >= 0.8).sum()}")
-    print(f"   • Casos problemáticos: {df_with_consensus['is_problematic'].sum()}")
-    
-    if 'mean_cohen_kappa' in report['distance_metrics']:
-        print(f"\n📈 Métricas:")
-        print(f"   • Cohen's Kappa: {report['distance_metrics']['mean_cohen_kappa']:.4f}")
-        print(f"   • Fleiss' Kappa: {report['distance_metrics']['fleiss_kappa']:.4f}")
-    
+    # Validação com ground truth
     if ground_truth:
-        print(f"\n✅ Validação:")
-        print(f"   • Accuracy vs Ground Truth: {accuracy:.2%}")
+        from sklearn.metrics import accuracy_score, classification_report
+        
+        accuracy = accuracy_score(df['ground_truth'], df['most_common_annotation'])
+        
+        logger.success(f"\n🎯 Validação vs Ground Truth:")
+        logger.success(f"  Accuracy: {accuracy:.2%}")
+        
+        logger.info("\nClassification Report:")
+        print(classification_report(df['ground_truth'], df['most_common_annotation']))
+        
+        # Accuracy por nível de consenso
+        logger.info("\nAccuracy por nível de consenso:")
+        for level in ['high', 'medium', 'low']:
+            df_level = df[df['consensus_level'] == level]
+            if len(df_level) > 0:
+                acc = accuracy_score(df_level['ground_truth'], df_level['most_common_annotation'])
+                logger.info(f"  {level}: {acc:.2%} ({len(df_level)} casos)")
     
-    print(f"\n📁 Arquivos salvos:")
-    print(f"   • Dataset anotado: ./results/dataset_anotado_final.csv")
-    print(f"   • Relatórios: ./results/")
-    print(f"   • Visualizações: ./results/figures/")
-    print(f"   • Dashboard: ./results/figures/interactive_dashboard.html")
+    # Salvar
+    logger.info("\n💾 Salvando resultados:")
     
-    print("\n" + "="*80)
-    print("✅ Anotação completa!")
-    print("="*80 + "\n")
+    # Dataset completo
+    output_file = Path("./results") / f"{dataset_name}_anotado.csv"
+    df.to_csv(output_file, index=False)
+    logger.info(f"  ✓ {output_file}")
+    
+    # Alta confiança
+    high_conf = df[df['consensus_score'] >= 0.8]
+    if len(high_conf) > 0:
+        high_file = Path("./results") / f"{dataset_name}_alta_confianca.csv"
+        high_conf.to_csv(high_file, index=False)
+        logger.info(f"  ✓ {high_file} ({len(high_conf)} registros)")
+    
+    # Baixa confiança
+    low_conf = df[df['consensus_score'] < 0.6]
+    if len(low_conf) > 0:
+        low_file = Path("./results") / f"{dataset_name}_revisar.csv"
+        low_conf.to_csv(low_file, index=False)
+        logger.info(f"  ✓ {low_file} ({len(low_conf)} registros)")
+    
+    # Cache stats
+    cache_stats = annotator.get_cache_stats()
+    logger.info(f"\n💾 Cache: {cache_stats['total_entries']} entradas")
+    
+    logger.success("\n✅ Processamento completo!")
 
 
-def main_carregar_customizado():
-    """
-    Exemplo 2: Carregar dataset customizado sem pré-configurar
-    """
-    from dataset_config import load_custom_dataset
+def modo_listar():
+    """Lista datasets disponíveis"""
     
-    print("\n" + "="*80)
-    print(" " * 20 + "CARREGAR DATASET CUSTOMIZADO")
-    print("="*80 + "\n")
+    logger.info("Datasets disponíveis em src/config/datasets.py:")
     
-    # Carregar diretamente
-    texts, categories, labels = load_custom_dataset(
-        hf_path="waashk/seu-dataset",  # AJUSTE
-        text_column="text",             # AJUSTE
-        label_column="label",           # AJUSTE ou None
-        categories=None,                # ou defina manualmente
-        combine_splits=["train", "test"],  # Combinar splits
-        sample_size=100                 # Amostra pequena primeiro
-    )
+    for dataset in list_available_datasets():
+        logger.info(f"  - {dataset}")
     
-    print(f"✅ Dataset carregado:")
-    print(f"   • {len(texts)} textos")
-    print(f"   • Categorias: {categories}")
-    
-    # Continuar com anotação...
-    # (mesmo código do exemplo anterior)
+    logger.info("\nPara adicionar novos datasets:")
+    logger.info("  1. Edite src/config/datasets.py")
+    logger.info("  2. Adicione configuração em HUGGINGFACE_DATASETS")
+    logger.info("  3. Execute: python src/main.py --mode huggingface --dataset SEU_DATASET")
 
 
-def main_descobrir_estrutura():
+def modo_descobrir(dataset_path: str):
     """
-    Exemplo 3: Descobrir estrutura de um dataset
+    Descobre estrutura de um dataset
+    
+    Args:
+        dataset_path: Path do dataset (ex: waashk/agnews)
     """
-    print("\n" + "="*80)
-    print(" " * 20 + "DESCOBRIR ESTRUTURA DO DATASET")
-    print("="*80 + "\n")
     
-    # Substitua pelo seu dataset
-    hf_path = "waashk/seu-dataset"  # AJUSTE
+    logger.info(f"Descobrindo estrutura: {dataset_path}")
     
-    discover_dataset_structure(hf_path, num_examples=3)
+    try:
+        info = discover_dataset_structure(dataset_path)
+        
+        logger.success("\n✓ Estrutura descoberta:")
+        logger.info(f"  Colunas: {info['columns']}")
+        logger.info(f"  Registros: {info['num_rows']}")
+        
+        logger.info("\nAmostra:")
+        print(info['sample'])
+        
+        logger.info("\n💡 Adicione esta configuração em src/config/datasets.py:")
+        logger.info(f'''
+HUGGINGFACE_DATASETS = {{
+    "{dataset_path.split('/')[-1]}": {{
+        "path": "{dataset_path}",
+        "text_column": "AJUSTE_AQUI",  # Ex: "text"
+        "label_column": "AJUSTE_AQUI",  # Ex: "label" ou None
+        "categories": None,  # Auto-extrai se tiver labels
+        "description": "Descrição do dataset"
+    }},
+}}
+''')
     
-    print("\n💡 Dica: Use a sugestão de configuração acima")
-    print("   e adicione em src/config/dataset_config.py")
+    except Exception as e:
+        logger.error(f"Erro ao descobrir estrutura: {e}")
 
 
-def main_multiplos_datasets():
+def modo_multiplos(datasets: list, use_alternative_params: bool = False):
     """
-    Exemplo 4: Processar múltiplos datasets
+    Processa múltiplos datasets
+    
+    Args:
+        datasets: Lista de nomes de datasets
+        use_alternative_params: Se True, usa variações
     """
-    print("\n" + "="*80)
-    print(" " * 20 + "PROCESSAR MÚLTIPLOS DATASETS")
-    print("="*80 + "\n")
     
-    # Lista de datasets para processar
-    dataset_names = [
-        "exemplo_com_labels",
-        "exemplo_sem_labels",
-        # Adicione mais...
-    ]
+    logger.info(f"Processando {len(datasets)} datasets")
     
-    for dataset_name in dataset_names:
+    for i, dataset_name in enumerate(datasets, 1):
+        logger.info(f"\n{'='*80}")
+        logger.info(f"Dataset {i}/{len(datasets)}: {dataset_name}")
+        logger.info(f"{'='*80}\n")
+        
         try:
-            print(f"\n{'='*80}")
-            print(f"Processando: {dataset_name}")
-            print(f"{'='*80}\n")
-            
-            texts, categories, labels = load_hf_dataset(dataset_name)
-            
-            # Processar cada dataset...
-            # (adicione código de anotação aqui)
-            
-            print(f"✅ {dataset_name} processado com sucesso!\n")
-            
+            executar_anotacao(
+                dataset_name=dataset_name,
+                use_alternative_params=use_alternative_params
+            )
+            logger.success(f"✓ {dataset_name} processado\n")
+        
         except Exception as e:
-            print(f"❌ Erro em {dataset_name}: {str(e)}\n")
+            logger.error(f"✗ Erro em {dataset_name}: {e}\n")
             continue
 
 
-if __name__ == "__main__":
-    import argparse
+def main():
+    """Main com argumentos"""
     
     parser = argparse.ArgumentParser(
-        description="Sistema de Anotação com Datasets HuggingFace"
+        description='Sistema de Anotação LLM - HuggingFace Datasets'
     )
+    
     parser.add_argument(
-        "--modo",
-        type=str,
-        choices=["basico", "customizado", "descobrir", "multiplos"],
-        default="basico",
-        help="Modo de execução"
+        '--modo',
+        choices=['anotar', 'listar', 'descobrir', 'multiplos'],
+        default='anotar',
+        help='Modo de execução'
     )
+    
     parser.add_argument(
-        "--dataset",
+        '--dataset',
         type=str,
-        help="Nome do dataset (para modo descobrir)"
+        default='agnews',
+        help='Nome do dataset (modo anotar/descobrir)'
+    )
+    
+    parser.add_argument(
+        '--datasets',
+        nargs='+',
+        help='Lista de datasets (modo multiplos)'
+    )
+    
+    parser.add_argument(
+        '--alternative-params',
+        action='store_true',
+        help='Usar alternative params (temp=0, 0.3, 0.5)'
+    )
+    
+    parser.add_argument(
+        '--repetitions',
+        type=int,
+        default=3,
+        help='Número de repetições por modelo'
     )
     
     args = parser.parse_args()
     
-    if args.modo == "basico":
-        main_exemplo_basico()
+    # Executar modo
+    if args.modo == 'anotar':
+        executar_anotacao(
+            dataset_name=args.dataset,
+            use_alternative_params=args.alternative_params,
+            num_repetitions=args.repetitions
+        )
     
-    elif args.modo == "customizado":
-        main_carregar_customizado()
+    elif args.modo == 'listar':
+        modo_listar()
     
-    elif args.modo == "descobrir":
-        if args.dataset:
-            from dataset_config import discover_dataset_structure
-            discover_dataset_structure(args.dataset)
-        else:
-            print("❌ Erro: especifique --dataset para descobrir")
-            print("Exemplo: python src/main_huggingface.py --modo descobrir --dataset waashk/seu-dataset")
+    elif args.modo == 'descobrir':
+        if not args.dataset:
+            logger.error("Especifique --dataset")
+            return
+        modo_descobrir(args.dataset)
     
-    elif args.modo == "multiplos":
-        main_multiplos_datasets()
+    elif args.modo == 'multiplos':
+        if not args.datasets:
+            logger.error("Especifique --datasets")
+            return
+        modo_multiplos(
+            datasets=args.datasets,
+            use_alternative_params=args.alternative_params
+        )
+
+
+if __name__ == "__main__":
+    main()

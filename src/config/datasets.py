@@ -222,6 +222,6 @@ HUGGINGFACE_DATASETS = {
 # Ajuste 'combine_splits' para combinar múltiplos splits quando necessário. Ex: ["train", "test"]
 DATASET_CONFIG = {
     "split": "train",
-    "combine_splits": None,  # Habilita combinação de splits quando especificado
+    "combine_splits": None,
     "sample_size": 100
 }

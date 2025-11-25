@@ -18,6 +18,10 @@ LLM_CONFIGS = {
             "temperature": 0.0,
             "num_predict": 100,
         },
+        "alternative_params": [
+            {"temperature": 0.3, "num_predict": 100},
+            {"temperature": 0.5, "num_predict": 100},
+        ],
         "requirements": "~40GB RAM",
         "download": "ollama pull llama3:70b"
     },
@@ -30,6 +34,10 @@ LLM_CONFIGS = {
             "temperature": 0.0,
             "num_predict": 100,
         },
+        "alternative_params": [
+            {"temperature": 0.3, "num_predict": 100},
+            {"temperature": 0.5, "num_predict": 100},
+        ],
         "requirements": "~8GB RAM",
         "download": "ollama pull llama3:8b"
     },
@@ -43,6 +51,10 @@ LLM_CONFIGS = {
             "temperature": 0.0,
             "num_predict": 100,
         },
+        "alternative_params": [
+            {"temperature": 0.3, "num_predict": 100},
+            {"temperature": 0.5, "num_predict": 100},
+        ],
         "requirements": "~8GB RAM",
         "download": "ollama pull mistral:7b"
     },
@@ -55,6 +67,10 @@ LLM_CONFIGS = {
             "temperature": 0.0,
             "num_predict": 100,
         },
+        "alternative_params": [
+            {"temperature": 0.3, "num_predict": 100},
+            {"temperature": 0.5, "num_predict": 100},
+        ],
         "requirements": "~48GB RAM",
         "download": "ollama pull mixtral:8x7b"
     },
@@ -68,6 +84,10 @@ LLM_CONFIGS = {
             "temperature": 0.0,
             "num_predict": 100,
         },
+        "alternative_params": [
+            {"temperature": 0.3, "num_predict": 100},
+            {"temperature": 0.5, "num_predict": 100},
+        ],
         "requirements": "~8GB RAM",
         "download": "ollama pull qwen2:7b"
     },
@@ -81,6 +101,10 @@ LLM_CONFIGS = {
             "temperature": 0.0,
             "num_predict": 100,
         },
+        "alternative_params": [
+            {"temperature": 0.3, "num_predict": 100},
+            {"temperature": 0.5, "num_predict": 100},
+        ],
         "requirements": "~8GB RAM",
         "download": "ollama pull gemma:7b"
     },
@@ -94,6 +118,10 @@ LLM_CONFIGS = {
             "temperature": 0.0,
             "num_predict": 100,
         },
+        "alternative_params": [
+            {"temperature": 0.3, "num_predict": 100},
+            {"temperature": 0.5, "num_predict": 100},
+        ],
         "requirements": "~4GB RAM",
         "download": "ollama pull phi3:mini"
     },
@@ -108,6 +136,10 @@ LLM_CONFIGS = {
             "temperature": 0.0,
             "max_tokens": 100,
         },
+        "alternative_params": [
+            {"temperature": 0.3, "max_tokens": 100},
+            {"temperature": 0.5, "max_tokens": 100},
+        ],
         "api_key_required": True,
         "speed": "300+ tokens/s",
         "free_tier": True
@@ -121,6 +153,10 @@ LLM_CONFIGS = {
             "temperature": 0.0,
             "max_tokens": 100,
         },
+        "alternative_params": [
+            {"temperature": 0.3, "max_tokens": 100},
+            {"temperature": 0.5, "max_tokens": 100},
+        ],
         "api_key_required": True,
         "speed": "300+ tokens/s"
     },
@@ -135,6 +171,10 @@ LLM_CONFIGS = {
             "temperature": 0.0,
             "max_new_tokens": 100,
         },
+        "alternative_params": [
+            {"temperature": 0.3, "max_new_tokens": 100},
+            {"temperature": 0.5, "max_new_tokens": 100},
+        ],
         "api_key_required": True,
         "free_tier": True
     },
@@ -147,6 +187,10 @@ LLM_CONFIGS = {
             "temperature": 0.0,
             "max_new_tokens": 100,
         },
+        "alternative_params": [
+            {"temperature": 0.3, "max_new_tokens": 100},
+            {"temperature": 0.5, "max_new_tokens": 100},
+        ],
         "api_key_required": True,
         "free_tier": True
     },
@@ -161,6 +205,10 @@ LLM_CONFIGS = {
             "temperature": 0.0,
             "max_tokens": 100,
         },
+        "alternative_params": [
+            {"temperature": 0.3, "max_tokens": 100},
+            {"temperature": 0.5, "max_tokens": 100},
+        ],
         "api_key_required": True,
         "pricing": "$0.88/M tokens"
     },
@@ -173,6 +221,10 @@ LLM_CONFIGS = {
             "temperature": 0.0,
             "max_tokens": 100,
         },
+        "alternative_params": [
+            {"temperature": 0.3, "max_tokens": 100},
+            {"temperature": 0.5, "max_tokens": 100},
+        ],
         "api_key_required": True,
         "pricing": "$0.60/M tokens"
     },

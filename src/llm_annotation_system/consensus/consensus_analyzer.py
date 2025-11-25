@@ -7,7 +7,7 @@ from typing import List, Dict
 from pathlib import Path
 from loguru import logger
 
-from consensus_metrics import ConsensusMetrics
+from llm_annotation_system.consensus.consensus_metrics import ConsensusMetrics
 
 
 class ConsensusAnalyzer:

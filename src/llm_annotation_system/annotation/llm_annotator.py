@@ -40,7 +40,8 @@ class LLMAnnotator:
         api_keys: Optional[Dict[str, str]] = None,
         cache_dir: str = "./cache",
         results_dir: str = "./results",
-        use_langchain_cache: bool = True
+        use_langchain_cache: bool = True,
+        use_alternative_params: bool = False
     ):
         """
         Args:
@@ -50,11 +51,13 @@ class LLMAnnotator:
             cache_dir: Diretório de cache
             results_dir: Diretório de resultados
             use_langchain_cache: Se True, usa cache do LangChain
+            use_alternative_params: Se True, usa alternative_params dos modelos
         """
         self.models = models
         self.categories = categories
         self.cache_dir = Path(cache_dir)
         self.results_dir = Path(results_dir)
+        self.use_alternative_params = use_alternative_params
         
         # Criar diretórios
         self.cache_dir.mkdir(exist_ok=True, parents=True)
@@ -71,11 +74,63 @@ class LLMAnnotator:
             self.response_processor
         )
         
+        # Expandir modelos com alternative_params se necessário
+        if use_alternative_params:
+            self.models = self._expand_models_with_alternatives(models)
+            logger.info(f"Alternative params ativado: {len(self.models)} variações")
+        
         # Inicializar LLMs
         self.llms = self._initialize_llms()
         
         logger.info(f"LLMAnnotator inicializado")
-        logger.info(f"Modelos: {len(models)} | Categorias: {len(categories)}")
+        logger.info(f"Modelos: {len(self.models)} | Categorias: {len(categories)}")
+    
+    def _expand_models_with_alternatives(self, models: List[str]) -> List[str]:
+        """
+        Expande modelos com alternative_params
+        
+        Args:
+            models: Lista de modelos base
+            
+        Returns:
+            Lista expandida com variações
+        """
+        from llms import LLM_CONFIGS
+        
+        expanded = []
+        
+        for model in models:
+            if model not in LLM_CONFIGS:
+                logger.warning(f"Modelo {model} não encontrado em configs")
+                expanded.append(model)
+                continue
+            
+            config = LLM_CONFIGS[model]
+            
+            # Adicionar modelo base
+            expanded.append(model)
+            
+            # Adicionar variações
+            if "alternative_params" in config:
+                for idx, alt_params in enumerate(config["alternative_params"]):
+                    # Criar nome da variação
+                    alt_name = f"{model}_alt{idx+1}"
+                    
+                    # Criar config temporária
+                    alt_config = {
+                        "provider": config["provider"],
+                        "model_name": config["model_name"],
+                        "description": f"{config['description']} (variação {idx+1})",
+                        "default_params": alt_params,
+                    }
+                    
+                    # Adicionar à configuração global temporariamente
+                    LLM_CONFIGS[alt_name] = alt_config
+                    expanded.append(alt_name)
+                    
+                    logger.debug(f"Criada variação: {alt_name}")
+        
+        return expanded
     
     def _initialize_llms(self) -> Dict[str, Any]:
         """Inicializa todas as LLMs"""
