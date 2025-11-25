@@ -1,145 +1,157 @@
 """
-Exemplo de uso simplificado do sistema de anotação com LLMs
-Execute este script para um teste rápido
+Main - Sistema de Anotação LLM com Modelos Open-Source
 """
-from llm_annotator import LLMAnnotator
-from consensus_analyzer import ConsensusAnalyzer
-from visualizer import ConsensusVisualizer
 
-def main():
-    """Exemplo de uso completo do sistema"""
+import sys
+import argparse
+from pathlib import Path
+from loguru import logger
+
+# Configurar logging
+logger.remove()
+logger.add(
+    sys.stdout,
+    format="<green>{time:HH:mm:ss}</green> | <level>{level: <8}</level> | <level>{message}</level>",
+    level="INFO"
+)
+
+# Setup paths
+sys.path.insert(0, str(Path(__file__).parent / 'llm_annotation_system'))
+sys.path.insert(0, str(Path(__file__).parent / 'config'))
+sys.path.insert(0, str(Path(__file__).parent / 'utils'))
+
+from src.llm_annotation_system.llm_annotator import LLMAnnotator
+from src.llm_annotation_system.consensus_analyzer import ConsensusAnalyzer
+from src.utils.data_loader import load_hf_dataset, list_available_datasets
+
+
+def exemplo_teste():
+    """Exemplo rápido com dados de teste"""
     
-    print("\n" + "="*80)
-    print(" " * 20 + "SISTEMA DE ANOTAÇÃO AUTOMÁTICA COM LLMS")
-    print("="*80)
+    logger.info("Modo: Exemplo com dados de teste")
     
-    # 1. Configuração
-    print("\n1. Configurando sistema...")
-    
-    # API Keys (SUBSTITUA PELOS SEUS)
-    api_keys = {
-        "openai": "sua-api-key-aqui",
-        "anthropic": "sua-api-key-aqui",
-        "google": "sua-api-key-aqui",
-    }
-    
-    # Modelos a usar
+    # Modelos open-source
     models = [
-        "gpt-4-turbo",
-        "gpt-3.5-turbo",
-        "claude-3-opus",
-        "claude-3-sonnet",
-        "gemini-pro",
+        "llama3-8b",      # Meta Llama 3 8B
+        "mistral-7b",     # Mistral 7B
+        "qwen2-7b",       # Qwen 2 7B (excelente PT-BR)
     ]
     
-    # Categorias
     categories = ["Positivo", "Negativo", "Neutro"]
     
-    # Textos de exemplo
+    # Dados de teste
     texts = [
         "Este produto é excelente! Recomendo muito.",
-        "Péssima qualidade, não funciona como esperado.",
+        "Péssima qualidade, não vale o preço.",
         "O produto é ok, nada de especial.",
-        "Maravilhoso! Superou minhas expectativas.",
-        "Horrível, totalmente decepcionado.",
-        "Funciona bem, mas o preço poderia ser melhor.",
-        "Adorei! Voltaria a comprar com certeza.",
-        "Não vale o dinheiro investido.",
-        "É razoável para o preço.",
-        "Esperava mais, mas não é ruim.",
+        "Adorei! Melhor compra que já fiz.",
+        "Não funcionou como esperado.",
     ]
     
-    # 2. Inicializar anotador
-    print("2. Inicializando anotador...")
+    # Anotar
+    logger.info(f"Modelos: {models}")
+    logger.info(f"Textos: {len(texts)}")
+    
     annotator = LLMAnnotator(
         models=models,
         categories=categories,
-        api_keys=api_keys,
-        cache_dir="./cache",
-        results_dir="./results"
+        api_keys=None,  # Open-source não precisa
+        use_langchain_cache=True
     )
     
-    # 3. Anotar dataset
-    print("\n3. Anotando dataset...")
-    df_annotations = annotator.annotate_dataset(
-        texts=texts,
-        num_repetitions=3,  # Cada LLM anota 3 vezes
-        test_param_variations=False,  # Mudar para True para testar variações
+    df = annotator.annotate_dataset(texts, num_repetitions=3)
+    df = annotator.calculate_consensus(df)
+    
+    # Análise
+    analyzer = ConsensusAnalyzer(categories)
+    consensus_cols = [col for col in df.columns if '_consensus' in col and '_score' not in col]
+    report = analyzer.generate_consensus_report(df, consensus_cols, "./results")
+    
+    # Resultados
+    logger.success("\nResultados:")
+    print(df[['text', 'most_common_annotation', 'consensus_score']].to_string())
+    logger.info(f"\nFleiss' Kappa: {report['fleiss_kappa']:.3f} ({report['fleiss_interpretation']})")
+
+
+def usar_huggingface(dataset_name: str):
+    """Usa dataset do HuggingFace"""
+    
+    logger.info(f"Modo: Dataset HuggingFace - {dataset_name}")
+    
+    # Modelos open-source
+    models = [
+        "llama3-8b",
+        "mistral-7b",
+        "qwen2-7b",
+    ]
+    
+    # Carregar dataset
+    texts, categories, ground_truth = load_hf_dataset(dataset_name)
+    
+    logger.info(f"Modelos: {models}")
+    logger.info(f"Textos: {len(texts)}")
+    logger.info(f"Categorias: {categories}")
+    logger.info(f"Ground truth: {'Sim' if ground_truth else 'Não'}")
+    
+    # Anotar
+    annotator = LLMAnnotator(
+        models=models,
+        categories=categories,
+        api_keys=None,
+        use_langchain_cache=True
     )
     
-    # 4. Calcular consenso
-    print("\n4. Calculando consenso...")
-    df_with_consensus = annotator.calculate_consensus(df_annotations)
+    df = annotator.annotate_dataset(texts, num_repetitions=3)
     
-    # 5. Análise detalhada
-    print("\n5. Gerando análise detalhada...")
-    analyzer = ConsensusAnalyzer(categories=categories)
+    # Adicionar ground truth
+    if ground_truth:
+        df['ground_truth'] = ground_truth
     
-    consensus_cols = [col for col in df_with_consensus.columns 
-                      if '_consensus' in col and '_score' not in col]
+    df = annotator.calculate_consensus(df)
     
-    report = analyzer.generate_consensus_report(
-        df=df_with_consensus,
-        annotator_cols=consensus_cols,
-        output_dir="./results"
-    )
+    # Análise
+    analyzer = ConsensusAnalyzer(categories)
+    consensus_cols = [col for col in df.columns if '_consensus' in col and '_score' not in col]
+    report = analyzer.generate_consensus_report(df, consensus_cols, "./results")
     
-    # 6. Visualizações
-    print("\n6. Gerando visualizações...")
-    visualizer = ConsensusVisualizer(output_dir="./results/figures")
+    # Resultados
+    logger.success("\nResultados:")
+    print(df[['text', 'most_common_annotation', 'consensus_score', 'consensus_level']].head(10).to_string())
     
-    visualizer.plot_agreement_heatmap(
-        report['pairwise_agreement'],
-        title="Concordância entre Modelos LLM"
-    )
+    logger.info(f"\nFleiss' Kappa: {report['fleiss_kappa']:.3f} ({report['fleiss_interpretation']})")
     
-    visualizer.plot_consensus_distribution(df_with_consensus)
+    # Validação
+    if ground_truth:
+        from sklearn.metrics import accuracy_score, classification_report
+        
+        accuracy = accuracy_score(df['ground_truth'], df['most_common_annotation'])
+        logger.success(f"\nAccuracy vs Ground Truth: {accuracy:.2%}")
+        
+        logger.info("\nClassification Report:")
+        print(classification_report(df['ground_truth'], df['most_common_annotation']))
+
+
+def main():
+    """Main com argumentos"""
     
-    if 'disagreement_patterns' in report:
-        visualizer.plot_confusion_matrix(
-            report['disagreement_patterns']['confusion_matrix']
-        )
+    parser = argparse.ArgumentParser(description='Sistema de Anotação LLM - Open Source')
+    parser.add_argument('--mode', choices=['teste', 'huggingface', 'list'], default='teste',
+                        help='Modo de execução')
+    parser.add_argument('--dataset', type=str, default='agnews',
+                        help='Nome do dataset (para modo huggingface)')
     
-    visualizer.plot_model_comparison(
-        df_with_consensus,
-        models=models
-    )
+    args = parser.parse_args()
     
-    visualizer.create_interactive_dashboard(
-        df_with_consensus,
-        report
-    )
+    if args.mode == 'list':
+        logger.info("Datasets disponíveis:")
+        for dataset in list_available_datasets():
+            logger.info(f"  - {dataset}")
+        return
     
-    # 7. Sumário final
-    print("\n" + "="*80)
-    print(" " * 30 + "SUMÁRIO")
-    print("="*80)
-    
-    print(f"\nTotal de textos anotados: {len(df_with_consensus)}")
-    print(f"Modelos utilizados: {len(models)}")
-    print(f"Repetições por modelo: 3")
-    
-    print(f"\nConsenso médio: {df_with_consensus['consensus_score'].mean():.2%}")
-    print(f"Alto consenso (≥80%): {(df_with_consensus['consensus_score'] >= 0.8).sum()}")
-    print(f"Casos problemáticos: {df_with_consensus['is_problematic'].sum()}")
-    
-    if 'mean_cohen_kappa' in report['distance_metrics']:
-        print(f"\nCohen's Kappa médio: {report['distance_metrics']['mean_cohen_kappa']:.4f}")
-    
-    print("\n✓ Análise completa!")
-    print("📁 Resultados salvos em: ./results/")
-    print("📊 Visualizações em: ./results/figures/")
-    print("🌐 Dashboard interativo: ./results/figures/interactive_dashboard.html")
-    
-    print("\n" + "="*80)
-    
-    # Salvar dataset final
-    df_with_consensus.to_csv(
-        "./results/annotated_dataset_final.csv",
-        index=False,
-        encoding='utf-8'
-    )
-    print("\n✓ Dataset anotado salvo: ./results/annotated_dataset_final.csv")
+    if args.mode == 'teste':
+        exemplo_teste()
+    elif args.mode == 'huggingface':
+        usar_huggingface(args.dataset)
 
 
 if __name__ == "__main__":

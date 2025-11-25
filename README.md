@@ -277,7 +277,7 @@ A: Use cache, amostras pequenas (`sample_size`), e modelos mais baratos inicialm
 A: Depende do caso - revisão humana é mais confiável, voto majoritário é mais rápido.
 
 **Q: Como usar meus datasets do HuggingFace?**  
-A: Veja [GUIA_HUGGINGFACE.md](docs/GUIA_HUGGINGFACE.md) para instruções completas.
+A: Veja [GUIA_DATASETS.md](docs/GUIA_DATASETS.md) para instruções completas.
 
 **Q: Posso usar o dataset completo sem dividir train/test?**  
 A: Sim! Use `combine_splits: ["train", "test"]` em `dataset_config.py`.
