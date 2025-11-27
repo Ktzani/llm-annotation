@@ -3,30 +3,14 @@ import pandas as pd
 from loguru import logger
 
 import sys
-from pathlib import Path as PathLib
 
-# =============================================================================
-# IMPORT CONFIG
-# =============================================================================
-
-config_path = PathLib(__file__).parent.parent / 'config'
-sys.path.insert(0, str(config_path))
-
-from datasets import HUGGINGFACE_DATASETS, DATASET_CONFIG
-from datasets import load_dataset
-
-# =============================================================================
-# LOGGER CONFIG
-# =============================================================================
+from src.config.datasets_config import DATASETS, CACHE_DIR
+from src.experiments.base_experiment import DATASET_CONFIG
+from datasets import load_dataset, concatenate_datasets
 
 logger.remove()
 logger.add(sys.stderr, level="INFO",
            format="<green>{time:HH:mm:ss}</green> | <level>{message}</level>")
-
-
-# =============================================================================
-# FUNÇÃO PRINCIPAL DE CARREGAMENTO
-# =============================================================================
 
 def load_hf_dataset(
     dataset_name: str,
@@ -39,12 +23,12 @@ def load_hf_dataset(
     # 1. Buscar config do dataset
     # ------------------------------
     if config is None:
-        if dataset_name not in HUGGINGFACE_DATASETS:
+        if dataset_name not in DATASETS:
             raise ValueError(
                 f"Dataset '{dataset_name}' não encontrado.\n"
-                f"Datasets disponíveis: {list(HUGGINGFACE_DATASETS.keys())}"
+                f"Datasets disponíveis: {list(DATASETS.keys())}"
             )
-        config = HUGGINGFACE_DATASETS[dataset_name].copy()
+        config = DATASETS[dataset_name].copy()
 
     logger.info(f"Carregando dataset: {dataset_name}")
     logger.debug(f"Configuração específica: {config}")
@@ -57,8 +41,6 @@ def load_hf_dataset(
     combine_splits = config.get("combine_splits", DATASET_CONFIG["combine_splits"])
     sample_size = config.get("sample_size", DATASET_CONFIG["sample_size"])
 
-    cache_dir = "./data/.cache/hf"
-
     try:
         # ================================================================
         # COMBINAÇÃO DE SPLITS (SE APLICÁVEL)
@@ -69,7 +51,7 @@ def load_hf_dataset(
 
             for sp in combine_splits:
                 try:
-                    ds = load_dataset(config['path'], split=sp, cache_dir=cache_dir)
+                    ds = load_dataset(config['path'], split=sp, cache_dir=CACHE_DIR)
                     logger.info(f"  ✓ {sp}: {len(ds)} exemplos")
                     datasets_list.append(ds)
                 except Exception as e:
@@ -78,7 +60,6 @@ def load_hf_dataset(
             if not datasets_list:
                 raise ValueError("Nenhum split disponível para combinar")
 
-            from datasets import concatenate_datasets
             dataset = concatenate_datasets(datasets_list)
             logger.info(f"Total combinado: {len(dataset)} exemplos")
 
@@ -89,9 +70,23 @@ def load_hf_dataset(
             dataset = load_dataset(
                 config["path"],
                 split=split,
-                cache_dir=cache_dir
+                cache_dir=CACHE_DIR
             )
             logger.info(f"Split '{split}': {len(dataset)} exemplos")
+            
+        # ================================================================
+        # EXTRAIR CATEGORIAS
+        # ================================================================
+        label_column = config.get("label_column")
+        categories = config.get("categories")
+
+        if categories is None:
+            if label_column and label_column in dataset.column_names:
+                categories = sorted(list(set(dataset[label_column])))
+                logger.info(f"Categorias extraídas automaticamente: {categories}")
+            else:
+                categories = []
+                logger.info("Nenhuma categoria disponível")
 
         # ================================================================
         # AMOSTRAGEM
@@ -113,20 +108,6 @@ def load_hf_dataset(
 
         texts = dataset[text_column]
         logger.info(f"Coluna de texto: {text_column}")
-
-        # ================================================================
-        # EXTRAIR CATEGORIAS
-        # ================================================================
-        label_column = config.get("label_column")
-        categories = config.get("categories")
-
-        if categories is None:
-            if label_column and label_column in dataset.column_names:
-                categories = sorted(list(set(dataset[label_column])))
-                logger.info(f"Categorias extraídas automaticamente: {categories}")
-            else:
-                categories = []
-                logger.info("Nenhuma categoria disponível")
 
         # ================================================================
         # GROUND TRUTH (SE EXISTIR)
@@ -155,15 +136,14 @@ def load_hf_dataset_as_dataframe(
     texts, categories, ground_truth = load_hf_dataset(dataset_name, config)
 
     df = pd.DataFrame({
-        "text_id": range(len(texts)),
         "text": texts
     })
 
     if ground_truth is not None:
-        df["ground_truth"] = ground_truth
+        df["label"] = ground_truth
 
     logger.info(f"DataFrame criado com {len(df)} linhas")
-    return df
+    return df, categories
 
 
 # =============================================================================
@@ -171,13 +151,13 @@ def load_hf_dataset_as_dataframe(
 # =============================================================================
 
 def list_available_datasets() -> List[str]:
-    return list(HUGGINGFACE_DATASETS.keys())
+    return list(DATASETS.keys())
 
 
 def get_dataset_info(dataset_name: str) -> Dict:
-    if dataset_name not in HUGGINGFACE_DATASETS:
+    if dataset_name not in DATASETS:
         raise ValueError(f"Dataset '{dataset_name}' não encontrado.")
-    return HUGGINGFACE_DATASETS[dataset_name].copy()
+    return DATASETS[dataset_name].copy()
 
 
 # =============================================================================
@@ -185,7 +165,7 @@ def get_dataset_info(dataset_name: str) -> Dict:
 # =============================================================================
 
 def discover_dataset_structure(hf_path: str, num_examples: int = 3):
-    from datasets import get_dataset_config_names, get_dataset_split_names
+    from datasets_config import get_dataset_config_names, get_dataset_split_names
 
     logger.info(f"Descobrindo estrutura do dataset: {hf_path}")
 
@@ -231,10 +211,6 @@ def save_annotated_dataset(
     df_save.to_csv(output_path, index=False, encoding="utf-8")
     logger.info(f"Dataset anotado salvo em: {output_path}")
 
-
-# =============================================================================
-# MAIN (UTILITÁRIOS)
-# =============================================================================
 
 if __name__ == "__main__":
     logger.info("DATASET CONFIGURATION MODE")

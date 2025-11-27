@@ -9,17 +9,14 @@ from tqdm import tqdm
 from collections import Counter
 from loguru import logger
 
-from llm_annotation_system.core.llm_provider import LLMProvider
-from llm_annotation_system.core.cache_manager import CacheManager, LangChainCacheManager
-from llm_annotation_system.core.response_processor import ResponseProcessor
-from annotation_engine import AnnotationEngine
+from src.llm_annotation_system.core.llm_provider import LLMProvider
+from src.llm_annotation_system.core.cache_manager import CacheManager, LangChainCacheManager
+from src.llm_annotation_system.core.response_processor import ResponseProcessor
+from src.llm_annotation_system.annotation.annotation_engine import AnnotationEngine
 
-import sys
-config_path = Path(__file__).parent.parent / 'config'
-sys.path.insert(0, str(config_path))
-
-from prompts import BASE_ANNOTATION_PROMPT
-from experiment import EXPERIMENT_CONFIG
+from src.config.prompts import BASE_ANNOTATION_PROMPT
+from src.experiments.base_experiment import EXPERIMENT_CONFIG
+from src.config.datasets_config import CACHE_DIR
 
 
 class LLMAnnotator:
@@ -38,7 +35,7 @@ class LLMAnnotator:
         models: List[str],
         categories: List[str],
         api_keys: Optional[Dict[str, str]] = None,
-        cache_dir: str = "./cache",
+        cache_dir: str = CACHE_DIR,
         results_dir: str = "./results",
         use_langchain_cache: bool = True,
         use_alternative_params: bool = False

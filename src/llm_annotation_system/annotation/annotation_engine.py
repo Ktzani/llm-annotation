@@ -6,17 +6,11 @@ import time
 from typing import List, Dict, Optional
 from loguru import logger
 
-from llm_annotation_system.core.llm_provider import LLMProvider
-from llm_annotation_system.core.cache_manager import CacheManager
-from llm_annotation_system.core.response_processor import ResponseProcessor
+from src.llm_annotation_system.core.llm_provider import LLMProvider
+from src.llm_annotation_system.core.cache_manager import CacheManager
+from src.llm_annotation_system.core.response_processor import ResponseProcessor
 
-import sys
-from pathlib import Path
-config_path = Path(__file__).parent.parent / 'config'
-sys.path.insert(0, str(config_path))
-
-from prompts import BASE_ANNOTATION_PROMPT, FEW_SHOT_PROMPT
-
+from src.config.prompts import BASE_ANNOTATION_PROMPT, FEW_SHOT_PROMPT
 
 class AnnotationEngine:
     """
@@ -114,17 +108,31 @@ class AnnotationEngine:
         examples: Optional[List[Dict]] = None
     ) -> str:
         """
-        Prepara template do prompt
-        
+        Prepara template do prompt com categorias específicas do dataset.
+
         Args:
             prompt_template: Template base
             examples: Exemplos para few-shot
-            
+
         Returns:
             Template formatado
         """
-        categories_str = "\n".join([f"- {cat}" for cat in self.processor.categories])
-        
+
+        # Se categories vier em lista -> converter para dicionário indexado
+        if isinstance(self.processor.categories, list):
+            categories_indexed = {
+                str(i): cat for i, cat in enumerate(self.processor.categories)
+            }
+        else:
+            categories_indexed = self.processor.categories  # já é dict
+
+        # Criar string numerada
+        categories_str = "\n".join([
+            f"- {idx}: {label}"
+            for idx, label in categories_indexed.items()
+        ])
+
+        # Few-shot
         if examples and prompt_template == FEW_SHOT_PROMPT:
             examples_str = "\n\n".join([
                 f"Text: {ex['text']}\nCategory: {ex['category']}"
@@ -135,11 +143,13 @@ class AnnotationEngine:
                 text="{text}",
                 categories=categories_str
             )
-        
+
+        # Base / COT
         return prompt_template.format(
             text="{text}",
             categories=categories_str
         )
+
     
     def _invoke_chain(self, chain: any, text: str) -> str:
         """

@@ -8,6 +8,8 @@ from typing import Dict, Any, Optional
 from pathlib import Path
 from loguru import logger
 
+from src.config.datasets_config import CACHE_DIR
+
 
 class CacheManager:
     """
@@ -15,7 +17,7 @@ class CacheManager:
     Responsabilidades: salvar, carregar, verificar cache
     """
     
-    def __init__(self, cache_dir: str = "./cache"):
+    def __init__(self, cache_dir: str = CACHE_DIR):
         """
         Args:
             cache_dir: Diretório para cache

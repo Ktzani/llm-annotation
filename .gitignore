@@ -48,6 +48,7 @@ data/raw/*.json
 data/raw/*.txt
 data/processed/*.csv
 data/processed/*.json
+data/
 
 # Results and cache
 cache/*.json
