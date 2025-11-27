@@ -20,7 +20,7 @@ class ConsensusAnalyzer:
     - Identificação de casos problemáticos
     """
     
-    def __init__(self, categories: List[str]):
+    def __init__(self, categories: List[int]):
         """
         Args:
             categories: Lista de categorias

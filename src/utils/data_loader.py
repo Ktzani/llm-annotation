@@ -4,7 +4,7 @@ from loguru import logger
 
 import sys
 
-from src.config.datasets_config import DATASETS, CACHE_DIR
+from src.config.datasets_config import DATASETS, CACHE_DIR, LABEL_MEANINGS
 from src.experiments.base_experiment import DATASET_CONFIG
 from datasets import load_dataset, concatenate_datasets
 

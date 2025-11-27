@@ -12,16 +12,15 @@ class ResponseProcessor:
     Responsabilidades: extrair categorias, validar respostas, normalizar output
     """
     
-    def __init__(self, categories: List[str]):
+    def __init__(self, categories: List[int]):
         """
         Args:
             categories: Lista de categorias válidas
         """
         self.categories = categories
-        self.categories_lower = [c.lower() for c in categories]
         logger.debug(f"ResponseProcessor inicializado com {len(categories)} categorias")
     
-    def extract_category(self, response: str) -> str:
+    def extract_category(self, response: str) -> int | str:
         """
         Extrai categoria da resposta da LLM
         
@@ -29,7 +28,7 @@ class ResponseProcessor:
             response: Resposta completa da LLM
             
         Returns:
-            Categoria extraída
+            Categoria extraída (int) ou "ERROR"
         """
         if response is None:
             logger.warning("Resposta é None")
@@ -41,22 +40,19 @@ class ResponseProcessor:
         if "CLASSIFICATION:" in response:
             response = response.split("CLASSIFICATION:")[-1].strip()
         
-        # Normalizar
-        response_clean = response.lower().strip('.,!?;:"\'')
+        # Tentar converter para inteiro
+        try:
+            value = int(response)
+        except Exception:
+            logger.warning(f"Falha ao converter resposta para inteiro: '{response[:50]}'")
+            return "ERROR"
         
-        # Correspondência exata
-        for i, category_lower in enumerate(self.categories_lower):
-            if category_lower == response_clean:
-                return self.categories[i]
+        # Verificar se está nas categorias válidas
+        if value in self.categories:
+            return value
         
-        # Correspondência parcial
-        for i, category_lower in enumerate(self.categories_lower):
-            if category_lower in response_clean or response_clean in category_lower:
-                return self.categories[i]
-        
-        # Não encontrou
-        logger.warning(f"Categoria não encontrada em: '{response[:50]}'")
-        return response[:50]  # Limitar tamanho
+        logger.warning(f"Categoria {value} não está na lista de válidas: {self.categories}")
+        return "ERROR"
     
     def validate_response(self, response: str) -> bool:
         """
@@ -68,8 +64,5 @@ class ResponseProcessor:
         Returns:
             True se válida
         """
-        if response is None or response == "ERROR":
-            return False
-        
         category = self.extract_category(response)
         return category in self.categories

@@ -10,7 +10,7 @@ Estratégias para resolução de conflitos entre anotações.
 
 # Modelos open-source padrão
 DEFAULT_MODELS = [
-    "deepseek-r1-7b",
+    "deepseek-r1-8b",
     "qwen2.5-7b",
     "gemma2-9b",
     "mistral-7b",
@@ -27,7 +27,7 @@ DEFAULT_MODELS = [
 DATASET_CONFIG = {
     "split": "train",
     "combine_splits": ["train", "test"],
-    "sample_size": None
+    "sample_size": 100
 }
 
 

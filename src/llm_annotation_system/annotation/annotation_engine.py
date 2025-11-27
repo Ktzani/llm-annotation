@@ -66,11 +66,14 @@ class AnnotationEngine:
         template = self._prepare_template(prompt_template, examples)
         
         # Criar chain
+        # TODO: CORRIGIR CREATE CHAIN
         chain = self.llm_provider.create_chain(
             llm=llm,
             template=template,
             variables={"text": text}
         )
+        
+        print(chain)
         
         for rep in range(num_repetitions):
             try:
@@ -127,6 +130,7 @@ class AnnotationEngine:
             categories_indexed = self.processor.categories  # já é dict
 
         # Criar string numerada
+        # TODO: corrigir com os labels de cada dataset
         categories_str = "\n".join([
             f"- {idx}: {label}"
             for idx, label in categories_indexed.items()

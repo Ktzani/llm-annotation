@@ -36,7 +36,7 @@ class LLMAnnotator:
         categories: List[str],
         api_keys: Optional[Dict[str, str]] = None,
         cache_dir: str = CACHE_DIR,
-        results_dir: str = "./results",
+        results_dir: str = "../../results",
         use_langchain_cache: bool = True,
         use_alternative_params: bool = False
     ):
