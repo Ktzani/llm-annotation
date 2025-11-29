@@ -36,6 +36,10 @@ class ResponseProcessor:
         
         response = response.strip()
         
+        if not self.validate_response(response):
+            logger.warning(f"Resposta inválida - Não possui a categoria necessária: '{response[:50]}'")
+            return "ERROR"
+        
         # Extrair "CLASSIFICATION:" se presente
         if "CLASSIFICATION:" in response:
             response = response.split("CLASSIFICATION:")[-1].strip()

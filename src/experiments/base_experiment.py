@@ -26,8 +26,8 @@ DEFAULT_MODELS = [
 # Ajuste 'combine_splits' para combinar múltiplos splits quando necessário. Ex: ["train", "test"]
 DATASET_CONFIG = {
     "split": "train",
-    "combine_splits": ["train", "test"],
-    "sample_size": None
+    "combine_splits": None,
+    "sample_size": 100
 }
 
 
@@ -58,5 +58,5 @@ EXPERIMENT_CONFIG = {
         "dir": CACHE_DIR
     },
     
-    "prompt": BASE_ANNOTATION_PROMPT
+    "prompt_template": BASE_ANNOTATION_PROMPT
 }

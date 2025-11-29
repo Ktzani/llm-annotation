@@ -34,8 +34,11 @@ class LLMAnnotator:
     
     def __init__(
         self,
+        dataset_name: str,
         models: List[str],
         categories: List[str],
+        prompt_template = BASE_ANNOTATION_PROMPT,
+        examples: Optional[List[Dict]] = None,
         api_keys: Optional[Dict[str, str]] = None,
         cache_dir: str = CACHE_DIR,
         results_dir: str = "../../results",
@@ -70,7 +73,10 @@ class LLMAnnotator:
         self.annotation_engine = AnnotationEngine(
             self.llm_provider,
             self.cache_manager,
-            self.response_processor
+            self.response_processor,
+            dataset_name,
+            prompt_template,
+            examples
         )
         
         # Expandir modelos com alternative_params se necessário
@@ -143,8 +149,6 @@ class LLMAnnotator:
         text: str,
         model: str,
         num_repetitions: int = 1,
-        prompt_template: str = BASE_ANNOTATION_PROMPT,
-        examples: Optional[List[Dict]] = None,
         use_cache: bool = True
     ) -> List[str]:
         """
@@ -166,8 +170,6 @@ class LLMAnnotator:
             model=model,
             llm=self.llms[model],
             num_repetitions=num_repetitions,
-            prompt_template=prompt_template,
-            examples=examples,
             use_cache=use_cache
         )
     
@@ -175,8 +177,6 @@ class LLMAnnotator:
         self,
         texts: List[str],
         num_repetitions: Optional[int] = None,
-        prompt_template: str = BASE_ANNOTATION_PROMPT,
-        examples: Optional[List[Dict]] = None,
         save_intermediate: bool = True
     ) -> pd.DataFrame:
         """
@@ -215,8 +215,6 @@ class LLMAnnotator:
                     text=text,
                     model=model,
                     num_repetitions=num_repetitions,
-                    prompt_template=prompt_template,
-                    examples=examples
                 )
                 
                 # Salvar repetições

@@ -123,8 +123,6 @@ def load_hf_dataset(
     except Exception as e:
         logger.error(f"Erro ao carregar dataset: {e}")
         raise
-    
-
 
 
 # =============================================================================
