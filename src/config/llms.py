@@ -37,7 +37,7 @@ LLM_CONFIGS = {
         "provider": "ollama",
         "model_name": "llama3.1:8b",
         "description": "Llama 3.1 8B - Melhor modelo 8B da Meta (2025)",
-        "default_params": {"temperature": 0.2, "num_predict": 100},
+        "default_params": {"temperature": 0, "num_predict": 100},
         "alternative_params": [
             {"temperature": 0.4, "num_predict": 150},
             {"temperature": 0.7, "num_predict": 150},
@@ -137,6 +137,18 @@ LLM_CONFIGS = {
         ],
         "requirements": "~30GB RAM",
         "download": "ollama pull gemma2:27b"
+    },
+    "gemma3-4b": {
+        "provider": "ollama",
+        "model_name": "gemma3:4b",
+        "description": "Gemma 3 4B - Ótimo custo/benefício",
+        "default_params": {"temperature": 0.0, "num_predict": 100},
+        "alternative_params": [
+            {"temperature": 0.4, "num_predict": 120},
+            {"temperature": 0.7, "num_predict": 200},
+        ],
+        "requirements": "~8GB RAM",
+        "download": "ollama pull gemma3:4b"
     },
 
     # -------- Phi-3 Mini --------
@@ -258,6 +270,19 @@ LLM_CONFIGS = {
         "requirements": "~40GB RAM",
         "download": "ollama pull qwen2.5:32b"
     },
+    "qwen3-8b": {
+        "provider": "ollama",
+        "model_name": "qwen3:8b",
+        "description": "Qwen 3 8B - Novo modelo com melhorias significativas",
+        "default_params": {"temperature": 0, "num_predict": 100},
+        "alternative_params": [
+            {"temperature": 0.4, "num_predict": 150},
+            {"temperature": 0.7, "num_predict": 150},
+        ],
+        "requirements": "~8GB RAM",
+        "download": "ollama pull qwen3:8b"
+    
+    }
 }
 
 

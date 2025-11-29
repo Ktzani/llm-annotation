@@ -11,10 +11,10 @@ CACHE_DIR = "..\..\data\.cache"
 # Modelos open-source padrão
 DEFAULT_MODELS = [
     "deepseek-r1-8b",
-    "qwen2.5-7b",
-    "gemma2-9b",
-    "mistral-7b",
-    "llama3-8b",
+    "qwen3-8b",
+    "gemma3-4b",
+    "mistral-7b", # ✔
+    "llama3.1-8b", # ✔
 ]
 
 # =============================================================================
