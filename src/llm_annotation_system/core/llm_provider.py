@@ -34,8 +34,6 @@ except ImportError:
 
 # Config imports
 import sys
-config_path = Path(__file__).parent.parent / 'config'
-sys.path.insert(0, str(config_path))
 
 from src.config.llms import LLM_CONFIGS, PROVIDER_CONFIGS
 

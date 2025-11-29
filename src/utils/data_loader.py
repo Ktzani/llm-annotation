@@ -3,9 +3,10 @@ import pandas as pd
 from loguru import logger
 
 import sys
+import os
 
-from src.config.datasets_collected import DATASETS, CACHE_DIR, LABEL_MEANINGS
-from src.experiments.base_experiment import DATASET_CONFIG
+from src.config.datasets_collected import DATASETS, LABEL_MEANINGS
+from src.experiments.base_experiment import DATASET_CONFIG, CACHE_DIR
 from datasets import load_dataset, concatenate_datasets
 
 logger.remove()
@@ -51,7 +52,7 @@ def load_hf_dataset(
 
             for sp in combine_splits:
                 try:
-                    ds = load_dataset(config['path'], split=sp, cache_dir=CACHE_DIR)
+                    ds = load_dataset(config['path'], split=sp, cache_dir=os.path.join(CACHE_DIR, "hf"))
                     logger.info(f"  ✓ {sp}: {len(ds)} exemplos")
                     datasets_list.append(ds)
                 except Exception as e:
@@ -70,7 +71,7 @@ def load_hf_dataset(
             dataset = load_dataset(
                 config["path"],
                 split=split,
-                cache_dir=CACHE_DIR
+                cache_dir=os.path.join(CACHE_DIR, "hf")
             )
             logger.info(f"Split '{split}': {len(dataset)} exemplos")
             

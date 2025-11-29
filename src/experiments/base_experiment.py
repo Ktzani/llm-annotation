@@ -1,12 +1,12 @@
 # =============================================================================
 # CONFIGURAÇÕES DO EXPERIMENTO BÁSICO
 # =============================================================================
-from src.config.datasets_collected import CACHE_DIR
 from src.config.prompts import BASE_ANNOTATION_PROMPT
 
 """
 Estratégias para resolução de conflitos entre anotações.
 """
+CACHE_DIR = "..\..\data\.cache"
 
 # Modelos open-source padrão
 DEFAULT_MODELS = [
@@ -55,7 +55,7 @@ EXPERIMENT_CONFIG = {
     # Usar cache de respostas
     "cache": {
         "enabled": True,
-        "cache_dir": CACHE_DIR
+        "dir": CACHE_DIR
     },
     
     "prompt": BASE_ANNOTATION_PROMPT

@@ -1,7 +1,6 @@
 """
 Dataset Configurations - HuggingFace Datasets (waashk)
 """
-CACHE_DIR = "..\..\data\.cache\hf"
 # =============================================================================
 # CONFIGURAÇÕES DE DATASETS DO HUGGINGFACE (waashk)
 # =============================================================================

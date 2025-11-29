@@ -8,8 +8,7 @@ from typing import Dict, Any, Optional
 from pathlib import Path
 from loguru import logger
 
-from src.config.datasets_collected import CACHE_DIR
-
+from src.experiments.base_experiment import CACHE_DIR
 
 class CacheManager:
     """
@@ -23,6 +22,7 @@ class CacheManager:
             cache_dir: Diretório para cache
         """
         self.cache_dir = Path(cache_dir)
+        self.cache_dir = self.cache_dir.joinpath("manager")
         self.cache_dir.mkdir(exist_ok=True, parents=True)
         self.cache_file = self.cache_dir / "response_cache.json"
         self.cache = self._load()
@@ -116,13 +116,14 @@ class LangChainCacheManager:
     Gerencia cache nativo do LangChain (SQLite)
     """
     
-    def __init__(self, cache_dir: str = "./cache", enabled: bool = True):
+    def __init__(self, cache_dir: str = CACHE_DIR, enabled: bool = True):
         """
         Args:
             cache_dir: Diretório para cache
             enabled: Se True, ativa cache
         """
         self.cache_dir = Path(cache_dir)
+        self.cache_dir = self.cache_dir.joinpath("langchain")
         self.cache_dir.mkdir(exist_ok=True, parents=True)
         self.enabled = enabled
         
