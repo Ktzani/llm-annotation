@@ -4,7 +4,7 @@ from loguru import logger
 
 import sys
 
-from src.config.datasets_config import DATASETS, CACHE_DIR, LABEL_MEANINGS
+from src.config.datasets_collected import DATASETS, CACHE_DIR, LABEL_MEANINGS
 from src.experiments.base_experiment import DATASET_CONFIG
 from datasets import load_dataset, concatenate_datasets
 
@@ -122,11 +122,23 @@ def load_hf_dataset(
     except Exception as e:
         logger.error(f"Erro ao carregar dataset: {e}")
         raise
+    
+
 
 
 # =============================================================================
 # DATAFRAME
 # =============================================================================
+def add_label_description(df, dataset_name):
+    mapping = LABEL_MEANINGS.get(dataset_name)
+
+    if mapping is None:
+        raise ValueError(f"Dataset '{dataset_name}' não encontrado no LABEL_MEANINGS")
+
+    # Converter label para string e mapear
+    df["label_description"] = df["label"].astype(str).map(mapping)
+
+    return df
 
 def load_hf_dataset_as_dataframe(
     dataset_name: str,
@@ -141,6 +153,8 @@ def load_hf_dataset_as_dataframe(
 
     if ground_truth is not None:
         df["label"] = ground_truth
+        
+    df = add_label_description(df, dataset_name)
 
     logger.info(f"DataFrame criado com {len(df)} linhas")
     return df, categories
@@ -165,7 +179,7 @@ def get_dataset_info(dataset_name: str) -> Dict:
 # =============================================================================
 
 def discover_dataset_structure(hf_path: str, num_examples: int = 3):
-    from datasets_config import get_dataset_config_names, get_dataset_split_names
+    from src.config.datasets_collected import get_dataset_config_names, get_dataset_split_names
 
     logger.info(f"Descobrindo estrutura do dataset: {hf_path}")
 

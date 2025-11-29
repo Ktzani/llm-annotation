@@ -1,7 +1,7 @@
 # =============================================================================
 # CONFIGURAÇÕES DO EXPERIMENTO BÁSICO
 # =============================================================================
-from src.config.datasets_config import CACHE_DIR
+from src.config.datasets_collected import CACHE_DIR
 from src.config.prompts import BASE_ANNOTATION_PROMPT
 
 """
@@ -27,7 +27,7 @@ DEFAULT_MODELS = [
 DATASET_CONFIG = {
     "split": "train",
     "combine_splits": ["train", "test"],
-    "sample_size": 100
+    "sample_size": None
 }
 
 

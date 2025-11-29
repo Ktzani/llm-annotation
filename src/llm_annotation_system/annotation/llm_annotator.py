@@ -16,7 +16,7 @@ from src.llm_annotation_system.annotation.annotation_engine import AnnotationEng
 
 from src.config.prompts import BASE_ANNOTATION_PROMPT
 from src.experiments.base_experiment import EXPERIMENT_CONFIG
-from src.config.datasets_config import CACHE_DIR
+from src.config.datasets_collected import CACHE_DIR
 
 
 class LLMAnnotator:
