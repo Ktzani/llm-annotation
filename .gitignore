@@ -57,6 +57,7 @@ results/figures/*.html
 results/reports/*.csv
 results/final/*.csv
 results/final/*.json
+results
 
 # Keep directory structure
 !data/raw/.gitkeep

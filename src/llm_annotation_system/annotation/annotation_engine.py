@@ -2,10 +2,9 @@
 Annotation Engine - Motor de anotação
 """
 
-import time
 from typing import List, Dict, Optional
 from loguru import logger
-import traceback
+from multiprocessing import Pool
 
 from src.llm_annotation_system.core.llm_provider import LLMProvider
 from src.llm_annotation_system.core.cache_manager import CacheManager
@@ -45,6 +44,27 @@ class AnnotationEngine:
         self.template = self._prepare_template(prompt_template, examples)
         logger.info("Template do prompt preparado")
     
+    @staticmethod
+    def annotate_repetition(args):
+        engine, chain, text, model, rep, use_cache = args
+
+        cache_key = engine.cache_manager.get_key(model, text, {"rep": rep})
+
+        # leitura segura do cache
+        if use_cache:
+            cached = engine.cache_manager.get(cache_key)
+            if cached:
+                return rep, cached
+
+        # chama LLM
+        try:
+            response = engine._invoke_chain(chain, text)
+        except Exception as e:
+            return rep, f"ERROR: {str(e)}"
+
+        # retorno inclui rep para reconstruir a ordem
+        return rep, response
+    
     def annotate_single(
         self,
         text: str,
@@ -53,38 +73,58 @@ class AnnotationEngine:
         num_repetitions: int = 1,
         use_cache: bool = True
     ) -> List[str]:
+        """
+        Anota um texto com múltiplas repetições
+        
+        Args:
+            text: Texto para anotar
+            model: Nome do modelo
+            llm: Instância da LLM
+            num_repetitions: Número de repetições
+            prompt_template: Template do prompt
+            examples: Exemplos para few-shot
+            use_cache: Se True, usa cache
+            
+        Returns:
+            Lista de classificações
+        """
+        # criar chain uma única vez
+        chain = self.llm_provider.create_chain(
+            llm=llm,
+            template=self.template,
+        )
+
+        # args para cada repetição
+        args_list = [
+            (self, chain, text, model, rep, use_cache)
+            for rep in range(num_repetitions)
+        ]
+
+        # limite seguro para Ollama
+        n_workers = min(3, num_repetitions)
+
+        results = []
+        with Pool(processes=n_workers) as pool:
+            results = pool.map(self.annotate_repetition, args_list)
+
+        # ordenar pelo rep original
+        results_sorted = sorted(results, key=lambda x: x[0])
 
         classifications = []
+        for rep, response in results_sorted:
 
-        for rep in range(num_repetitions):
-            try:
+            # salvar no cache aqui, com segurança
+            if use_cache and not str(response).startswith("ERROR"):
                 cache_key = self.cache_manager.get_key(model, text, {"rep": rep})
+                self.cache_manager.set(cache_key, response)
 
-                # ---------- CACHE ----------
-                if use_cache:
-                    cached = self.cache_manager.get(cache_key)
-                    if cached:
-                        logger.debug(f"{model} rep {rep+1}: cache hit")
-                        response = cached
-                    else:
-                        response = self._direct_llm_call(llm, text)
-                        self.cache_manager.set(cache_key, response)
-                        logger.debug(f"{model} rep {rep+1}: cache miss")
-                else:
-                    response = self._direct_llm_call(llm, text)
-
-                # ---------- EXTRAI A CATEGORIA ----------
+            # extrair categoria
+            try:
                 category = self.response_processor.extract_category(response)
-                classifications.append(category)
+            except Exception:
+                category = "ERROR"
 
-                time.sleep(0.1)
-
-            except Exception as e:
-                logger.error(
-                    f"Erro em {model} rep {rep+1}: {str(e)}\n"
-                    f"{traceback.format_exc()}"
-                )
-                classifications.append("ERROR")
+            classifications.append(category)
 
         return classifications
     
@@ -138,43 +178,16 @@ class AnnotationEngine:
             text="{text}",
             categories=categories_str
         )
-        
-    def _direct_llm_call(self, llm, text: str) -> str:
-        """
-        Envia prompt diretamente à LLM.
-        Compatível com qualquer modelo do Ollama (DeepSeek, Qwen, Llama, Mistral etc).
-        """
-
-        prompt = self.template.format(text=text)
-
-        # DeepSeek-R1 gosta de <think>
-        if "deepseek" in llm.model.lower():
-            prompt += "\n<think>"
-
-        raw = llm.invoke(prompt)
-        
-        print(raw)
-
-        # Caso 1: LangChain retorna AIMessage
-        if hasattr(raw, "content"):
-            return raw.content
-
-        # Caso 2: Retorna string normal
-        if isinstance(raw, str):
-            return raw
-
-        # Caso 3: Qualquer outra estrutura → ainda assim força string
-        return str(raw)
     
-    # def _invoke_chain(self, chain: any, text: str) -> str:
-    #     """
-    #     Invoca chain e retorna resposta
+    def _invoke_chain(self, chain: any, text: str) -> str:
+        """
+        Invoca chain e retorna resposta
         
-    #     Args:
-    #         chain: Chain configurada
-    #         text: Texto para anotar
+        Args:
+            chain: Chain configurada
+            text: Texto para anotar
             
-    #     Returns:
-    #         Resposta da LLM
-    #     """
-    #     return chain.invoke({"text": text})
+        Returns:
+            Resposta da LLM
+        """
+        return chain.invoke({"text": text})
