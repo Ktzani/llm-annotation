@@ -30,15 +30,11 @@ class ResponseProcessor:
         Returns:
             Categoria extraída (int) ou "ERROR"
         """
-        if response is None:
-            logger.warning("Resposta é None")
+        if response is None or response.strip() == "":
+            logger.warning("Resposta é None ou ''")
             return "ERROR"
         
         response = response.strip()
-        
-        if not self.validate_response(response):
-            logger.warning(f"Resposta inválida - Não possui a categoria necessária: '{response[:50]}'")
-            return "ERROR"
         
         # Extrair "CLASSIFICATION:" se presente
         if "CLASSIFICATION:" in response:

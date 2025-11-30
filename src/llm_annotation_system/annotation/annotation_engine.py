@@ -5,6 +5,7 @@ Annotation Engine - Motor de anotação
 import time
 from typing import List, Dict, Optional
 from loguru import logger
+import traceback
 
 from src.llm_annotation_system.core.llm_provider import LLMProvider
 from src.llm_annotation_system.core.cache_manager import CacheManager
@@ -50,62 +51,41 @@ class AnnotationEngine:
         model: str,
         llm: any,
         num_repetitions: int = 1,
-
         use_cache: bool = True
     ) -> List[str]:
-        """
-        Anota um texto com múltiplas repetições
-        
-        Args:
-            text: Texto para anotar
-            model: Nome do modelo
-            llm: Instância da LLM
-            num_repetitions: Número de repetições
-            prompt_template: Template do prompt
-            examples: Exemplos para few-shot
-            use_cache: Se True, usa cache
-            
-        Returns:
-            Lista de classificações
-        """
-        classifications = []
-        
-        # Criar chain
-        chain = self.llm_provider.create_chain(
-            llm=llm,
-            template=self.template,
-            variables={"text": text}
-        )
 
-        
+        classifications = []
+
         for rep in range(num_repetitions):
             try:
-                # Verificar cache
                 cache_key = self.cache_manager.get_key(model, text, {"rep": rep})
-                
+
+                # ---------- CACHE ----------
                 if use_cache:
                     cached = self.cache_manager.get(cache_key)
                     if cached:
-                        response = cached
                         logger.debug(f"{model} rep {rep+1}: cache hit")
+                        response = cached
                     else:
-                        response = self._invoke_chain(chain, text)
+                        response = self._direct_llm_call(llm, text)
                         self.cache_manager.set(cache_key, response)
                         logger.debug(f"{model} rep {rep+1}: cache miss")
                 else:
-                    response = self._invoke_chain(chain, text)
-                
-                # Extrair categoria
+                    response = self._direct_llm_call(llm, text)
+
+                # ---------- EXTRAI A CATEGORIA ----------
                 category = self.response_processor.extract_category(response)
                 classifications.append(category)
-                
-                # Rate limiting
+
                 time.sleep(0.1)
-            
+
             except Exception as e:
-                logger.error(f"Erro em {model} rep {rep+1}: {str(e)}")
+                logger.error(
+                    f"Erro em {model} rep {rep+1}: {str(e)}\n"
+                    f"{traceback.format_exc()}"
+                )
                 classifications.append("ERROR")
-        
+
         return classifications
     
     def _prepare_template(
@@ -158,16 +138,43 @@ class AnnotationEngine:
             text="{text}",
             categories=categories_str
         )
-    
-    def _invoke_chain(self, chain: any, text: str) -> str:
-        """
-        Invoca chain e retorna resposta
         
-        Args:
-            chain: Chain configurada
-            text: Texto para anotar
-            
-        Returns:
-            Resposta da LLM
+    def _direct_llm_call(self, llm, text: str) -> str:
         """
-        return chain.invoke({"text": text})
+        Envia prompt diretamente à LLM.
+        Compatível com qualquer modelo do Ollama (DeepSeek, Qwen, Llama, Mistral etc).
+        """
+
+        prompt = self.template.format(text=text)
+
+        # DeepSeek-R1 gosta de <think>
+        if "deepseek" in llm.model.lower():
+            prompt += "\n<think>"
+
+        raw = llm.invoke(prompt)
+        
+        print(raw)
+
+        # Caso 1: LangChain retorna AIMessage
+        if hasattr(raw, "content"):
+            return raw.content
+
+        # Caso 2: Retorna string normal
+        if isinstance(raw, str):
+            return raw
+
+        # Caso 3: Qualquer outra estrutura → ainda assim força string
+        return str(raw)
+    
+    # def _invoke_chain(self, chain: any, text: str) -> str:
+    #     """
+    #     Invoca chain e retorna resposta
+        
+    #     Args:
+    #         chain: Chain configurada
+    #         text: Texto para anotar
+            
+    #     Returns:
+    #         Resposta da LLM
+    #     """
+    #     return chain.invoke({"text": text})

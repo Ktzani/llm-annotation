@@ -71,12 +71,12 @@ class LLMAnnotator:
         self.langchain_cache = LangChainCacheManager(cache_dir, use_langchain_cache)
         self.response_processor = ResponseProcessor(categories)
         self.annotation_engine = AnnotationEngine(
-            self.llm_provider,
-            self.cache_manager,
-            self.response_processor,
-            dataset_name,
-            prompt_template,
-            examples
+            llm_provider=self.llm_provider,
+            cache_manager=self.cache_manager,
+            response_processor=self.response_processor,
+            dataset_name=dataset_name,
+            prompt_template=prompt_template,
+            examples=examples
         )
         
         # Expandir modelos com alternative_params se necessário
@@ -177,7 +177,8 @@ class LLMAnnotator:
         self,
         texts: List[str],
         num_repetitions: Optional[int] = None,
-        save_intermediate: bool = True
+        save_intermediate: bool = True,
+        use_cache: bool = True
     ) -> pd.DataFrame:
         """
         Anota dataset completo
@@ -215,6 +216,7 @@ class LLMAnnotator:
                     text=text,
                     model=model,
                     num_repetitions=num_repetitions,
+                    use_cache=use_cache
                 )
                 
                 # Salvar repetições

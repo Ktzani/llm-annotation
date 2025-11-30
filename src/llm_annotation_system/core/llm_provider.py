@@ -156,7 +156,7 @@ class LLMProvider:
         else:
             raise ValueError(f"Provider '{provider}' não suportado")
 
-    def create_chain(self, llm: Any, template: str, variables: Dict[str, str]):
+    def create_chain(self, llm: Any, template: str):
         """
         Cria uma chain LangChain
         
@@ -168,6 +168,6 @@ class LLMProvider:
         Returns:
             Chain configurada
         """
-        prompt = ChatPromptTemplate.from_template(template, partial_variables=variables)
+        prompt = ChatPromptTemplate.from_template(template)
         chain = prompt | llm | StrOutputParser()
         return chain

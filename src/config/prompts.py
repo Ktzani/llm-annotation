@@ -21,13 +21,13 @@ Your task is to classify the following text into one of the predefined categorie
 {text}
 
 **Important Guidelines:**
-- Provide ONLY the category name as your response
-- Do not include explanations unless specifically requested
+- Provide ONLY the category number as your response
+- Do not include explanations
 - Be objective and avoid bias
 - Consider edge cases carefully
 - Maintain consistency across similar texts
 
-**Your classification (category name only):**"""
+**Your classification (category number only):**"""
 
 # Prompt com few-shot learning (adicionar exemplos quando disponível)
 FEW_SHOT_PROMPT = """You are an expert data annotator. Below are examples of correctly classified texts:

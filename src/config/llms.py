@@ -64,7 +64,7 @@ LLM_CONFIGS = {
         "provider": "ollama",
         "model_name": "mistral:7b",
         "description": "Mistral 7B - Ótimo custo-benefício",
-        "default_params": {"temperature": 0.0, "num_predict": 100},
+        "default_params": {"temperature": 0, "num_predict": 100},
         "alternative_params": [
             {"temperature": 0.3, "num_predict": 100},
             {"temperature": 0.5, "num_predict": 100},
@@ -142,7 +142,7 @@ LLM_CONFIGS = {
         "provider": "ollama",
         "model_name": "gemma3:4b",
         "description": "Gemma 3 4B - Ótimo custo/benefício",
-        "default_params": {"temperature": 0.0, "num_predict": 100},
+        "default_params": {"temperature": 0, "num_predict": 100},
         "alternative_params": [
             {"temperature": 0.4, "num_predict": 120},
             {"temperature": 0.7, "num_predict": 200},
@@ -196,10 +196,10 @@ LLM_CONFIGS = {
         "provider": "ollama",
         "model_name": "deepseek-r1:8b",
         "description": "DeepSeek R1 8B - Raciocínio muito acima da média",
-        "default_params": {"temperature": 0.2, "num_predict": 100},
+        "default_params": {"temperature": 0, "num_predict": 4096},
         "alternative_params": [
-            {"temperature": 0.5, "num_predict": 100},  # mais criativo
-            {"temperature": 0.8, "num_predict": 150},  # brainstorming
+            {"temperature": 0.5, "num_predict": 4096},  # mais criativo
+            {"temperature": 0.8, "num_predict": 4096},  # brainstorming
         ],
         "requirements": "~10GB RAM",
         "download": "ollama pull deepseek-r1:8b"
@@ -274,10 +274,10 @@ LLM_CONFIGS = {
         "provider": "ollama",
         "model_name": "qwen3:8b",
         "description": "Qwen 3 8B - Novo modelo com melhorias significativas",
-        "default_params": {"temperature": 0, "num_predict": 100},
+        "default_params": {"temperature": 0.2, "num_predict": 4096},
         "alternative_params": [
-            {"temperature": 0.4, "num_predict": 150},
-            {"temperature": 0.7, "num_predict": 150},
+            {"temperature": 0.4, "num_predict": 4096},
+            {"temperature": 0.7, "num_predict": 4096},
         ],
         "requirements": "~8GB RAM",
         "download": "ollama pull qwen3:8b"
