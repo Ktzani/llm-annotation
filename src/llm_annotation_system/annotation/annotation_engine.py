@@ -11,8 +11,8 @@ from src.llm_annotation_system.core.llm_provider import LLMProvider
 from src.llm_annotation_system.core.cache_manager import CacheManager
 from src.llm_annotation_system.core.response_processor import ResponseProcessor
 
-from src.config.datasets_collected import LABEL_MEANINGS
-from src.config.prompts import BASE_ANNOTATION_PROMPT, FEW_SHOT_PROMPT
+from src.config.datasets_collected import DATASETS, LABEL_MEANINGS
+from src.config.prompts import BASE_ANNOTATION_PROMPT, FEW_SHOT_PROMPT, SIMPLER_PROMPT
 
 class AnnotationEngine:
     """
@@ -155,8 +155,12 @@ class AnnotationEngine:
                 text="{text}",
                 categories=categories_str
             )
-    
+        
+
+        description = DATASETS.get(self.dataset_name, {}).get("prompt", "Text")
         return prompt_template.format(
+            description=description,
+            description_lower=description.lower(),
             text="{text}",
             categories=categories_str
         )

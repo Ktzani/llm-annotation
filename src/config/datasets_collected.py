@@ -60,154 +60,176 @@ DATASETS = {
         "text_column": "text",
         "label_column": "label",
         "categories": None,
-        "description": "AG News para classificação de notícias"
+        "description": "AG News para classificação de notícias",
+        "prompt": "News Article"
     },
     "mpqa": {
         "path": "waashk/mpqa",
         "text_column": "text",
         "label_column": "label",
         "categories": None,
-        "description": "MPQA para análise de opinião / sentimento"  # conforme HF :contentReference[oaicite:2]{index=2}
+        "description": "MPQA para análise de opinião / sentimento",
+        "prompt": "Opinion / Sentiment"
     },
     "webkb": {
         "path": "waashk/webkb",
         "text_column": "text",
         "label_column": "label",
         "categories": None,
-        "description": "WebKB: páginas web classificadas por tipo"  # conforme HF :contentReference[oaicite:3]{index=3}
+        "description": "O WebKB reúne páginas web coletadas de departamentos de Ciência da Computação de quatro universidades, classificadas em classes como “student”, “faculty”, “staff”, “department”, “course”, “project” e “other”",
+        "prompt": "Web Page"
     },
     "ohsumed": {
         "path": "waashk/ohsumed",
         "text_column": "text",
         "label_column": "label",
         "categories": None,
-        "description": "OHSUMED: resumos médicos para classificação"  # conforme HF :contentReference[oaicite:4]{index=4}
+        "description": "O OHSUMED consiste em uma coleção de referências médicas (títulos e/ou resumos) originárias da base MEDLINE, para tarefas de classificação de texto.",
+        "prompt": "Medical abstract (bibliographic)"
     },
     "acm": {
         "path": "waashk/acm",
         "text_column": "text",
         "label_column": "label",
         "categories": None,
-        "description": "ACM (parte do atcBench, do waashk)"  # conforme README do ACM no atcBench :contentReference[oaicite:5]{index=5}
+        "description": "O ACM dataset refere-se a um conjunto de artigos publicados em conferências de computação (KDD, SIGMOD etc.), organizado como um grafo de citação/autor — útil para tarefas de classificação, link prediction e análise de rede.",
+        "prompt": "Scientific paper (CS)"
     },
     "yelp_2013": {
         "path": "waashk/yelp_2013",
         "text_column": "text",
         "label_column": "label",
         "categories": None,
-        "description": "Yelp 2013 para classificação de reviews"  # confirmado no HF :contentReference[oaicite:6]{index=6}
+        "description": "Yelp 2013 para classificação de reviews de usuários",
+        "prompt": "Review Text"
     },
     "dblp": {
         "path": "waashk/dblp",
         "text_column": "text",
         "label_column": "label",
         "categories": None,
-        "description": "DBLP (do atcBench)"
+        "description": "O DBLP dataset corresponde a uma base de dados bibliográfica de artigos de ciência da computação, com metadados sobre autores, título, ano, citações — amplamente usada para tarefas de rede (link prediction, clustering, classificação de nós, detecção de comunidades)",
+        "prompt": "Scientific paper (CS)"
     },
     "books": {
         "path": "waashk/books",
         "text_column": "text",
         "label_column": "label",
         "categories": None,
-        "description": "Books dataset do atcBench"
+        "description": "Books é dataset de Classificação de texto (categorias de livros/reviews)",
+        "prompt": "Book Review"
     },
     "reut90": {
         "path": "waashk/reut90",
         "text_column": "text",
         "label_column": "label",
         "categories": None,
-        "description": "Reuters90 (do atcBench)"
+        "description": "Reuters90 é um dataset de classificação temática (Reuters) de texto com 90 categorias diferentes ",
+        "prompt": "News Article"
     },
     "wos11967": {
         "path": "waashk/wos11967",
         "text_column": "text",
         "label_column": "label",
         "categories": None,
-        "description": "WOS-11967 (do atcBench)"
+        "description": "WOS‑11967 é um dos subconjuntos do que se conhece como “Web of Science datasets” usados em ATC científico. Contém ~11.967 documentos classificados em múltiplas categorias/domínios (como Ciência da Computação, Engenharia, Medicina, etc.)",
+        "prompt": "Scientific abstract"
     },
     "twitter": {
         "path": "waashk/twitter",
         "text_column": "text",
         "label_column": "label",
         "categories": None,
-        "description": "Twitter dataset (atcBench)"
+        "description": "Twitter dataset para classificação de tweets",
+        "prompt": "Tweet"
     },
     "trec": {
         "path": "waashk/trec",
         "text_column": "text",
         "label_column": "label",
         "categories": None,
-        "description": "TREC (atcBench)"
+        "description": "TREC é um dataset de Classificação de texto para perguntas",
+        "prompt": "Question"
     },
     "wos5736": {
         "path": "waashk/wos5736",
         "text_column": "text",
         "label_column": "label",
         "categories": None,
-        "description": "WOS-5736 (atcBench)"
+        "description": "Versão menor de WOS, com 5.736 documentos para classificação por área científica” O WOS‑5736 funciona como uma versão compacta do WOS, com menos documentos e um número menor de categorias, útil para experimentos mais leves.",
+        "prompt": "Scientific abstract"
     },
     "sst1": {
         "path": "waashk/sst1",
         "text_column": "text",
         "label_column": "label",
         "categories": None,
-        "description": "SST-1 (atcBench)"
+        "description": "“SST1” representa um dataset de classificação de sentimento/texto, provavelmente derivado do clássico Stanford Sentiment Treebank ou similares.",
+        "prompt": "Opinion / Sentiment"
     },
     "pang_movie": {
         "path": "waashk/pang_movie_2L",
         "text_column": "text",
         "label_column": "label",
         "categories": None,
-        "description": "Pang movie reviews (atcBench)"
+        "description": "Pang movie reviews para análise de sentimento (atcBench)",
+        "prompt": "Movie Review"
     },
     "movie_review": {
         "path": "waashk/movie_review",
         "text_column": "text",
         "label_column": "label",
         "categories": None,
-        "description": "Movie Review (atcBench)"
+        "description": "Classificação de reviews de filmes (sentimento ou categorias definidas)” Outro dataset de reviews de filmes, com tarefa de classificação de texto",
+        "prompt": "Movie Review"
     },
     "vader_movie": {
         "path": "waashk/vader_movie_2L",
         "text_column": "text",
         "label_column": "label",
         "categories": None,
-        "description": "VADER Movie sentiment (atcBench)"
+        "description": "Vader Movie representa um dataset de reviews de filmes com rótulos de sentimento",
+        "prompt": "Movie Review"
     },
     "subj": {
         "path": "waashk/subj",
         "text_column": "text",
         "label_column": "label",
         "categories": None,
-        "description": "Subjectivity dataset (atcBench)"
+        "description": "O conjunto “subj” no atcBench representa um dataset usado para classificação entre subjetivo vs objetivo.",
+        "prompt": "Sentence"
     },
     "sst2": {
         "path": "waashk/sst2",
         "text_column": "text",
         "label_column": "label",
         "categories": None,
-        "description": "SST-2 (atcBench)"
+        "description": "SST2 funciona como dataset de classificação de sentimento/texto, derivado do Stanford Sentiment Treebank (SST).",
+        "prompt": "Opinion / Sentiment"
     },
     "yelp_reviews": {
         "path": "waashk/yelp_reviews_2L",
         "text_column": "text",
         "label_column": "label",
         "categories": None,
-        "description": "Yelp Reviews (atcBench)"
+        "description": "Yelp Reviews é utilizado como dataset de classificação binária para reviews da plataforma de avaliação de negócios/retaurantes.",
+        "prompt": "Review Text"
     },
     "20ng": {
         "path": "waashk/20ng",
         "text_column": "text",
         "label_column": "label",
         "categories": None,
-        "description": "20ng dataset (atcBench)"
+        "description": "O 20 Newsgroups (frequentemente chamado “20NG”) é uma coleção de ~18-20 mil mensagens de grupos de notícias da Usenet, organizadas em 20 categorias diferentes. É um dos datasets clássicos de categorização de texto",
+        "prompt": "Newsgroup post"
     },
     "medline": {
         "path": "waashk/medline",
         "text_column": "text",
         "label_column": "label",
         "categories": None,
-        "description": "Medline dataset (atcBench)"
+        "description": "Medline é usado como dataset de texto para classificação de artigos médicos / registros bibliográficos",
+        "prompt": "Medical abstract (bibliographic)"
     },
 }
 

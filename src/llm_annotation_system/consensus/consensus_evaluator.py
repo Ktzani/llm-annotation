@@ -10,6 +10,8 @@ from loguru import logger
 from src.llm_annotation_system.consensus.consensus_metrics import ConsensusMetrics
 from src.llm_annotation_system.consensus.consensus_calculator import ConsensusCalculator
 
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+
 class ConsensusEvaluator:
     """
     Analisa consenso entre anotadores
@@ -24,7 +26,8 @@ class ConsensusEvaluator:
     def __init__(
         self,
         categories: List[int],
-        calculator: ConsensusCalculator
+        calculator: ConsensusCalculator,
+        output_dir: Optional[str] = './results'
     ):
         """
         Args:
@@ -33,6 +36,12 @@ class ConsensusEvaluator:
         """
         self.categories = categories
         self.calculator = calculator  # componente externo que calcula consenso interno
+        
+        output_path = Path(output_dir)
+        output_path = output_path.joinpath("consensus")
+        output_path.mkdir(exist_ok=True, parents=True)
+        self.output_path = output_path
+        
         self.metrics = ConsensusMetrics(categories)
 
         logger.debug("ConsensusAnalyzer inicializado")
@@ -66,87 +75,130 @@ class ConsensusEvaluator:
         return df
 
     # -------------------------------------------------------------------------
-    # RELATÓRIO ANALÍTICO COMPLETO
+    # RELATÓRIO COMPLETO (ORQUESTRADOR)
     # -------------------------------------------------------------------------
 
-    def generate_consensus_report(
-        self,
-        df: pd.DataFrame,
-        annotator_cols: List[str],
-        output_dir: str = "./results"
-    ) -> Dict:
-        """
-        Gera relatório completo de consenso com métricas estatísticas.
-
-        Args:
-            df: DataFrame com anotações
-            annotator_cols: Colunas com anotações dos modelos/LLMs
-            output_dir: Diretório para salvar relatórios
-
-        Returns:
-            Dicionário com DataFrames e valores numéricos
-        """
+    def generate_consensus_report(self, df: pd.DataFrame) -> Dict:
         logger.info("Gerando relatório completo de consenso...")
 
-        output_path = Path(output_dir)
-        output_path.mkdir(exist_ok=True, parents=True)
+        annotator_cols = self.calculator._extract_consensus_columns(df)
 
-        report = {}
+        report = {
+            "pairwise_agreement": self._report_pairwise_agreement(df, annotator_cols),
+            "cohens_kappa": self._report_cohens_kappa(df, annotator_cols),
+        }
 
-        # ----------------------------------------------------------
-        # 1. Concordância par a par
-        # ----------------------------------------------------------
+        fleiss, interpretation = self._report_fleiss_kappa(df, annotator_cols)
+        report["fleiss_kappa"] = fleiss
+        report["fleiss_interpretation"] = interpretation
+
+        problematic = self._report_problematic_cases(df, annotator_cols)
+        report["problematic_cases"] = problematic
+
+        logger.success("Relatório de consenso gerado com sucesso.")
+        return report
+
+    # -------------------------------------------------------------------------
+    # 1. PAIRWISE AGREEMENT
+    # -------------------------------------------------------------------------
+
+    def _report_pairwise_agreement(self, df, annotator_cols):
         logger.debug("Calculando concordância par a par...")
         agreement_df = self.metrics.calculate_pairwise_agreement(df, annotator_cols)
-        report['pairwise_agreement'] = agreement_df
-        agreement_df.to_csv(output_path / "pairwise_agreement.csv", index=False)
+        agreement_df.to_csv(self.output_path / "pairwise_agreement.csv", index=False)
+        return agreement_df
 
-        # ----------------------------------------------------------
-        # 2. Cohen's Kappa para cada par (matriz longa)
-        # ----------------------------------------------------------
+    # -------------------------------------------------------------------------
+    # 2. COHEN'S KAPPA
+    # -------------------------------------------------------------------------
+
+    def _report_cohens_kappa(self, df, annotator_cols):
         logger.debug("Calculando Cohen's Kappa...")
-        kappa_results = []
 
+        kappa_results = []
         for i in range(len(annotator_cols)):
             for j in range(i + 1, len(annotator_cols)):
                 kappa = self.metrics.calculate_cohen_kappa(
                     df, annotator_cols[i], annotator_cols[j]
                 )
                 kappa_results.append({
-                    'annotator_1': annotator_cols[i],
-                    'annotator_2': annotator_cols[j],
-                    'cohens_kappa': kappa,
-                    'interpretation': self.metrics.interpret_kappa(kappa)
+                    "annotator_1": annotator_cols[i],
+                    "annotator_2": annotator_cols[j],
+                    "cohens_kappa": kappa,
+                    "interpretation": self.metrics.interpret_kappa(kappa)
                 })
 
         kappa_df = pd.DataFrame(kappa_results)
-        report['cohens_kappa'] = kappa_df
-        kappa_df.to_csv(output_path / "cohens_kappa.csv", index=False)
+        kappa_df.to_csv(self.output_path / "cohens_kappa.csv", index=False)
+        return kappa_df
 
-        # ----------------------------------------------------------
-        # 3. Fleiss' Kappa global
-        # ----------------------------------------------------------
+    # -------------------------------------------------------------------------
+    # 3. FLEISS' KAPPA
+    # -------------------------------------------------------------------------
+
+    def _report_fleiss_kappa(self, df, annotator_cols):
         logger.debug("Calculando Fleiss' Kappa...")
         fleiss = self.metrics.calculate_fleiss_kappa(df, annotator_cols)
-        report['fleiss_kappa'] = fleiss
-        report['fleiss_interpretation'] = self.metrics.interpret_kappa(fleiss)
+        interpretation = self.metrics.interpret_kappa(fleiss)
 
-        logger.info(f"Fleiss' Kappa: {fleiss:.3f} ({report['fleiss_interpretation']})")
+        logger.info(f"Fleiss' Kappa: {fleiss:.3f} ({interpretation})")
+        return fleiss, interpretation
 
-        # ----------------------------------------------------------
-        # 4. Casos problemáticos
-        # ----------------------------------------------------------
+    # -------------------------------------------------------------------------
+    # 4. CASOS PROBLEMÁTICOS
+    # -------------------------------------------------------------------------
+
+    def _report_problematic_cases(self, df, annotator_cols):
         logger.debug("Identificando casos problemáticos...")
+
         problematic = self.identify_problematic_cases(df, annotator_cols)
-        report['problematic_cases'] = problematic
 
         if len(problematic) > 0:
-            problematic.to_csv(output_path / "problematic_cases.csv", index=False)
+            problematic.to_csv(self.output_path / "problematic_cases.csv", index=False)
             logger.info(f"Casos problemáticos: {len(problematic)}")
 
-        # Final
-        logger.success("Relatório de consenso gerado com sucesso.")
-        return report
+        return problematic
+    
+    def evaluate_ground_truth(
+        self,
+        df_with_consensus: pd.DataFrame,
+        ground_truth_col: str = "ground_truth",
+    ):
+        """
+        Avalia o consenso final contra o ground truth.
+        
+        Retorna:
+            - accuracy (float)
+            - classification_report (str)
+            - confusion_matrix (np.ndarray)
+        """
+
+        # Inserir ground truth
+        df_with_consensus = df_with_consensus.copy()
+
+        # ---------------------- ACCURACY ----------------------
+        accuracy = accuracy_score(
+            df_with_consensus[ground_truth_col],
+            df_with_consensus["resolved_annotation"]
+        )
+        logger.success(f"\n🎯 Accuracy: {accuracy:.2%}")
+
+        # ---------------------- REPORT ----------------------
+        logger.info("\nClassification Report:")
+        cls_report = classification_report(
+            df_with_consensus[ground_truth_col],
+            df_with_consensus["resolved_annotation"]
+        )
+        print(cls_report)
+
+        # ---------------------- CONFUSION MATRIX ----------------------
+        cm = confusion_matrix(
+            df_with_consensus[ground_truth_col],
+            df_with_consensus["resolved_annotation"],
+            labels=self.categories
+        )
+
+        return accuracy, cls_report, cm
 
     # -------------------------------------------------------------------------
     # IDENTIFICAÇÃO DE CASOS PROBLEMÁTICOS
@@ -195,40 +247,3 @@ class ConsensusEvaluator:
                 })
 
         return pd.DataFrame(problematic)
-
-    # -------------------------------------------------------------------------
-    # COMPARAÇÃO ENTRE MODELOS
-    # -------------------------------------------------------------------------
-
-    def compare_models(
-        self,
-        df: pd.DataFrame,
-        model_cols: Dict[str, str]
-    ) -> pd.DataFrame:
-        """
-        Compara distribuição de classes entre modelos.
-
-        Args:
-            df: DataFrame
-            model_cols: dict {nome_modelo: coluna_consenso}
-
-        Returns:
-            DataFrame com contagens por categoria
-        """
-        logger.info("Comparando modelos...")
-
-        comparisons = []
-
-        for model_name, col in model_cols.items():
-            from collections import Counter
-            distribution = Counter(df[col])
-
-            comparisons.append({
-                'model': model_name,
-                'total': len(df),
-                **{f'count_{cat}': distribution.get(cat, 0) for cat in self.categories}
-            })
-
-        comparison_df = pd.DataFrame(comparisons)
-        logger.success("Comparação entre modelos concluída.")
-        return comparison_df

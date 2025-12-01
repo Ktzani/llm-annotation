@@ -17,7 +17,7 @@ Your task is to classify the following text into one of the predefined categorie
 **Available Categories:**
 {categories}
 
-**Text to classify:**
+**Text to classify ({description}):**
 {text}
 
 **Important Guidelines:**
@@ -27,7 +27,7 @@ Your task is to classify the following text into one of the predefined categorie
 - Consider edge cases carefully
 - Maintain consistency across similar texts
 
-**Your classification (category number only):**"""
+**Your classification to the {description_lower} provided (category number only):**"""
 
 # Prompt com few-shot learning (adicionar exemplos quando disponível)
 FEW_SHOT_PROMPT = """You are an expert data annotator. Below are examples of correctly classified texts:
@@ -36,18 +36,18 @@ FEW_SHOT_PROMPT = """You are an expert data annotator. Below are examples of cor
 
 Now, classify the following text using the same criteria:
 
-**Text to classify:**
+**Text to classify ({description}):**
 {text}
 
 **Available Categories:**
 {categories}
 
-**Your classification (category name only):**"""
+**Your classification to the {description_lower} provided (category number only):**"""
 
 # Prompt com Chain-of-Thought para casos complexos
 COT_PROMPT = """You are an expert data annotator. Analyze the following text step by step:
 
-**Text to classify:**
+**Text to classify ({description}):**
 {text}
 
 **Available Categories:**
@@ -61,4 +61,9 @@ COT_PROMPT = """You are an expert data annotator. Analyze the following text ste
 
 After your analysis, provide ONLY the final category name on the last line preceded by "CLASSIFICATION:"
 
-**Your response:**"""
+**Your response to the {description_lower} provided (category number only):**"""
+
+
+SIMPLER_PROMPT = """{description}: {text}. Based on the content of the {description_lower} provided, which of the
+following categories would it best fit under: {categories}?
+Just select one of these options. No explanation required. Just the category number."""

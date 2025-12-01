@@ -13,6 +13,8 @@ from src.llm_annotation_system.core.cache_manager import CacheManager, LangChain
 from src.llm_annotation_system.core.response_processor import ResponseProcessor
 from src.llm_annotation_system.annotation.annotation_engine import AnnotationEngine
 
+from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
+
 from src.config.prompts import BASE_ANNOTATION_PROMPT
 from src.experiments.base_experiment import EXPERIMENT_CONFIG
 
@@ -254,7 +256,6 @@ class LLMAnnotator:
         Calcula métricas por modelo, considerando -1 como classe de erro válida.
         Não remove as linhas com -1, pois isso faz parte da avaliação.
         """
-        from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 
         logger.info("Calculando métricas por modelo...")
 
