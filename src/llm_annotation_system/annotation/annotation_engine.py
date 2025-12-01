@@ -2,9 +2,10 @@
 Annotation Engine - Motor de anotação
 """
 
+import time
 from typing import List, Dict, Optional
 from loguru import logger
-from multiprocessing import Pool
+import traceback
 
 from src.llm_annotation_system.core.llm_provider import LLMProvider
 from src.llm_annotation_system.core.cache_manager import CacheManager
@@ -44,27 +45,6 @@ class AnnotationEngine:
         self.template = self._prepare_template(prompt_template, examples)
         logger.info("Template do prompt preparado")
     
-    @staticmethod
-    def annotate_repetition(args):
-        engine, chain, text, model, rep, use_cache = args
-
-        cache_key = engine.cache_manager.get_key(model, text, {"rep": rep})
-
-        # leitura segura do cache
-        if use_cache:
-            cached = engine.cache_manager.get(cache_key)
-            if cached:
-                return rep, cached
-
-        # chama LLM
-        try:
-            response = engine._invoke_chain(chain, text)
-        except Exception as e:
-            return rep, f"ERROR: {str(e)}"
-
-        # retorno inclui rep para reconstruir a ordem
-        return rep, response
-    
     def annotate_single(
         self,
         text: str,
@@ -88,44 +68,46 @@ class AnnotationEngine:
         Returns:
             Lista de classificações
         """
-        # criar chain uma única vez
+        classifications = []
+        
+        # Criar chain
         chain = self.llm_provider.create_chain(
             llm=llm,
             template=self.template,
         )
-
-        # args para cada repetição
-        args_list = [
-            (self, chain, text, model, rep, use_cache)
-            for rep in range(num_repetitions)
-        ]
-
-        # limite seguro para Ollama
-        n_workers = min(3, num_repetitions)
-
-        results = []
-        with Pool(processes=n_workers) as pool:
-            results = pool.map(self.annotate_repetition, args_list)
-
-        # ordenar pelo rep original
-        results_sorted = sorted(results, key=lambda x: x[0])
-
-        classifications = []
-        for rep, response in results_sorted:
-
-            # salvar no cache aqui, com segurança
-            if use_cache and not str(response).startswith("ERROR"):
-                cache_key = self.cache_manager.get_key(model, text, {"rep": rep})
-                self.cache_manager.set(cache_key, response)
-
-            # extrair categoria
+        
+        for rep in range(num_repetitions):
             try:
+                # Verificar cache
+                cache_key = self.cache_manager.get_key(model, text, {"rep": rep})
+                
+                if use_cache:
+                    cached = self.cache_manager.get(cache_key)
+                    if cached:
+                        response = cached
+                        logger.debug(f"{model} rep {rep+1}: cache hit")
+                    else:
+                        response = self._invoke_chain(chain, text)
+                        self.cache_manager.set(cache_key, response)
+                        logger.debug(f"{model} rep {rep+1}: cache miss")
+                else:
+                    response = self._invoke_chain(chain, text)
+                
+                # Extrair categoria
                 category = self.response_processor.extract_category(response)
-            except Exception:
-                category = "ERROR"
-
-            classifications.append(category)
-
+                classifications.append(category)
+                
+                # Rate limiting
+                time.sleep(0.1)
+            
+            except Exception as e:
+                logger.error(
+                    f"Erro em {model} rep {rep+1}: {str(e)}\n"
+                    f"{traceback.format_exc()}"
+                )
+                classifications.append("ERROR")
+                
+        
         return classifications
     
     def _prepare_template(

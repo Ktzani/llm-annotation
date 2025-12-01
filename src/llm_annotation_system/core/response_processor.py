@@ -20,7 +20,7 @@ class ResponseProcessor:
         self.categories = categories
         logger.debug(f"ResponseProcessor inicializado com {len(categories)} categorias")
     
-    def extract_category(self, response: str) -> int | str:
+    def extract_category(self, response: str) -> int:
         """
         Extrai categoria da resposta da LLM
         
@@ -28,11 +28,11 @@ class ResponseProcessor:
             response: Resposta completa da LLM
             
         Returns:
-            Categoria extraída (int) ou "ERROR"
+            Categoria extraída (int) ou -1
         """
         if response is None or response.strip() == "":
             logger.warning("Resposta é None ou ''")
-            return "ERROR"
+            return -1
         
         response = response.strip()
         
@@ -45,14 +45,14 @@ class ResponseProcessor:
             value = int(response)
         except Exception:
             logger.warning(f"Falha ao converter resposta para inteiro: '{response[:50]}'")
-            return "ERROR"
+            return -1
         
         # Verificar se está nas categorias válidas
         if value in self.categories:
             return value
         
         logger.warning(f"Categoria {value} não está na lista de válidas: {self.categories}")
-        return "ERROR"
+        return -1
     
     def validate_response(self, response: str) -> bool:
         """

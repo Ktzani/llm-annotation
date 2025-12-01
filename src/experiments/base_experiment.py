@@ -3,12 +3,8 @@
 # =============================================================================
 from src.config.prompts import BASE_ANNOTATION_PROMPT
 
-"""
-Estratégias para resolução de conflitos entre anotações.
-"""
 CACHE_DIR = "..\..\data\.cache"
 
-# Modelos open-source padrão
 DEFAULT_MODELS = [
     "deepseek-r1-8b",
     "qwen3-8b",
@@ -20,9 +16,8 @@ DEFAULT_MODELS = [
 # =============================================================================
 # CONFIGURAÇÃO GLOBAL DE DATASETS
 # =============================================================================
-
 # Use 'split': 'train' como padrão (podemos combinar splits se necessário)
-# Ajuste 'sample_size' para começar com amostra pequena
+# Ajuste 'sample_size' para começar com amostra pequena (se desejar). Ex: 1000 ou None para usar todo o split.
 # Ajuste 'combine_splits' para combinar múltiplos splits quando necessário. Ex: ["train", "test"]
 DATASET_CONFIG = {
     "split": "train",
@@ -33,30 +28,23 @@ DATASET_CONFIG = {
 
 EXPERIMENT_CONFIG = {
     "dataset_config": DATASET_CONFIG,
-    
-    # Modelos padrão
     "default_models": DEFAULT_MODELS,
-    
-    # Número de repetições para a mesma LLM
+    "prompt_template": BASE_ANNOTATION_PROMPT,
     "num_repetitions_per_llm": 3,
     
-    # Threshold de consenso para aceitar anotação automaticamente
-    "consensus_threshold": 0.8,  # 80% de acordo
-    
-    # Estratégia para casos sem consenso
-    "no_consensus_strategy": "flag_for_review",
-    
-    # Métricas de distância a calcular
-    "distance_metrics": ["hamming", "jaccard", "cohen_kappa"],
-    
+    "consensus": {
+        "threshold": 0.8,
+        "distance_metrics": ["hamming", "jaccard", "cohen_kappa"],
+        "strategy": "majority_vote",
+        "no_consensus_strategy": "flag_for_review",
+    },
+        
     # Salvar resultados intermediários
     "save_intermediate": True,
     
-    # Usar cache de respostas
     "cache": {
         "enabled": True,
         "dir": CACHE_DIR
     },
-    
-    "prompt_template": BASE_ANNOTATION_PROMPT
+
 }

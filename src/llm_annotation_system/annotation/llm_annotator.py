@@ -1,7 +1,6 @@
 """
 LLM Annotator - Classe principal refatorada
 """
-
 from typing import List, Dict, Any, Optional
 from pathlib import Path
 import pandas as pd
@@ -58,7 +57,10 @@ class LLMAnnotator:
         self.models = models
         self.categories = categories
         self.cache_dir = Path(cache_dir)
+        
         self.results_dir = Path(results_dir)
+        self.results_dir = self.results_dir.joinpath(dataset_name)
+        
         self.use_alternative_params = use_alternative_params
         
         # Criar diretórios
@@ -81,7 +83,7 @@ class LLMAnnotator:
         
         # Expandir modelos com alternative_params se necessário
         if use_alternative_params:
-            self.models = self._expand_models_with_alternatives(models)
+            self.models = self._expand_models(models)
             logger.info(f"Alternative params ativado: {len(self.models)} variações")
         
         # Inicializar LLMs
@@ -89,21 +91,12 @@ class LLMAnnotator:
         
         logger.info(f"LLMAnnotator inicializado")
         logger.info(f"Modelos: {len(self.models)} | Categorias: {len(categories)}")
-    
-    def _expand_models_with_alternatives(self, models: List[str]) -> List[str]:
-        """
-        Expande modelos com alternative_params
         
-        Args:
-            models: Lista de modelos base
-            
-        Returns:
-            Lista expandida com variações
-        """
-        from llms import LLM_CONFIGS
-        
+    @staticmethod
+    def _expand_models(models: list[str]) -> list[str]:
+        from src.config.llms import LLM_CONFIGS
         expanded = []
-        
+
         for model in models:
             if model not in LLM_CONFIGS:
                 logger.warning(f"Modelo {model} não encontrado em configs")
@@ -111,30 +104,23 @@ class LLMAnnotator:
                 continue
             
             config = LLM_CONFIGS[model]
-            
-            # Adicionar modelo base
             expanded.append(model)
-            
-            # Adicionar variações
+
+            # Add variations
             if "alternative_params" in config:
-                for idx, alt_params in enumerate(config["alternative_params"]):
-                    # Criar nome da variação
+                for idx, alt in enumerate(config["alternative_params"]):
                     alt_name = f"{model}_alt{idx+1}"
-                    
-                    # Criar config temporária
-                    alt_config = {
+
+                    LLM_CONFIGS[alt_name] = {
                         "provider": config["provider"],
                         "model_name": config["model_name"],
                         "description": f"{config['description']} (variação {idx+1})",
-                        "default_params": alt_params,
+                        "default_params": alt,
                     }
-                    
-                    # Adicionar à configuração global temporariamente
-                    LLM_CONFIGS[alt_name] = alt_config
-                    expanded.append(alt_name)
-                    
+
                     logger.debug(f"Criada variação: {alt_name}")
-        
+                    expanded.append(alt_name)
+
         return expanded
     
     def _initialize_llms(self) -> Dict[str, Any]:
@@ -225,8 +211,8 @@ class LLMAnnotator:
                 
                 # Consenso interno
                 most_common = Counter(annotations).most_common(1)[0]
-                text_results[f"{model}_consensus"] = most_common[0]
-                text_results[f"{model}_consensus_score"] = most_common[1] / len(annotations)
+                text_results[f"{model}_consensus"] = int(most_common[0])
+                text_results[f"{model}_consensus_score"] = float(most_common[1] / len(annotations))
             
             results.append(text_results)
             
@@ -253,67 +239,100 @@ class LLMAnnotator:
         
         return df
     
-    def calculate_consensus(self, df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Calcula métricas de consenso
-        
-        Args:
-            df: DataFrame com anotações
-            
-        Returns:
-            DataFrame com métricas de consenso
-        """
-        logger.info("Calculando consenso...")
-        
-        # Coletar colunas de consenso
-        consensus_cols = [col for col in df.columns 
-                         if '_consensus' in col and '_score' not in col]
-        
-        # Calcular métricas
-        df['all_annotations'] = df[consensus_cols].apply(list, axis=1)
-        df['unique_annotations'] = df['all_annotations'].apply(lambda x: len(set(x)))
-        df['most_common_annotation'] = df['all_annotations'].apply(
-            lambda x: Counter(x).most_common(1)[0][0] if x else None
-        )
-        df['most_common_count'] = df['all_annotations'].apply(
-            lambda x: Counter(x).most_common(1)[0][1] if x else 0
-        )
-        df['consensus_score'] = df['most_common_count'] / len(consensus_cols)
-        
-        # Classificar nível
-        def classify_consensus(score):
-            if score >= 0.8:
-                return 'high'
-            elif score >= 0.6:
-                return 'medium'
-            else:
-                return 'low'
-        
-        df['consensus_level'] = df['consensus_score'].apply(classify_consensus)
-        
-        # Casos problemáticos
-        def check_problematic(annotations):
-            counter = Counter(annotations)
-            counts = sorted(counter.values(), reverse=True)
-            return len(counts) >= 2 and counts[0] == counts[1]
-        
-        df['is_problematic'] = df['all_annotations'].apply(check_problematic)
-        
-        # Estatísticas
-        high = (df['consensus_level'] == 'high').sum()
-        medium = (df['consensus_level'] == 'medium').sum()
-        low = (df['consensus_level'] == 'low').sum()
-        problematic = df['is_problematic'].sum()
-        
-        total = len(df)
-        logger.success("Consenso calculado:")
-        logger.info(f"  Alto (≥80%): {high} ({high/total:.1%})")
-        logger.info(f"  Médio (60-80%): {medium} ({medium/total:.1%})")
-        logger.info(f"  Baixo (<60%): {low} ({low/total:.1%})")
-        logger.info(f"  Problemáticos: {problematic} ({problematic/total:.1%})")
-        
-        return df
-    
     def get_cache_stats(self) -> Dict:
         """Retorna estatísticas do cache"""
         return self.cache_manager.stats()
+    
+    
+    def evaluate_model_metrics(
+        self,
+        df: pd.DataFrame,
+        ground_truth_col: str = "ground_truth",
+        output_csv: bool = False
+    ) -> pd.DataFrame:
+        """
+        Calcula métricas por modelo, considerando -1 como classe de erro válida.
+        Não remove as linhas com -1, pois isso faz parte da avaliação.
+        """
+        from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
+
+        logger.info("Calculando métricas por modelo...")
+
+        # ---------------------------------------------
+        # Identificar colunas consensus
+        # ---------------------------------------------
+        model_consensus_cols = {
+            model: f"{model}_consensus"
+            for model in self.models
+            if f"{model}_consensus" in df.columns
+        }
+
+        if len(model_consensus_cols) == 0:
+            logger.error("Nenhuma coluna *_consensus encontrada no DataFrame.")
+            return pd.DataFrame()
+
+        # ---------------------------------------------
+        # Copiar DF e limpar valores inválidos que são erros sistêmicos
+        # (mas manter -1, pois é erro de predição)
+        # ---------------------------------------------
+        df_clean = df.copy()
+
+        for col in model_consensus_cols.values():
+            df_clean[col] = df_clean[col].replace(
+                {"ERROR": -1, None: -1, "": -1, "N/A": -1}
+            )
+
+        # Remover apenas ground truth inválido
+        df_clean = df_clean[df_clean[ground_truth_col].notna()]
+
+        # Garantir tipos inteiros
+        for col in model_consensus_cols.values():
+            df_clean[col] = df_clean[col].astype(int)
+
+        df_clean[ground_truth_col] = df_clean[ground_truth_col].astype(int)
+
+        logger.info(f"Total de linhas avaliadas: {len(df_clean)}")
+
+        # ---------------------------------------------
+        # Calcular métricas
+        # ---------------------------------------------
+        results = []
+
+        for model_name, col in model_consensus_cols.items():
+
+            y_true = df_clean[ground_truth_col]
+            y_pred = df_clean[col]
+
+            # Métricas considerando -1 como classe válida
+            acc = accuracy_score(y_true, y_pred)
+            f1 = f1_score(y_true, y_pred, average="weighted")
+            prec = precision_score(y_true, y_pred, average="weighted", zero_division=0)
+            rec = recall_score(y_true, y_pred, average="weighted", zero_division=0)
+
+            # Coverage: % de predições != -1
+            coverage = (y_pred != -1).mean()
+
+            results.append({
+                "model": model_name,
+                "accuracy": acc,
+                "f1_weighted": f1,
+                "precision_weighted": prec,
+                "recall_weighted": rec,
+                "coverage": coverage,
+                "error_rate": 1 - acc,
+                "invalid_predictions_rate": 1 - coverage
+            })
+            
+            logger.info(f"Métricas para {model_name}: Acc={acc:.4f}, F1={f1:.4f}, Prec={prec:.4f}, Rec={rec:.4f}, Cov={coverage:.4f}")
+
+        df_metrics = pd.DataFrame(results)
+        df_metrics = df_metrics.sort_values("f1_weighted", ascending=False)
+
+        if output_csv:
+            output_path = self.results_dir / "model_metrics.csv"
+            df_metrics.to_csv(output_path, index=False)
+            logger.success(f"Métricas por modelo salvas em: {output_path}")
+
+        logger.success("✓ Métricas calculadas com sucesso")
+
+        return df_metrics
