@@ -21,8 +21,8 @@ DEFAULT_MODELS = [
 # Ajuste 'combine_splits' para combinar múltiplos splits quando necessário. Ex: ["train", "test"]
 DATASET_CONFIG = {
     "split": "train",
-    "combine_splits": None,
-    "sample_size": 100
+    "combine_splits": ["train", "test"],
+    "sample_size": None
 }
 
 
@@ -34,7 +34,6 @@ EXPERIMENT_CONFIG = {
     
     "consensus": {
         "threshold": 0.8,
-        "distance_metrics": ["hamming", "jaccard", "cohen_kappa"],
         "strategy": "majority_vote",
         "no_consensus_strategy": "flag_for_review",
     },
