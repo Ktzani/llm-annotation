@@ -108,7 +108,7 @@ class LLMAnnotator:
             config = LLM_CONFIGS[model]
             expanded.append(model)
 
-            # Add variations
+            # Adicionando variações
             if "alternative_params" in config:
                 for idx, alt in enumerate(config["alternative_params"]):
                     alt_name = f"{model}_alt{idx+1}"
@@ -228,13 +228,10 @@ class LLMAnnotator:
                 )
                 logger.debug(f"Salvos {idx+1} textos")
         
-        # Salvar cache
         self.cache_manager.save()
         
-        # DataFrame final
         df = pd.DataFrame(results)
         
-        # Salvar resultado completo
         output_file = self.results_dir / "annotations_complete.csv"
         df.to_csv(output_file, index=False, encoding='utf-8')
         logger.success(f"Anotações completas salvas: {output_file}")
@@ -259,9 +256,6 @@ class LLMAnnotator:
 
         logger.info("Calculando métricas por modelo...")
 
-        # ---------------------------------------------
-        # Identificar colunas consensus
-        # ---------------------------------------------
         model_consensus_cols = {
             model: f"{model}_consensus"
             for model in self.models
@@ -272,10 +266,6 @@ class LLMAnnotator:
             logger.error("Nenhuma coluna *_consensus encontrada no DataFrame.")
             return pd.DataFrame()
 
-        # ---------------------------------------------
-        # Copiar DF e limpar valores inválidos que são erros sistêmicos
-        # (mas manter -1, pois é erro de predição)
-        # ---------------------------------------------
         df_clean = df.copy()
 
         for col in model_consensus_cols.values():
@@ -283,10 +273,8 @@ class LLMAnnotator:
                 {"ERROR": -1, None: -1, "": -1, "N/A": -1}
             )
 
-        # Remover apenas ground truth inválido
         df_clean = df_clean[df_clean[ground_truth_col].notna()]
 
-        # Garantir tipos inteiros
         for col in model_consensus_cols.values():
             df_clean[col] = df_clean[col].astype(int)
 
@@ -294,9 +282,8 @@ class LLMAnnotator:
 
         logger.info(f"Total de linhas avaliadas: {len(df_clean)}")
 
-        # ---------------------------------------------
+
         # Calcular métricas
-        # ---------------------------------------------
         results = []
 
         for model_name, col in model_consensus_cols.items():

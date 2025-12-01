@@ -21,9 +21,6 @@ class ConsensusCalculator:
         self.conflict_resolution_strategies = CONFLICT_RESOLUTION_STRATEGIES
         self.default_strategy = default_strategy
 
-    # -------------------------------------------------------------------------
-    # MÉTODOS AUXILIARES
-    # -------------------------------------------------------------------------
 
     def _extract_consensus_columns(self, df: pd.DataFrame) -> List[str]:
         consensus_cols = [
@@ -49,7 +46,6 @@ class ConsensusCalculator:
     # -------------------------------------------------------------------------
     # ESTRATÉGIAS DE RESOLUÇÃO DE CONFLITOS
     # -------------------------------------------------------------------------
-
     def _apply_majority_vote(self, annotations: List[Any]) -> Any:
         return Counter(annotations).most_common(1)[0][0]
 

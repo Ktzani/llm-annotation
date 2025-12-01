@@ -97,7 +97,6 @@ class AnnotationEngine:
                 category = self.response_processor.extract_category(response)
                 classifications.append(category)
                 
-                # Rate limiting
                 time.sleep(0.1)
             
             except Exception as e:
@@ -138,7 +137,6 @@ class AnnotationEngine:
         else:
             categories_indexed = self.response_processor.categories
     
-        # Criar string numerada
         categories_str = "\n".join([
             f"- {idx}: {label}"
             for idx, label in categories_indexed.items()
