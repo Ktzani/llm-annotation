@@ -4,10 +4,11 @@
 from src.config.prompts import BASE_ANNOTATION_PROMPT, FEW_SHOT_PROMPT, COT_PROMPT, SIMPLER_PROMPT
 
 CACHE_DIR = "..\..\data\.cache"
+RESULTS_DIR = ""
 
 DEFAULT_MODELS = [
-    # "deepseek-r1-8b",
-    # "qwen3-8b",
+    "deepseek-r1-8b",
+    "qwen3-8b",
     "gemma3-4b",
     "mistral-7b",
     "llama3.1-8b", 
@@ -21,8 +22,9 @@ DEFAULT_MODELS = [
 # Ajuste 'combine_splits' para combinar múltiplos splits quando necessário. Ex: ["train", "test"]
 DATASET_CONFIG = {
     "split": "train",
-    "combine_splits": None,
-    "sample_size": 100
+    "combine_splits": ["train", "test"],
+    "sample_size": 500,
+    "random_state": 42
 }
 
 

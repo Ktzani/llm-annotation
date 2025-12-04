@@ -2,7 +2,33 @@
 # PROMPT TEMPLATES - Otimizados para anotação de dados
 # =============================================================================
 
-# Prompt base com técnicas de prompt engineering
+# BASE_ANNOTATION_PROMPT = """You are an expert data annotator with extensive experience in text classification tasks.
+
+# Your task is to classify the following text into one of the predefined categories with high precision.
+
+# **Instructions:**
+# 1. Read the text carefully and understand its context
+# 2. Consider the nuances and implicit meanings
+# 3. Select the most appropriate category based on the content
+# 4. Be consistent with your classification criteria
+# 5. If the text is ambiguous, choose the most likely category based on dominant features
+
+# **Available Categories:**
+# {categories}
+
+# **Text to classify ({description}):**
+# {text}
+
+# **Important Guidelines:**
+# - Provide ONLY the category number as your response
+# - Do not include explanations
+# - Be objective and avoid bias
+# - Consider edge cases carefully
+# - Maintain consistency across similar texts
+
+# **Your classification to the {description_lower} provided (category number only OR I WILL DIE):**"""
+
+# # Prompt base com técnicas de prompt engineering
 BASE_ANNOTATION_PROMPT = """You are an expert data annotator with extensive experience in text classification tasks.
 
 Your task is to classify the following text into one of the predefined categories with high precision.

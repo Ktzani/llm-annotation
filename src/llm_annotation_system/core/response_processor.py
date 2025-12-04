@@ -4,7 +4,7 @@ Response Processor - Processa e extrai respostas das LLMs
 
 from typing import List
 from loguru import logger
-
+import re
 
 class ResponseProcessor:
     """
@@ -40,12 +40,21 @@ class ResponseProcessor:
         if "CLASSIFICATION:" in response:
             response = response.split("CLASSIFICATION:")[-1].strip()
         
-        # Tentar converter para inteiro
+        # Primeiro tenta converter direto
         try:
             value = int(response)
         except Exception:
-            logger.warning(f"Falha ao converter resposta para inteiro: '{response[:50]}'")
-            return -1
+            # Caso falhe, tenta extrair o primeiro número usando regex
+            match = re.search(r"-?\d+", response)
+            if match:
+                try:
+                    value = int(match.group())
+                except Exception:
+                    logger.warning(f"Regex encontrou um número, mas falhou ao converter: {match.group()}")
+                    return -1
+            else:
+                logger.warning(f"Falha ao converter resposta para inteiro e nenhum número encontrado: '{response[:50]}'")
+                return -1
         
         # Verificar se está nas categorias válidas
         if value in self.categories:

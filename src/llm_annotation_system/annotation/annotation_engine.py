@@ -45,7 +45,7 @@ class AnnotationEngine:
         self.template = self._prepare_template(prompt_template, examples)
         logger.info("Template do prompt preparado")
     
-    def annotate_single(
+    def annotate(
         self,
         text: str,
         model: str,
@@ -96,8 +96,6 @@ class AnnotationEngine:
                 # Extrair categoria
                 category = self.response_processor.extract_category(response)
                 classifications.append(category)
-                
-                time.sleep(0.1)
             
             except Exception as e:
                 logger.error(

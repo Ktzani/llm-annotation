@@ -41,6 +41,7 @@ def load_hf_dataset(
     split = config.get("split", DATASET_CONFIG["split"])
     combine_splits = config.get("combine_splits", DATASET_CONFIG["combine_splits"])
     sample_size = config.get("sample_size", DATASET_CONFIG["sample_size"])
+    random_state = config.get("sample_size", DATASET_CONFIG["random_state"])
 
     try:
         # ================================================================
@@ -94,8 +95,11 @@ def load_hf_dataset(
         # ================================================================
         if sample_size is not None:
             sample_size = min(sample_size, len(dataset))
+            
+            if random_state:
+                dataset = dataset.shuffle(seed=random_state)
             dataset = dataset.select(range(sample_size))
-            logger.info(f"Amostra reduzida para {sample_size} exemplos")
+            logger.info(f"Amostra reduzida para {sample_size} exemplos (seed={random_state})")
 
         # ================================================================
         # EXTRAIR TEXTO

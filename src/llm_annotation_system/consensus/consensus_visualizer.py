@@ -8,7 +8,6 @@ from plotly.subplots import make_subplots
 import pandas as pd
 import numpy as np
 from pathlib import Path
-from typing import List, Dict
 
 
 class ConsensusVisualizer:
@@ -91,14 +90,14 @@ class ConsensusVisualizer:
         
         fig = go.Figure(
             data=go.Heatmap(
-                z=agreement_df.values,
-                x=agreement_df.columns,
-                y=agreement_df.index,
+                z=cleaned_df.values,
+                x=cleaned_df.columns,
+                y=cleaned_df.index,
                 colorscale="Blues",
                 zmin=0,
                 zmax=1,
                 colorbar=dict(title="Taxa de Concordância"),
-                text=np.round(agreement_df.values, 3),
+                text=np.round(cleaned_df.values, 3),
                 texttemplate="%{text}",
             )
         )

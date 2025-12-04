@@ -187,7 +187,8 @@ class ConsensusEvaluator:
         logger.info("\nClassification Report:")
         cls_report = classification_report(
             df_with_consensus[ground_truth_col],
-            df_with_consensus["resolved_annotation"]
+            df_with_consensus["resolved_annotation"],
+            output_dict=True
         )
         print(cls_report)
 

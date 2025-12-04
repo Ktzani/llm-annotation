@@ -153,7 +153,7 @@ class LLMAnnotator:
         Returns:
             Lista de classificações
         """
-        return self.annotation_engine.annotate_single(
+        return self.annotation_engine.annotate(
             text=text,
             model=model,
             llm=self.llms[model],
