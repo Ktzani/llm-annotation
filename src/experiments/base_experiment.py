@@ -32,7 +32,7 @@ EXPERIMENT_CONFIG = {
     "dataset_config": DATASET_CONFIG,
     "default_models": DEFAULT_MODELS,
     "prompt_template": BASE_ANNOTATION_PROMPT,
-    "num_repetitions_per_llm": 3,
+    "num_repetitions_per_llm": 1,
     
     "consensus": {
         "threshold": 0.8,

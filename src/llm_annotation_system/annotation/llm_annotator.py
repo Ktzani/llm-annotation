@@ -21,7 +21,6 @@ from src.experiments.base_experiment import EXPERIMENT_CONFIG
 if EXPERIMENT_CONFIG["cache"].get("enabled", False):
     CACHE_DIR = EXPERIMENT_CONFIG["cache"].get("dir", "../../data/.cache")
 
-
 class LLMAnnotator:
     """
     Classe principal para anotações automáticas
