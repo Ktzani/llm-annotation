@@ -4,7 +4,7 @@ Response Processor - Processa e extrai respostas das LLMs
 
 from typing import List
 from loguru import logger
-
+import re
 
 class ResponseProcessor:
     """
@@ -12,16 +12,15 @@ class ResponseProcessor:
     Responsabilidades: extrair categorias, validar respostas, normalizar output
     """
     
-    def __init__(self, categories: List[str]):
+    def __init__(self, categories: List[int]):
         """
         Args:
             categories: Lista de categorias válidas
         """
         self.categories = categories
-        self.categories_lower = [c.lower() for c in categories]
         logger.debug(f"ResponseProcessor inicializado com {len(categories)} categorias")
     
-    def extract_category(self, response: str) -> str:
+    def extract_category(self, response: str) -> int:
         """
         Extrai categoria da resposta da LLM
         
@@ -29,11 +28,11 @@ class ResponseProcessor:
             response: Resposta completa da LLM
             
         Returns:
-            Categoria extraída
+            Categoria extraída (int) ou -1
         """
-        if response is None:
-            logger.warning("Resposta é None")
-            return "ERROR"
+        if response is None or response.strip() == "":
+            logger.warning("Resposta é None ou ''")
+            return -1
         
         response = response.strip()
         
@@ -41,22 +40,28 @@ class ResponseProcessor:
         if "CLASSIFICATION:" in response:
             response = response.split("CLASSIFICATION:")[-1].strip()
         
-        # Normalizar
-        response_clean = response.lower().strip('.,!?;:"\'')
+        # Primeiro tenta converter direto
+        try:
+            value = int(response)
+        except Exception:
+            # Caso falhe, tenta extrair o primeiro número usando regex
+            match = re.search(r"-?\d+", response)
+            if match:
+                try:
+                    value = int(match.group())
+                except Exception:
+                    logger.warning(f"Regex encontrou um número, mas falhou ao converter: {match.group()}")
+                    return -1
+            else:
+                logger.warning(f"Falha ao converter resposta para inteiro e nenhum número encontrado: '{response[:50]}'")
+                return -1
         
-        # Correspondência exata
-        for i, category_lower in enumerate(self.categories_lower):
-            if category_lower == response_clean:
-                return self.categories[i]
+        # Verificar se está nas categorias válidas
+        if value in self.categories:
+            return value
         
-        # Correspondência parcial
-        for i, category_lower in enumerate(self.categories_lower):
-            if category_lower in response_clean or response_clean in category_lower:
-                return self.categories[i]
-        
-        # Não encontrou
-        logger.warning(f"Categoria não encontrada em: '{response[:50]}'")
-        return response[:50]  # Limitar tamanho
+        logger.warning(f"Categoria {value} não está na lista de válidas: {self.categories}")
+        return -1
     
     def validate_response(self, response: str) -> bool:
         """
@@ -68,8 +73,5 @@ class ResponseProcessor:
         Returns:
             True se válida
         """
-        if response is None or response == "ERROR":
-            return False
-        
         category = self.extract_category(response)
         return category in self.categories

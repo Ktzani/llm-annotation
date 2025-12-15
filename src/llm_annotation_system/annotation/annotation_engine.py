@@ -5,18 +5,14 @@ Annotation Engine - Motor de anotação
 import time
 from typing import List, Dict, Optional
 from loguru import logger
+import traceback
 
-from llm_provider import LLMProvider
-from cache_manager import CacheManager
-from response_processor import ResponseProcessor
+from src.llm_annotation_system.core.llm_provider import LLMProvider
+from src.llm_annotation_system.core.cache_manager import CacheManager
+from src.llm_annotation_system.core.response_processor import ResponseProcessor
 
-import sys
-from pathlib import Path
-config_path = Path(__file__).parent.parent / 'config'
-sys.path.insert(0, str(config_path))
-
-from prompts import BASE_ANNOTATION_PROMPT, FEW_SHOT_PROMPT
-
+from src.config.datasets_collected import DATASETS, LABEL_MEANINGS
+from src.config.prompts import BASE_ANNOTATION_PROMPT, FEW_SHOT_PROMPT, SIMPLER_PROMPT
 
 class AnnotationEngine:
     """
@@ -28,7 +24,10 @@ class AnnotationEngine:
         self,
         llm_provider: LLMProvider,
         cache_manager: CacheManager,
-        response_processor: ResponseProcessor
+        response_processor: ResponseProcessor,
+        dataset_name: str,
+        prompt_template: str = BASE_ANNOTATION_PROMPT,
+        examples: Optional[List[Dict]] = None,
     ):
         """
         Args:
@@ -37,18 +36,21 @@ class AnnotationEngine:
             response_processor: Processador de respostas
         """
         self.llm_provider = llm_provider
-        self.cache = cache_manager
-        self.processor = response_processor
-        logger.debug("AnnotationEngine inicializado")
+        self.cache_manager = cache_manager
+        self.response_processor = response_processor
+        self.dataset_name = dataset_name
+        logger.debug(f"AnnotationEngine inicializado para dataset: {dataset_name}")
+        
+        # Preparar template
+        self.template = self._prepare_template(prompt_template, examples)
+        logger.info("Template do prompt preparado")
     
-    def annotate_single(
+    def annotate(
         self,
         text: str,
         model: str,
         llm: any,
         num_repetitions: int = 1,
-        prompt_template: str = BASE_ANNOTATION_PROMPT,
-        examples: Optional[List[Dict]] = None,
         use_cache: bool = True
     ) -> List[str]:
         """
@@ -68,43 +70,40 @@ class AnnotationEngine:
         """
         classifications = []
         
-        # Preparar template
-        template = self._prepare_template(prompt_template, examples)
-        
         # Criar chain
         chain = self.llm_provider.create_chain(
             llm=llm,
-            template=template,
-            variables={"text": text}
+            template=self.template,
         )
         
         for rep in range(num_repetitions):
             try:
                 # Verificar cache
-                cache_key = self.cache.get_key(model, text, {"rep": rep})
+                cache_key = self.cache_manager.get_key(model, text, {"rep": rep})
                 
                 if use_cache:
-                    cached = self.cache.get(cache_key)
+                    cached = self.cache_manager.get(cache_key)
                     if cached:
                         response = cached
                         logger.debug(f"{model} rep {rep+1}: cache hit")
                     else:
                         response = self._invoke_chain(chain, text)
-                        self.cache.set(cache_key, response)
+                        self.cache_manager.set(cache_key, response)
                         logger.debug(f"{model} rep {rep+1}: cache miss")
                 else:
                     response = self._invoke_chain(chain, text)
                 
                 # Extrair categoria
-                category = self.processor.extract_category(response)
+                category = self.response_processor.extract_category(response)
                 classifications.append(category)
-                
-                # Rate limiting
-                time.sleep(0.1)
             
             except Exception as e:
-                logger.error(f"Erro em {model} rep {rep+1}: {str(e)}")
+                logger.error(
+                    f"Erro em {model} rep {rep+1}: {str(e)}\n"
+                    f"{traceback.format_exc()}"
+                )
                 classifications.append("ERROR")
+                
         
         return classifications
     
@@ -114,17 +113,34 @@ class AnnotationEngine:
         examples: Optional[List[Dict]] = None
     ) -> str:
         """
-        Prepara template do prompt
-        
+        Prepara template do prompt com categorias específicas do dataset.
+
         Args:
             prompt_template: Template base
             examples: Exemplos para few-shot
-            
+
         Returns:
             Template formatado
         """
-        categories_str = "\n".join([f"- {cat}" for cat in self.processor.categories])
-        
+
+        # Primeiro tentamos obter a descrição a partir de LABEL_MEANINGS
+        if self.dataset_name in LABEL_MEANINGS:
+            categories_indexed = LABEL_MEANINGS[self.dataset_name]
+    
+        # Se não tiver em LABEL_MEANINGS, usamos categories do processor
+        elif isinstance(self.response_processor.categories, list):
+            categories_indexed = {
+                str(i): cat for i, cat in enumerate(self.response_processor.categories)
+            }
+        else:
+            categories_indexed = self.response_processor.categories
+    
+        categories_str = "\n".join([
+            f"- {idx}: {label}"
+            for idx, label in categories_indexed.items()
+        ])
+    
+        # Few-shot
         if examples and prompt_template == FEW_SHOT_PROMPT:
             examples_str = "\n\n".join([
                 f"Text: {ex['text']}\nCategory: {ex['category']}"
@@ -136,7 +152,11 @@ class AnnotationEngine:
                 categories=categories_str
             )
         
+
+        description = DATASETS.get(self.dataset_name, {}).get("prompt", "Text")
         return prompt_template.format(
+            description=description,
+            description_lower=description.lower(),
             text="{text}",
             categories=categories_str
         )
