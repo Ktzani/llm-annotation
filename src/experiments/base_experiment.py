@@ -2,9 +2,10 @@
 # CONFIGURAÇÕES DO EXPERIMENTO BÁSICO
 # =============================================================================
 from src.config.prompts import BASE_ANNOTATION_PROMPT, FEW_SHOT_PROMPT, COT_PROMPT, SIMPLER_PROMPT
+from src.llm_annotation_system.annotation.execution_estrategy import ExecutionStrategy
 
 CACHE_DIR = "..\..\data\.cache"
-RESULTS_DIR = ""
+RESULTS_DIR = "..\..\data\\results"
 
 DEFAULT_MODELS = [
     "deepseek-r1-8b",
@@ -23,8 +24,8 @@ DEFAULT_MODELS = [
 DATASET_CONFIG = {
     "split": "train",
     "combine_splits": ["train", "test"],
-    "sample_size": 500,
-    "random_state": 42
+    "sample_size": 10,
+    "random_state": 42,
 }
 
 
@@ -32,7 +33,12 @@ EXPERIMENT_CONFIG = {
     "dataset_config": DATASET_CONFIG,
     "default_models": DEFAULT_MODELS,
     "prompt_template": BASE_ANNOTATION_PROMPT,
+    
     "num_repetitions_per_llm": 1,
+    "use_alternative_params": False,
+    
+    "model_strategy": ExecutionStrategy.PARALLEL,
+    "rep_strategy": ExecutionStrategy.PARALLEL,
     
     "consensus": {
         "threshold": 0.8,

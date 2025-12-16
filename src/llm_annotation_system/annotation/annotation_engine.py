@@ -12,7 +12,7 @@ from src.llm_annotation_system.core.response_processor import ResponseProcessor
 from src.llm_annotation_system.annotation.execution_estrategy import ExecutionStrategy
 
 from src.config.datasets_collected import DATASETS, LABEL_MEANINGS
-from src.config.prompts import BASE_ANNOTATION_PROMPT, FEW_SHOT_PROMPT, SIMPLER_PROMPT
+from src.config.prompts import BASE_ANNOTATION_PROMPT, FEW_SHOT_PROMPT
 
 class AnnotationEngine:
     """
