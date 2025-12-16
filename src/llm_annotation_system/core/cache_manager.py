@@ -127,17 +127,23 @@ class LangChainCacheManager:
         self.cache_dir.mkdir(exist_ok=True, parents=True)
         self.enabled = enabled
         
-        if enabled:
-            self._setup()
+        self._setup()
     
     def _setup(self):
-        """Configura cache SQLite do LangChain"""
+        from langchain.globals import set_llm_cache, get_llm_cache
+
+        if not self.enabled:
+            # 🔥 ISSO É O QUE ESTAVA FALTANDO
+            set_llm_cache(None)
+            logger.info("Cache LangChain DESATIVADO explicitamente")
+            return
+
         try:
             from langchain.cache import SQLiteCache
-            from langchain.globals import set_llm_cache
-            
+
             cache_file = self.cache_dir / "langchain_cache.db"
             set_llm_cache(SQLiteCache(database_path=str(cache_file)))
             logger.info(f"Cache LangChain ativado: {cache_file}")
+
         except ImportError:
             logger.warning("langchain.cache não disponível - cache desativado")

@@ -2,14 +2,14 @@
 Annotation Engine - Motor de anotação
 """
 
-import time
 from typing import List, Dict, Optional
 from loguru import logger
-import traceback
+import asyncio
 
 from src.llm_annotation_system.core.llm_provider import LLMProvider
 from src.llm_annotation_system.core.cache_manager import CacheManager
 from src.llm_annotation_system.core.response_processor import ResponseProcessor
+from src.llm_annotation_system.annotation.execution_estrategy import ExecutionStrategy
 
 from src.config.datasets_collected import DATASETS, LABEL_MEANINGS
 from src.config.prompts import BASE_ANNOTATION_PROMPT, FEW_SHOT_PROMPT, SIMPLER_PROMPT
@@ -44,14 +44,47 @@ class AnnotationEngine:
         # Preparar template
         self.template = self._prepare_template(prompt_template, examples)
         logger.info("Template do prompt preparado")
+        
+    async def _annotate_rep(
+        self,
+        chain: any,
+        text: str,
+        model: str,
+        rep: int,
+        use_cache: bool
+    ) -> int:
+        try:
+            cache_key = self.cache_manager.get_key(model, text, {"rep": rep})
+
+            if use_cache:
+                cached = self.cache_manager.get(cache_key)
+                if cached:
+                    response = cached
+                    logger.debug(f"{model} rep {rep+1}: cache hit")
+                else:
+                    response = await self._ainvoke_chain(chain, text)
+                    self.cache_manager.set(cache_key, response)
+                    logger.debug(f"{model} rep {rep+1}: cache miss")
+            else:
+                response = await self._ainvoke_chain(chain, text)
+
+            return self.response_processor.extract_category(response)
+
+        except Exception as e:
+            logger.error(
+                f"Erro em {model} rep {rep+1}: {str(e)}",
+                exc_info=True
+            )
+            return "ERROR"
     
-    def annotate(
+    async def annotate(
         self,
         text: str,
         model: str,
         llm: any,
         num_repetitions: int = 1,
-        use_cache: bool = True
+        use_cache: bool = True,
+        rep_strategy: ExecutionStrategy = ExecutionStrategy.SEQUENTIAL
     ) -> List[str]:
         """
         Anota um texto com múltiplas repetições
@@ -76,36 +109,32 @@ class AnnotationEngine:
             template=self.template,
         )
         
-        for rep in range(num_repetitions):
-            try:
-                # Verificar cache
-                cache_key = self.cache_manager.get_key(model, text, {"rep": rep})
-                
-                if use_cache:
-                    cached = self.cache_manager.get(cache_key)
-                    if cached:
-                        response = cached
-                        logger.debug(f"{model} rep {rep+1}: cache hit")
-                    else:
-                        response = self._invoke_chain(chain, text)
-                        self.cache_manager.set(cache_key, response)
-                        logger.debug(f"{model} rep {rep+1}: cache miss")
-                else:
-                    response = self._invoke_chain(chain, text)
-                
-                # Extrair categoria
-                category = self.response_processor.extract_category(response)
-                classifications.append(category)
-            
-            except Exception as e:
-                logger.error(
-                    f"Erro em {model} rep {rep+1}: {str(e)}\n"
-                    f"{traceback.format_exc()}"
+        # ===============================
+        # 🔁 SEQUENCIAL
+        # ===============================
+        if rep_strategy == ExecutionStrategy.SEQUENTIAL:
+            for rep in range(num_repetitions):
+                result = await self._annotate_rep(
+                    chain, text, model, rep, use_cache
                 )
-                classifications.append("ERROR")
-                
+                classifications.append(result)
+            return classifications
+
+        # ===============================
+        # 🚀 PARALELO
+        # ===============================
+        elif rep_strategy == ExecutionStrategy.PARALLEL:
+            tasks = [
+                self._annotate_rep(chain, text, model, rep, use_cache)
+                for rep in range(num_repetitions)
+            ]
+            return await asyncio.gather(*tasks)
         
-        return classifications
+        else: 
+            raise ValueError(
+                f"rep_strategy inválida: {rep_strategy}. "
+                f"Use ExecutionStrategy.SEQUENTIAL ou ExecutionStrategy.PARALLEL."
+            )
     
     def _prepare_template(
         self,
@@ -173,3 +202,6 @@ class AnnotationEngine:
             Resposta da LLM
         """
         return chain.invoke({"text": text})
+    
+    async def _ainvoke_chain(self, chain: any, text: str) -> str:
+        return await chain.ainvoke({"text": text})
