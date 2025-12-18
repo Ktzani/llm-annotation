@@ -1,3 +1,4 @@
+import uvicorn
 from fastapi import FastAPI
 
 from src.api.core.config import setup_logger, setup_cors
@@ -33,3 +34,18 @@ async def root():
             "GET /health": "Health check"
         }
     }
+
+
+def server():
+    """
+    Ponto de entrada da aplicação
+    """
+    uvicorn.run(
+        "src.api.server:app",  # ajuste o path se o arquivo tiver outro nome
+        reload=True,        # útil em desenvolvimento
+        log_level="info",
+    )
+
+
+if __name__ == "__main__":
+    server()
