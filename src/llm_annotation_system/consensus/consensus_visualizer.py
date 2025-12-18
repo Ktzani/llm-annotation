@@ -3,7 +3,6 @@ Visualization Module - Visualizações para análise de consenso (versão 100% P
 """
 
 import plotly.graph_objects as go
-import plotly.express as px
 from plotly.subplots import make_subplots
 import pandas as pd
 import numpy as np

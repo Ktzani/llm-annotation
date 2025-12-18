@@ -4,7 +4,7 @@ Consensus Metrics - Cálculo de métricas de concordância
 
 import numpy as np
 import pandas as pd
-from typing import List, Dict, Tuple
+from typing import List
 from collections import Counter
 from scipy.stats import entropy
 from sklearn.metrics import cohen_kappa_score

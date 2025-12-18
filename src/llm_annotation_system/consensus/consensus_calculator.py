@@ -4,8 +4,6 @@ from collections import Counter
 from loguru import logger
 
 from src.config.conflict_resolution import CONFLICT_RESOLUTION_STRATEGIES
-
-
 class ConsensusCalculator:
     """
     Calcula consenso e aplica estratégias de resolução de conflitos

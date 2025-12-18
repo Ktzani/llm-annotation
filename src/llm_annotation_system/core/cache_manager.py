@@ -139,7 +139,7 @@ class LangChainCacheManager:
             return
 
         try:
-            from langchain.cache import SQLiteCache
+            from langchain_community.cache import SQLiteCache
 
             cache_file = self.cache_dir / "langchain_cache.db"
             set_llm_cache(SQLiteCache(database_path=str(cache_file)))

@@ -2,11 +2,12 @@ from typing import List, Dict, Optional, Tuple
 import pandas as pd
 from loguru import logger
 
+from src.api.schemas.dataset import DatasetConfig
+
 import sys
 import os
 
 from src.config.datasets_collected import DATASETS, LABEL_MEANINGS
-from src.experiments.base_experiment import DATASET_CONFIG, CACHE_DIR
 from datasets import load_dataset, concatenate_datasets
 
 logger.remove()
@@ -15,7 +16,10 @@ logger.add(sys.stderr, level="INFO",
 
 def load_hf_dataset(
     dataset_name: str,
-    config: Optional[Dict] = None
+    cache_dir: str,
+    dataset_global_config: DatasetConfig,
+    dataset_specific_config: Optional[Dict] = None
+    
 ) -> Tuple[List[str], List[str], Optional[List[str]]]:
     """
     Carrega um dataset do HuggingFace usando as configurações globais + específicas.
@@ -23,25 +27,25 @@ def load_hf_dataset(
     # ------------------------------
     # 1. Buscar config do dataset
     # ------------------------------
-    if config is None:
+    if dataset_specific_config is None:
         if dataset_name not in DATASETS:
             raise ValueError(
                 f"Dataset '{dataset_name}' não encontrado.\n"
                 f"Datasets disponíveis: {list(DATASETS.keys())}"
             )
-        config = DATASETS[dataset_name].copy()
+        dataset_specific_config = DATASETS[dataset_name].copy()
 
     logger.info(f"Carregando dataset: {dataset_name}")
-    logger.debug(f"Configuração específica: {config}")
-    logger.debug(f"Configuração global: {DATASET_CONFIG}")
+    logger.debug(f"Configuração específica: {dataset_specific_config}")
+    logger.debug(f"Configuração global: {dataset_global_config}")
 
     # ------------------------------
     # 2. Configurações globais
     # ------------------------------
-    split = config.get("split", DATASET_CONFIG["split"])
-    combine_splits = config.get("combine_splits", DATASET_CONFIG["combine_splits"])
-    sample_size = config.get("sample_size", DATASET_CONFIG["sample_size"])
-    random_state = config.get("sample_size", DATASET_CONFIG["random_state"])
+    split = dataset_specific_config.get("split", dataset_global_config.split)
+    combine_splits = dataset_specific_config.get("combine_splits", dataset_global_config.combine_splits)
+    sample_size = dataset_specific_config.get("sample_size", dataset_global_config.sample_size)
+    random_state = dataset_specific_config.get("sample_size", dataset_global_config.random_state)
 
     try:
         # ================================================================
@@ -53,7 +57,7 @@ def load_hf_dataset(
 
             for sp in combine_splits:
                 try:
-                    ds = load_dataset(config['path'], split=sp, cache_dir=os.path.join(CACHE_DIR, "hf"))
+                    ds = load_dataset(dataset_specific_config['path'], split=sp, cache_dir=os.path.join(cache_dir, "hf"))
                     logger.info(f"  ✓ {sp}: {len(ds)} exemplos")
                     datasets_list.append(ds)
                 except Exception as e:
@@ -70,17 +74,17 @@ def load_hf_dataset(
         # ================================================================
         else:
             dataset = load_dataset(
-                config["path"],
+                dataset_specific_config["path"],
                 split=split,
-                cache_dir=os.path.join(CACHE_DIR, "hf")
+                cache_dir=os.path.join(cache_dir, "hf")
             )
             logger.info(f"Split '{split}': {len(dataset)} exemplos")
             
         # ================================================================
         # EXTRAIR CATEGORIAS
         # ================================================================
-        label_column = config.get("label_column")
-        categories = config.get("categories")
+        label_column = dataset_specific_config.get("label_column")
+        categories = dataset_specific_config.get("categories")
 
         if categories is None:
             if label_column and label_column in dataset.column_names:
@@ -104,7 +108,7 @@ def load_hf_dataset(
         # ================================================================
         # EXTRAIR TEXTO
         # ================================================================
-        text_column = config["text_column"]
+        text_column = dataset_specific_config["text_column"]
         if text_column not in dataset.column_names:
             raise ValueError(
                 f"Coluna de texto '{text_column}' não encontrada.\n"
@@ -145,10 +149,17 @@ def add_label_description(df, dataset_name):
 
 def load_hf_dataset_as_dataframe(
     dataset_name: str,
-    config: Optional[Dict] = None
+    cache_dir: str,
+    dataset_global_config: Dict,
+    dataset_specific_config: Optional[Dict] = None
 ) -> pd.DataFrame:
 
-    texts, categories, ground_truth = load_hf_dataset(dataset_name, config)
+    texts, categories, ground_truth = load_hf_dataset(
+        dataset_name, 
+        cache_dir, 
+        dataset_global_config, 
+        dataset_specific_config
+    )
 
     df = pd.DataFrame({
         "text": texts

@@ -8,7 +8,6 @@ from tqdm import tqdm
 from collections import Counter
 from loguru import logger
 import asyncio
-import time
 
 from src.llm_annotation_system.core.llm_provider import LLMProvider
 from src.llm_annotation_system.core.cache_manager import CacheManager, LangChainCacheManager
@@ -19,10 +18,6 @@ from src.llm_annotation_system.annotation.execution_estrategy import ExecutionSt
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 
 from src.config.prompts import BASE_ANNOTATION_PROMPT
-from src.experiments.base_experiment import EXPERIMENT_CONFIG
-
-if EXPERIMENT_CONFIG["cache"].get("enabled", False):
-    CACHE_DIR = EXPERIMENT_CONFIG["cache"].get("dir", "../../data/.cache")
 
 class LLMAnnotator:
     """
@@ -40,11 +35,11 @@ class LLMAnnotator:
         dataset_name: str,
         models: List[str],
         categories: List[str],
+        cache_dir: str,
+        results_dir: str,
         prompt_template = BASE_ANNOTATION_PROMPT,
         examples: Optional[List[Dict]] = None,
         api_keys: Optional[Dict[str, str]] = None,
-        cache_dir: str = CACHE_DIR,
-        results_dir: str = "../../results",
         use_langchain_cache: bool = True,
         use_alternative_params: bool = False
     ):
@@ -171,6 +166,7 @@ class LLMAnnotator:
         texts: List[str],
         num_repetitions: Optional[int] = None,
         save_intermediate: bool = True,
+        intermediate: int = 10,
         use_cache: bool = True,
         model_strategy: ExecutionStrategy = ExecutionStrategy.SEQUENTIAL,
         rep_strategy: ExecutionStrategy = ExecutionStrategy.SEQUENTIAL
@@ -190,8 +186,6 @@ class LLMAnnotator:
         Returns:
             DataFrame com anotações
         """
-        if num_repetitions is None:
-            num_repetitions = EXPERIMENT_CONFIG.get("num_repetitions_per_llm", 3)
             
         total_annotations = len(texts) * len(self.models) * num_repetitions
         
@@ -244,7 +238,7 @@ class LLMAnnotator:
             results.append(text_results)
 
             # Salvar resultados intermediários
-            if save_intermediate and (idx + 1) % 10 == 0:
+            if save_intermediate and (idx + 1) % intermediate == 0:
                 pd.DataFrame(results).to_csv(
                     self.results_dir / f"intermediate_{idx+1}.csv",
                     index=False,
@@ -307,7 +301,8 @@ class LLMAnnotator:
         self,
         df: pd.DataFrame,
         ground_truth_col: str = "ground_truth",
-        output_csv: bool = False
+        output_csv: bool = False,
+        output_dir: Optional[Path] = None
     ) -> pd.DataFrame:
         """
         Calcula métricas por modelo, considerando -1 como classe de erro válida.
@@ -377,7 +372,9 @@ class LLMAnnotator:
         df_metrics = df_metrics.sort_values("f1_weighted", ascending=False)
 
         if output_csv:
-            output_path = self.results_dir / "model_metrics.csv"
+            if output_dir is None:
+                output_dir = self.results_dir
+            output_path = output_dir / "model_metrics.csv"
             df_metrics.to_csv(output_path, index=False)
             logger.success(f"Métricas por modelo salvas em: {output_path}")
 

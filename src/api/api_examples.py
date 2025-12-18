@@ -106,21 +106,26 @@ def exemplo_avancado():
     
     config = {
         "dataset_name": "sst2",
-        "models": ["gemma3-4b", "mistral-7b", "qwen3-8b"],
-        "prompt_type": "chain_of_thought",
-        "num_repetitions_per_llm": 3,
+        "models": ["gemma3-4b", "mistral-7b"],
+
         "dataset_config": {
             "sample_size": 50,
             "random_state": 42
         },
-        "consensus": {
-            "threshold": 0.7,
-            "strategy": "majority_vote"
+
+        "annotation": {
+            "num_repetitions_per_llm": 1,
+            "model_strategy": "parallel",
+            "rep_strategy": "parallel"
         },
-        "model_strategy": "parallel",
-        "rep_strategy": "sequential",
-        "save_intermediate": True,
-        "results_dir": "results/experimento_avancado"
+
+        "cache": {
+            "enabled": False
+        },
+
+        "results": {
+            "save_intermediate": True
+        }
     }
     
     print("\nConfiguração:")
