@@ -25,8 +25,8 @@ class ConsensusEvaluator:
 
     def __init__(
         self,
-        categories: List[int],
         calculator: ConsensusCalculator,
+        categories: List[int],
         output_dir: Optional[str] = './results'
     ):
         """
@@ -34,8 +34,9 @@ class ConsensusEvaluator:
             categories: Lista de categorias válidas
             calculator: Instância de ConsensusCalculator (injecção de dependência)
         """
-        self.categories = categories
         self.calculator = calculator  # componente externo que calcula consenso interno
+        self.categories = categories
+
         
         output_path = Path(output_dir)
         output_path = output_path.joinpath("consensus")

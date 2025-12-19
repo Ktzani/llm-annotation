@@ -9,7 +9,7 @@ from pathlib import Path
 from loguru import logger
 import pandas as pd
 
-from src.utils.data_loader import load_hf_dataset, list_available_datasets
+from src.utils.data_loader import load_hf_dataset
 from src.llm_annotation_system.annotation.llm_annotator import LLMAnnotator
 from src.llm_annotation_system.consensus.consensus_calculator import ConsensusCalculator
 from src.llm_annotation_system.consensus.consensus_evaluator import ConsensusEvaluator
@@ -47,12 +47,13 @@ def load_dataset(dataset_name: str):
     return texts, categories, ground_truth
 
 
-def initialize_annotator(dataset_name: str, categories: list, use_alternative_params: bool = False):
+def initialize_annotator(dataset_name: str, categories: list):
     """Inicializa o LLMAnnotator"""
     logger.info("Inicializando annotator...")
     
     DEFAULT_MODELS = EXPERIMENT_CONFIG["default_models"]
     PROMPT_TEMPLATE = EXPERIMENT_CONFIG["prompt_template"]
+    USE_ALTERNATIVE_PARAMS = EXPERIMENT_CONFIG["use_alternative_params"]
     
     annotator = LLMAnnotator(
         dataset_name=dataset_name,
@@ -60,7 +61,7 @@ def initialize_annotator(dataset_name: str, categories: list, use_alternative_pa
         models=DEFAULT_MODELS,
         prompt_template=PROMPT_TEMPLATE,
         use_langchain_cache=True,
-        use_alternative_params=use_alternative_params
+        use_alternative_params=USE_ALTERNATIVE_PARAMS
     )
     
     logger.success(f"✓ Annotator inicializado com {len(annotator.models)} modelos")
@@ -68,26 +69,18 @@ def initialize_annotator(dataset_name: str, categories: list, use_alternative_pa
 
 
 def run_annotation(annotator: LLMAnnotator, texts: list, num_repetitions: int = 1, 
-                   use_cache: bool = True, use_old_annotations: bool = False):
-    """Executa a anotação do dataset"""
-    output_file = annotator.results_dir / "annotations_complete.csv"
+                   use_cache: bool = True):
     
-    if use_old_annotations and output_file.exists():
-        logger.warning(f"Arquivo já existe: {output_file}")
-        logger.warning("Carregando anotações salvas e pulando anotação...")
-        df_annotations = pd.read_csv(output_file)
-        logger.success("✓ Anotações carregadas do disco")
-    else:
-        logger.info("Iniciando anotação")
-        logger.info(f"Textos: {len(texts)} | Modelos: {len(annotator.models)} | Repetições: {num_repetitions}")
-        logger.info(f"Total de anotações: {len(texts) * len(annotator.models) * num_repetitions}")
-        
-        df_annotations = annotator.annotate_dataset(
-            texts=texts,
-            num_repetitions=num_repetitions,
-            use_cache=use_cache
-        )
-        logger.success("✓ Anotações completas")
+    logger.info("Iniciando anotação")
+    logger.info(f"Textos: {len(texts)} | Modelos: {len(annotator.models)} | Repetições: {num_repetitions}")
+    logger.info(f"Total de anotações: {len(texts) * len(annotator.models) * num_repetitions}")
+
+    df_annotations = annotator.annotate_dataset(
+        texts=texts,
+        num_repetitions=num_repetitions,
+        use_cache=use_cache
+    )
+    logger.success("✓ Anotações completas")
     
     return df_annotations
 
@@ -309,20 +302,17 @@ def main():
     
     # Parâmetros
     dataset_name = "sst1"  # Ajuste conforme necessário
-    num_repetitions = 1
-    use_cache = True
-    use_old_annotations = False  # True para usar anotações já salvas
-    use_alternative_params = False  # True para usar parâmetros alternativos
+    num_repetitions = EXPERIMENT_CONFIG["num_repetitions_per_llm"]
     
     # 1. Carregar dataset
     texts, categories, ground_truth = load_dataset(dataset_name)
     
     # 2. Inicializar annotator
-    annotator = initialize_annotator(dataset_name, categories, use_alternative_params)
+    annotator = initialize_annotator(dataset_name, categories)
     
     # 3. Executar anotação
     df_annotations = run_annotation(
-        annotator, texts, num_repetitions, use_cache, use_old_annotations
+        annotator, texts, num_repetitions
     )
     
     # 4. Métricas por modelo

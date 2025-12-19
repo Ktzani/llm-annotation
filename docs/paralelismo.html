@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arquitetura de Anotação Paralela - ECS Task com Async LangChain</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        h1 {
+            text-align: center;
+            color: #2d3748;
+            font-size: 2.8em;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #718096;
+            font-size: 1.3em;
+            margin-bottom: 15px;
+        }
+
+        .tech-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-weight: bold;
+            margin: 5px;
+            font-size: 0.9em;
+        }
+
+        .badges-container {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        /* AWS CLOUD CONTAINER */
+        .aws-cloud {
+            background: linear-gradient(135deg, #FF9900 0%, #FF6600 100%);
+            border-radius: 20px;
+            padding: 40px;
+            margin-bottom: 40px;
+            position: relative;
+            box-shadow: 0 10px 30px rgba(255, 153, 0, 0.3);
+        }
+
+        .cloud-label {
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #FF9900;
+            color: white;
+            padding: 10px 30px;
+            border-radius: 25px;
+            font-weight: bold;
+            font-size: 1.2em;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        /* ECS CLUSTER */
+        .ecs-cluster {
+            background: rgba(255,255,255,0.2);
+            border: 3px dashed rgba(255,255,255,0.6);
+            border-radius: 15px;
+            padding: 30px;
+            margin-top: 30px;
+        }
+
+        .cluster-label {
+            color: white;
+            font-weight: bold;
+            font-size: 1.1em;
+            margin-bottom: 20px;
+            text-align: center;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        /* ECS TASK */
+        .ecs-task {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+        }
+
+        .task-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .task-specs {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-top: 15px;
+            font-size: 0.9em;
+        }
+
+        .spec-item {
+            background: rgba(255,255,255,0.2);
+            padding: 8px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        /* FLUXO PRINCIPAL */
+        .main-flow {
+            margin-top: 30px;
+        }
+
+        .flow-step {
+            background: #f7fafc;
+            border-left: 6px solid #4299e1;
+            padding: 20px;
+            padding-left: 80px;
+            margin: 20px 0;
+            border-radius: 10px;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .flow-step:hover {
+            background: #edf2f7;
+            transform: translateX(10px);
+        }
+
+        .step-number {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: linear-gradient(135deg, #4299e1 0%, #667eea 100%);
+            color: white;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.3em;
+            box-shadow: 0 4px 12px rgba(66, 153, 225, 0.4);
+        }
+
+        .step-title {
+            font-weight: bold;
+            font-size: 1.2em;
+            color: #2d3748;
+            margin-bottom: 8px;
+        }
+
+        .step-description {
+            color: #4a5568;
+            line-height: 1.6;
+        }
+
+        /* ASYNC PARALELO - NÚCLEO DA ARQUITETURA */
+        .async-container {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            border-radius: 15px;
+            padding: 35px;
+            margin: 30px 0;
+            box-shadow: 0 10px 30px rgba(17, 153, 142, 0.3);
+            position: relative;
+        }
+
+        .async-badge {
+            position: absolute;
+            top: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #0f766e;
+            color: white;
+            padding: 8px 25px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.95em;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        .async-title {
+            text-align: center;
+            color: white;
+            font-weight: bold;
+            font-size: 1.5em;
+            margin: 20px 0 30px 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .async-subtitle {
+            text-align: center;
+            color: rgba(255,255,255,0.9);
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+
+        /* MODELOS EM ASYNC */
+        .models-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .model-card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px 15px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transition: all 0.4s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .model-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent);
+            transition: left 0.5s;
+        }
+
+        .model-card:hover::before {
+            left: 100%;
+        }
+
+        .model-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+
+        .model-icon {
+            font-size: 2.5em;
+            margin-bottom: 12px;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .model-card:nth-child(1) .model-icon { animation-delay: 0s; }
+        .model-card:nth-child(2) .model-icon { animation-delay: 0.2s; }
+        .model-card:nth-child(3) .model-icon { animation-delay: 0.4s; }
+        .model-card:nth-child(4) .model-icon { animation-delay: 0.6s; }
+        .model-card:nth-child(5) .model-icon { animation-delay: 0.8s; }
+
+        .model-name {
+            font-weight: bold;
+            color: #2d3748;
+            margin-bottom: 8px;
+            font-size: 1em;
+        }
+
+        .model-status {
+            color: #48bb78;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+
+        .async-note {
+            background: rgba(255,255,255,0.2);
+            border-radius: 10px;
+            padding: 15px;
+            color: white;
+            text-align: center;
+            margin-top: 20px;
+            font-size: 0.95em;
+            border: 2px solid rgba(255,255,255,0.3);
+        }
+
+        /* CÓDIGO ASYNC */
+        .code-block {
+            background: #2d3748;
+            color: #f7fafc;
+            padding: 20px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            overflow-x: auto;
+            margin: 20px 0;
+            box-shadow: inset 0 2px 10px rgba(0,0,0,0.3);
+        }
+
+        .code-comment {
+            color: #68d391;
+        }
+
+        .code-keyword {
+            color: #f687b3;
+            font-weight: bold;
+        }
+
+        .code-function {
+            color: #90cdf4;
+        }
+
+        /* SETAS E CONECTORES */
+        .arrow-down {
+            text-align: center;
+            font-size: 3em;
+            color: #4299e1;
+            margin: 15px 0;
+            animation: bounce 2s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-15px); }
+        }
+
+        /* STORAGE */
+        .storage-section {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 25px;
+            margin: 30px 0;
+        }
+
+        .storage-box {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            border-radius: 12px;
+            padding: 25px;
+            color: white;
+            text-align: center;
+            box-shadow: 0 8px 20px rgba(240, 147, 251, 0.3);
+            transition: transform 0.3s ease;
+        }
+
+        .storage-box:hover {
+            transform: scale(1.05);
+        }
+
+        .storage-icon {
+            font-size: 3.5em;
+            margin-bottom: 15px;
+        }
+
+        .storage-title {
+            font-weight: bold;
+            font-size: 1.3em;
+            margin-bottom: 10px;
+        }
+
+        .storage-desc {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        /* TIMELINE DE PERFORMANCE */
+        .performance-section {
+            background: #f7fafc;
+            border-radius: 15px;
+            padding: 30px;
+            margin: 40px 0;
+        }
+
+        .performance-title {
+            text-align: center;
+            font-size: 1.8em;
+            color: #2d3748;
+            margin-bottom: 30px;
+            font-weight: bold;
+        }
+
+        .comparison {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 30px;
+        }
+
+        .comparison-box {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .comparison-label {
+            text-align: center;
+            font-weight: bold;
+            font-size: 1.2em;
+            margin-bottom: 20px;
+            padding: 10px;
+            border-radius: 8px;
+        }
+
+        .sequential-label {
+            background: #fed7d7;
+            color: #c53030;
+        }
+
+        .parallel-label {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+
+        .time-bar {
+            background: #e2e8f0;
+            height: 40px;
+            border-radius: 8px;
+            margin: 10px 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .time-fill {
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            transition: width 2s ease;
+        }
+
+        .sequential-fill {
+            background: linear-gradient(90deg, #fc8181 0%, #f56565 100%);
+            width: 100%;
+        }
+
+        .parallel-fill {
+            background: linear-gradient(90deg, #48bb78 0%, #38a169 100%);
+            width: 20%;
+        }
+
+        .speedup-badge {
+            text-align: center;
+            background: linear-gradient(135deg, #f6ad55 0%, #ed8936 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 12px;
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-top: 20px;
+            box-shadow: 0 4px 12px rgba(246, 173, 85, 0.4);
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 1200px) {
+            .models-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .models-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .comparison {
+                grid-template-columns: 1fr;
+            }
+            
+            .storage-section {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏗️ Arquitetura de Anotação Paralela</h1>
+        <div class="subtitle">Anotação de Dataset com Execução Paralela via LangChain Async</div>
+        
+        <div class="badges-container">
+            <span class="tech-badge">🐍 Python asyncio</span>
+            <span class="tech-badge">🦜 LangChain Async</span>
+            <span class="tech-badge">☁️ AWS ECS Fargate</span>
+            <span class="tech-badge">💾 EFS + S3</span>
+            <span class="tech-badge">⚡ 5x Speedup</span>
+        </div>
+
+        <!-- AWS CLOUD -->
+        <div class="aws-cloud">
+            <div class="cloud-label">☁️ AWS CLOUD</div>
+            
+            <!-- ECS CLUSTER -->
+            <div class="ecs-cluster">
+                <div class="cluster-label">🎯 ECS CLUSTER (FARGATE)</div>
+                
+                <!-- ECS TASK -->
+                <div class="ecs-task">
+                    <div class="task-header">
+                        <div style="font-size: 1.5em; margin-bottom: 10px;">
+                            📦 ECS TASK - Anotação Paralela
+                        </div>
+                        <div class="task-specs">
+                            <div class="spec-item">💻 8 vCPUs</div>
+                            <div class="spec-item">🧠 16 GB RAM</div>
+                            <div class="spec-item">🚀 Fargate</div>
+                        </div>
+                    </div>
+
+                    <!-- FLUXO PRINCIPAL -->
+                    <div class="main-flow">
+                        <!-- STEP 1 -->
+                        <div class="flow-step">
+                            <div class="step-number">1</div>
+                            <div class="step-title">📚 Data Loader</div>
+                            <div class="step-description">
+                                • Carrega dataset do HuggingFace (cache local)<br>
+                                • 500 documentos de texto para classificação<br>
+                                • Verifica checkpoint no EFS (retoma se necessário)
+                            </div>
+                        </div>
+
+                        <div class="arrow-down">⬇️</div>
+
+                        <!-- STEP 2 -->
+                        <div class="flow-step">
+                            <div class="step-number">2</div>
+                            <div class="step-title">🔄 Orchestrator (Loop Sequencial)</div>
+                            <div class="step-description">
+                                <strong>for documento in dataset:</strong><br>
+                                &nbsp;&nbsp;• Processa 1 documento por vez<br>
+                                &nbsp;&nbsp;• Chama executor paralelo para modelos<br>
+                                &nbsp;&nbsp;• Salva checkpoint a cada 100 docs
+                            </div>
+                        </div>
+
+                        <div class="arrow-down">⬇️</div>
+
+                        <!-- STEP 3 - ASYNC PARALELO -->
+                        <div class="async-container">
+                            <div class="async-badge">🚀 NÚCLEO DA ARQUITETURA</div>
+                            <div class="async-title">⚡ Executor Paralelo com LangChain Async</div>
+                            <div class="async-subtitle">
+                                Execução assíncrona simultânea de todos os modelos usando asyncio
+                            </div>
+
+                            <div class="code-block">
+<span class="code-keyword">async def</span> <span class="code-function">annotate_parallel</span>(text: str):
+    <span class="code-comment"># Criar tasks assíncronas para cada modelo</span>
+    tasks = [
+        model1.<span class="code-function">ainvoke</span>(text),  <span class="code-comment"># deepseek-r1-8b</span>
+        model2.<span class="code-function">ainvoke</span>(text),  <span class="code-comment"># qwen3-8b</span>
+        model3.<span class="code-function">ainvoke</span>(text),  <span class="code-comment"># gemma3-4b</span>
+        model4.<span class="code-function">ainvoke</span>(text),  <span class="code-comment"># mistral-7b</span>
+        model5.<span class="code-function">ainvoke</span>(text),  <span class="code-comment"># llama3.1-8b</span>
+    ]
+    
+    <span class="code-comment"># Executa TODOS em paralelo e aguarda</span>
+    results = <span class="code-keyword">await</span> asyncio.<span class="code-function">gather</span>(*tasks)
+    <span class="code-keyword">return</span> results  <span class="code-comment"># [pred1, pred2, pred3, pred4, pred5]</span>
+                            </div>
+
+                            <div class="models-grid">
+                                <div class="model-card">
+                                    <div class="model-icon">🤖</div>
+                                    <div class="model-name">DeepSeek<br>R1-8B</div>
+                                    <div class="model-status">⚡ ainvoke()</div>
+                                </div>
+                                <div class="model-card">
+                                    <div class="model-icon">🧠</div>
+                                    <div class="model-name">Qwen3<br>8B</div>
+                                    <div class="model-status">⚡ ainvoke()</div>
+                                </div>
+                                <div class="model-card">
+                                    <div class="model-icon">💎</div>
+                                    <div class="model-name">Gemma3<br>4B</div>
+                                    <div class="model-status">⚡ ainvoke()</div>
+                                </div>
+                                <div class="model-card">
+                                    <div class="model-icon">🔮</div>
+                                    <div class="model-name">Mistral<br>7B</div>
+                                    <div class="model-status">⚡ ainvoke()</div>
+                                </div>
+                                <div class="model-card">
+                                    <div class="model-icon">🦙</div>
+                                    <div class="model-name">LLaMA3.1<br>8B</div>
+                                    <div class="model-status">⚡ ainvoke()</div>
+                                </div>
+                            </div>
+
+                            <div class="async-note">
+                                <strong>🎯 asyncio.gather(*tasks)</strong> executa todas as chamadas API simultaneamente<br>
+                                ⏱️ Tempo total = tempo do modelo mais lento (~7s)<br>
+                                🚀 Speedup = 5x comparado com execução sequencial
+                            </div>
+                        </div>
+
+                        <div class="arrow-down">⬇️</div>
+
+                        <!-- STEP 4 -->
+                        <div class="flow-step">
+                            <div class="step-number">4</div>
+                            <div class="step-title">📊 Result Aggregator</div>
+                            <div class="step-description">
+                                • Coleta as 5 predições do documento<br>
+                                • Formato: {doc_id, text, pred_1, pred_2, ..., pred_5, ground_truth}<br>
+                                • Adiciona ao buffer de resultados
+                            </div>
+                        </div>
+
+                        <div class="arrow-down">⬇️</div>
+
+                        <!-- STEP 5 -->
+                        <div class="flow-step">
+                            <div class="step-number">5</div>
+                            <div class="step-title">💾 Checkpoint & Flush (a cada 100 docs)</div>
+                            <div class="step-description">
+                                • Salva checkpoint no EFS (retomada após falhas)<br>
+                                • Upload parcial para S3 (backup incremental)<br>
+                                • Libera memória do buffer
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- STORAGE -->
+                    <div class="storage-section">
+                        <div class="storage-box">
+                            <div class="storage-icon">💾</div>
+                            <div class="storage-title">EFS Volume</div>
+                            <div class="storage-desc">
+                                /checkpoints<br>
+                                Armazena estado para retomada<br>
+                                Persistente entre restarts
+                            </div>
+                        </div>
+                        <div class="storage-box">
+                            <div class="storage-icon">☁️</div>
+                            <div class="storage-title">S3 Bucket</div>
+                            <div class="storage-desc">
+                                /partial_results<br>
+                                Backup incremental a cada 100 docs<br>
+                                Resultado final completo
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PERFORMANCE -->
+        <div class="performance-section">
+            <div class="performance-title">⚡ Performance: Sequencial vs Paralelo (Async)</div>
+            
+            <div class="comparison">
+                <div class="comparison-box">
+                    <div class="comparison-label sequential-label">🐢 SEQUENCIAL</div>
+                    <div style="color: #4a5568; margin-bottom: 15px;">
+                        Modelos executados um após o outro
+                    </div>
+                    <div class="time-bar">
+                        <div class="time-fill sequential-fill">35s por documento</div>
+                    </div>
+                    <div style="text-align: center; margin-top: 15px; font-size: 1.2em; color: #e53e3e; font-weight: bold;">
+                        Total: 4h 51min (500 docs)
+                    </div>
+                </div>
+
+                <div class="comparison-box">
+                    <div class="comparison-label parallel-label">🚀 PARALELO (ASYNC)</div>
+                    <div style="color: #4a5568; margin-bottom: 15px;">
+                        Todos os modelos executam simultaneamente
+                    </div>
+                    <div class="time-bar">
+                        <div class="time-fill parallel-fill">7s por documento</div>
+                    </div>
+                    <div style="text-align: center; margin-top: 15px; font-size: 1.2em; color: #38a169; font-weight: bold;">
+                        Total: 58 minutos (500 docs)
+                    </div>
+                </div>
+            </div>
+
+            <div class="speedup-badge">
+                🎯 SPEEDUP: 5x MAIS RÁPIDO! 🚀
+            </div>
+        </div>
+
+    </div>
+</body>
+</html>

@@ -7,19 +7,17 @@ import pandas as pd
 from tqdm import tqdm
 from collections import Counter
 from loguru import logger
+import asyncio
 
 from src.llm_annotation_system.core.llm_provider import LLMProvider
 from src.llm_annotation_system.core.cache_manager import CacheManager, LangChainCacheManager
 from src.llm_annotation_system.core.response_processor import ResponseProcessor
 from src.llm_annotation_system.annotation.annotation_engine import AnnotationEngine
+from src.llm_annotation_system.annotation.execution_estrategy import ExecutionStrategy
 
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 
 from src.config.prompts import BASE_ANNOTATION_PROMPT
-from src.experiments.base_experiment import EXPERIMENT_CONFIG
-
-if EXPERIMENT_CONFIG["cache"].get("enabled", False):
-    CACHE_DIR = EXPERIMENT_CONFIG["cache"].get("dir", "../../data/.cache")
 
 class LLMAnnotator:
     """
@@ -37,11 +35,11 @@ class LLMAnnotator:
         dataset_name: str,
         models: List[str],
         categories: List[str],
+        cache_dir: str,
+        results_dir: str,
         prompt_template = BASE_ANNOTATION_PROMPT,
         examples: Optional[List[Dict]] = None,
         api_keys: Optional[Dict[str, str]] = None,
-        cache_dir: str = CACHE_DIR,
-        results_dir: str = "../../results",
         use_langchain_cache: bool = True,
         use_alternative_params: bool = False
     ):
@@ -107,7 +105,7 @@ class LLMAnnotator:
             config = LLM_CONFIGS[model]
             expanded.append(model)
 
-            # Adicionando variações
+            # Adicionando variações de parametros do modelo
             if "alternative_params" in config:
                 for idx, alt in enumerate(config["alternative_params"]):
                     alt_name = f"{model}_alt{idx+1}"
@@ -131,12 +129,13 @@ class LLMAnnotator:
             llms[model] = self.llm_provider.initialize_llm(model)
         return llms
     
-    def annotate_single(
+    async def annotate_single(
         self,
         text: str,
         model: str,
         num_repetitions: int = 1,
-        use_cache: bool = True
+        use_cache: bool = True,
+        rep_strategy: ExecutionStrategy = ExecutionStrategy.SEQUENTIAL
     ) -> List[str]:
         """
         Anota um texto único
@@ -148,24 +147,29 @@ class LLMAnnotator:
             prompt_template: Template do prompt
             examples: Exemplos para few-shot
             use_cache: Se True, usa cache
+            rep_strategy: Rodar as repeticoes dentro de cada modelo sequencialmente ou paralelo
             
         Returns:
             Lista de classificações
         """
-        return self.annotation_engine.annotate(
+        return await self.annotation_engine.annotate(
             text=text,
             model=model,
             llm=self.llms[model],
             num_repetitions=num_repetitions,
-            use_cache=use_cache
+            use_cache=use_cache,
+            rep_strategy=rep_strategy
         )
     
-    def annotate_dataset(
+    async def annotate_dataset(
         self,
         texts: List[str],
         num_repetitions: Optional[int] = None,
         save_intermediate: bool = True,
-        use_cache: bool = True
+        intermediate: int = 10,
+        use_cache: bool = True,
+        model_strategy: ExecutionStrategy = ExecutionStrategy.SEQUENTIAL,
+        rep_strategy: ExecutionStrategy = ExecutionStrategy.SEQUENTIAL
     ) -> pd.DataFrame:
         """
         Anota dataset completo
@@ -176,66 +180,117 @@ class LLMAnnotator:
             prompt_template: Template do prompt
             examples: Exemplos para few-shot
             save_intermediate: Se True, salva resultados intermediários
+            model_strategy: Rodar os modelos sequencialmente ou paralelo
+            rep_strategy: Rodar as repeticoes dentro de cada modelo sequencialmente ou paralelo
             
         Returns:
             DataFrame com anotações
         """
-        if num_repetitions is None:
-            num_repetitions = EXPERIMENT_CONFIG.get("num_repetitions_per_llm", 3)
-        
+            
         total_annotations = len(texts) * len(self.models) * num_repetitions
         
         logger.info(f"Iniciando anotação")
         logger.info(f"Textos: {len(texts)} | Modelos: {len(self.models)} | Repetições: {num_repetitions}")
         logger.info(f"Total de anotações: {total_annotations}")
-        
+
         results = []
-        
+    
         for idx, text in enumerate(tqdm(texts, desc="Anotando")):
             text_results = {
-                'text_id': idx,
-                'text': text[:200],
+                "text_id": idx,
+                "text": text[:200],
             }
-            
-            # Anotar com cada modelo
-            for model in self.models:
-                annotations = self.annotate_single(
-                    text=text,
-                    model=model,
-                    num_repetitions=num_repetitions,
-                    use_cache=use_cache
-                )
-                
-                # Salvar repetições
-                for rep_idx, annotation in enumerate(annotations):
-                    text_results[f"{model}_rep{rep_idx+1}"] = annotation
-                
-                # Consenso interno
-                most_common = Counter(annotations).most_common(1)[0]
-                text_results[f"{model}_consensus"] = int(most_common[0])
-                text_results[f"{model}_consensus_score"] = float(most_common[1] / len(annotations))
-            
+    
+            # ===============================
+            # 🔁 MODELOS SEQUENCIAL
+            # ===============================
+            if model_strategy == ExecutionStrategy.SEQUENTIAL:
+                for model in self.models:
+                    result = await self._annotate_model(
+                        text=text,
+                        model=model,
+                        num_repetitions=num_repetitions,
+                        use_cache=use_cache,
+                        rep_strategy=rep_strategy
+                    )
+                    text_results.update(result)
+    
+            # ===============================
+            # 🚀 MODELOS PARALELO
+            # ===============================
+            else:
+                tasks = [
+                    self._annotate_model(
+                        text=text,
+                        model=model,
+                        num_repetitions=num_repetitions,
+                        use_cache=use_cache,
+                        rep_strategy=rep_strategy
+                    )
+                    for model in self.models
+                ]
+    
+                model_results = await asyncio.gather(*tasks)
+    
+                for result in model_results:
+                    text_results.update(result)
+    
             results.append(text_results)
-            
-            # Salvar intermediários
-            if save_intermediate and (idx + 1) % 10 == 0:
-                df_temp = pd.DataFrame(results)
-                df_temp.to_csv(
+
+            # Salvar resultados intermediários
+            if save_intermediate and (idx + 1) % intermediate == 0:
+                pd.DataFrame(results).to_csv(
                     self.results_dir / f"intermediate_{idx+1}.csv",
                     index=False,
-                    encoding='utf-8'
+                    encoding="utf-8"
                 )
                 logger.debug(f"Salvos {idx+1} textos")
-        
+    
         self.cache_manager.save()
-        
+    
         df = pd.DataFrame(results)
-        
-        output_file = self.results_dir / "annotations_complete.csv"
-        df.to_csv(output_file, index=False, encoding='utf-8')
-        logger.success(f"Anotações completas salvas: {output_file}")
-        
+        df.to_csv(
+            self.results_dir / "annotations_complete.csv",
+            index=False,
+            encoding="utf-8"
+        )
+    
         return df
+
+    async def _annotate_model(
+        self,
+        text: str,
+        model: str,
+        num_repetitions: int,
+        use_cache: bool,
+        rep_strategy: ExecutionStrategy
+    ) -> dict:
+        # start = time.perf_counter()
+        # logger.warning(f"[START] {model} @ {start:.3f}")
+
+        annotations = await self.annotate_single(
+            text=text,
+            model=model,
+            num_repetitions=num_repetitions,
+            use_cache=use_cache,
+            rep_strategy=rep_strategy
+        )
+        
+        # end = time.perf_counter()
+        # logger.warning(f"[END]   {model} @ {end:.3f} | Δ={end-start:.2f}s")
+
+        result = {}
+
+        for rep_idx, annotation in enumerate(annotations):
+            result[f"{model}_rep{rep_idx+1}"] = annotation
+
+        most_common = Counter(annotations).most_common(1)[0]
+        result[f"{model}_consensus"] = int(most_common[0])
+        result[f"{model}_consensus_score"] = float(
+            most_common[1] / len(annotations)
+        )
+
+        return result
     
     def get_cache_stats(self) -> Dict:
         """Retorna estatísticas do cache"""
@@ -246,7 +301,8 @@ class LLMAnnotator:
         self,
         df: pd.DataFrame,
         ground_truth_col: str = "ground_truth",
-        output_csv: bool = False
+        output_csv: bool = False,
+        output_dir: Optional[Path] = None
     ) -> pd.DataFrame:
         """
         Calcula métricas por modelo, considerando -1 como classe de erro válida.
@@ -316,7 +372,9 @@ class LLMAnnotator:
         df_metrics = df_metrics.sort_values("f1_weighted", ascending=False)
 
         if output_csv:
-            output_path = self.results_dir / "model_metrics.csv"
+            if output_dir is None:
+                output_dir = self.results_dir
+            output_path = output_dir / "model_metrics.csv"
             df_metrics.to_csv(output_path, index=False)
             logger.success(f"Métricas por modelo salvas em: {output_path}")
 

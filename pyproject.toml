@@ -50,6 +50,9 @@ loguru = "^0.7.0"
 jupyter = "^1.0.0"
 ipywidgets = "^8.0.0"
 
+fastapi = "^0.124.4"
+uvicorn = "^0.38.0"
+
 [tool.poetry.group.dev.dependencies]
 # Testing
 pytest = "^7.4.0"
