@@ -249,11 +249,6 @@ class LLMAnnotator:
         self.cache_manager.save()
     
         df = pd.DataFrame(results)
-        df.to_csv(
-            self.results_dir / "annotations_complete.csv",
-            index=False,
-            encoding="utf-8"
-        )
     
         return df
 
