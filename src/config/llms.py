@@ -7,13 +7,28 @@ Configurações de LLMs - Apenas Open-Source
 # =============================================================================
 
 LLM_CONFIGS = {
-    # -------- Meta Llama 3 --------
+    # -------- Meta Llama --------
+    "llama2-7b": {
+        "provider": "ollama",
+        "model_name": "llama2:7b",
+        "description": "Meta LLaMA 2 7B - Modelo clássico, estável e bem testado",
+        "params": {},
+        "alternative_params": [
+            {"temperature": 0.0, "num_predict": 100},
+            {"temperature": 0.3, "num_predict": 100},
+            {"temperature": 0.6, "num_predict": 150},
+        ],
+        "requirements": "~8GB RAM",
+        "download": "ollama pull llama2:7b"
+    },
+    
     "llama3-70b": {
         "provider": "ollama",
         "model_name": "llama3:70b",
         "description": "Meta Llama 3 70B - Melhor modelo open-source da Meta (2024)",
-        "default_params": {"temperature": 0.0, "num_predict": 100},
+        "params": {"temperature": 0.0, "num_predict": 100},
         "alternative_params": [
+            {"temperature": 0.0, "num_predict": 100},
             {"temperature": 0.3, "num_predict": 100},
             {"temperature": 0.5, "num_predict": 100},
         ],
@@ -25,8 +40,9 @@ LLM_CONFIGS = {
         "provider": "ollama",
         "model_name": "llama3:8b",
         "description": "Meta Llama 3 8B - Rápido e eficiente",
-        "default_params": {"temperature": 0.0, "num_predict": 100},
+        "params": {},
         "alternative_params": [
+            {"temperature": 0.0, "num_predict": 100},
             {"temperature": 0.3, "num_predict": 100},
             {"temperature": 0.5, "num_predict": 100},
         ],
@@ -37,8 +53,9 @@ LLM_CONFIGS = {
         "provider": "ollama",
         "model_name": "llama3.1:8b",
         "description": "Llama 3.1 8B - Melhor modelo 8B da Meta (2025)",
-        "default_params": {"temperature": 0, "num_predict": 10},
+        "params": {},
         "alternative_params": [
+            {"temperature": 0, "num_predict": 10},
             {"temperature": 0.4, "num_predict": 150},
             {"temperature": 0.7, "num_predict": 150},
         ],
@@ -49,14 +66,15 @@ LLM_CONFIGS = {
         "provider": "huggingface",
         "model_name": "meta-llama/Llama-3.1-8B-Instruct",
         "description": "Llama 3.1 8B Instruct - HuggingFace Chat API (rápido, sem reasoning)",
-        "default_params": {
+        "params": {
             "temperature": 0.0,
             "max_new_tokens": 100,
             "do_sample": False
         },
         "alternative_params": [
-            {"temperature": 0.2, "max_new_tokens": 100},
-            {"temperature": 0.4, "max_new_tokens": 100},
+            {"temperature": 0.0, "max_new_tokens": 100, "do_sample": False},
+            {"temperature": 0.2, "max_new_tokens": 100, "do_sample": False},
+            {"temperature": 0.4, "max_new_tokens": 100, "do_sample": False},
         ],
         "requirements": "API HuggingFace (sem GPU local)",
         "download": "https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct"
@@ -66,7 +84,7 @@ LLM_CONFIGS = {
         "provider": "ollama",
         "model_name": "llama3.1:70b",
         "description": "Llama 3.1 70B - Muito forte em tasks complexas",
-        "default_params": {"temperature": 0.2, "num_predict": 100},
+        "params": {"temperature": 0.2, "num_predict": 100},
         "alternative_params": [
             {"temperature": 0.4, "num_predict": 150},
             {"temperature": 0.7, "num_predict": 200},
@@ -80,8 +98,9 @@ LLM_CONFIGS = {
         "provider": "ollama",
         "model_name": "mistral:7b",
         "description": "Mistral 7B - Ótimo custo-benefício",
-        "default_params": {"temperature": 0, "num_predict": 10},
+        "params": {},
         "alternative_params": [
+            {"temperature": 0, "num_predict": 100},
             {"temperature": 0.3, "num_predict": 100},
             {"temperature": 0.5, "num_predict": 100},
         ],
@@ -93,7 +112,7 @@ LLM_CONFIGS = {
         "provider": "ollama",
         "model_name": "mixtral:8x7b",
         "description": "Mixtral 8x7B MoE - Muito poderoso",
-        "default_params": {"temperature": 0.0, "num_predict": 100},
+        "params": {"temperature": 0.0, "num_predict": 100},
         "alternative_params": [
             {"temperature": 0.3, "num_predict": 100},
             {"temperature": 0.5, "num_predict": 100},
@@ -106,7 +125,7 @@ LLM_CONFIGS = {
         "provider": "ollama",
         "model_name": "mistral-nemo:12b",
         "description": "Mistral Nemo 12B - Muito forte e eficiente",
-        "default_params": {"temperature": 0.2, "num_predict": 100},
+        "params": {"temperature": 0.2, "num_predict": 100},
         "alternative_params": [
             {"temperature": 0.4, "num_predict": 120},
             {"temperature": 0.7, "num_predict": 150},
@@ -120,7 +139,7 @@ LLM_CONFIGS = {
         "provider": "ollama",
         "model_name": "gemma:7b",
         "description": "Google Gemma 7B - Leve e rápido",
-        "default_params": {"temperature": 0.0, "num_predict": 100},
+        "params": {"temperature": 0.0, "num_predict": 100},
         "alternative_params": [
             {"temperature": 0.3, "num_predict": 100},
             {"temperature": 0.5, "num_predict": 100},
@@ -133,7 +152,7 @@ LLM_CONFIGS = {
         "provider": "ollama",
         "model_name": "gemma2:9b",
         "description": "Gemma 2 9B - Forte, leve e rápido",
-        "default_params": {"temperature": 0.2, "num_predict": 100},
+        "params": {"temperature": 0.2, "num_predict": 100},
         "alternative_params": [
             {"temperature": 0.4, "num_predict": 120},
             {"temperature": 0.7, "num_predict": 150},
@@ -146,7 +165,7 @@ LLM_CONFIGS = {
         "provider": "ollama",
         "model_name": "gemma2:27b",
         "description": "Gemma 2 27B - Ótimo custo/benefício",
-        "default_params": {"temperature": 0.2, "num_predict": 100},
+        "params": {"temperature": 0.2, "num_predict": 100},
         "alternative_params": [
             {"temperature": 0.4, "num_predict": 120},
             {"temperature": 0.7, "num_predict": 200},
@@ -158,8 +177,9 @@ LLM_CONFIGS = {
         "provider": "ollama",
         "model_name": "gemma3:4b",
         "description": "Gemma 3 4B - Ótimo custo/benefício",
-        "default_params": {"temperature": 0, "num_predict": 10},
+        "params": {},
         "alternative_params": [
+            {"temperature": 0, "num_predict": 10},
             {"temperature": 0.4, "num_predict": 120},
             {"temperature": 0.7, "num_predict": 200},
         ],
@@ -172,7 +192,7 @@ LLM_CONFIGS = {
         "provider": "ollama",
         "model_name": "phi3:mini",
         "description": "Microsoft Phi-3 Mini - Super eficiente",
-        "default_params": {"temperature": 0.0, "num_predict": 100},
+        "params": {"temperature": 0.0, "num_predict": 100},
         "alternative_params": [
             {"temperature": 0.3, "num_predict": 100},
             {"temperature": 0.5, "num_predict": 100},
@@ -184,7 +204,7 @@ LLM_CONFIGS = {
         "provider": "ollama",
         "model_name": "phi3.5:mini",
         "description": "Phi-3.5 Mini - Excelente em CPU",
-        "default_params": {"temperature": 0.2, "num_predict": 80},
+        "params": {"temperature": 0.2, "num_predict": 80},
         "alternative_params": [
             {"temperature": 0.4, "num_predict": 100},
             {"temperature": 0.7, "num_predict": 120},
@@ -197,7 +217,7 @@ LLM_CONFIGS = {
         "provider": "ollama",
         "model_name": "phi3.5:medium",
         "description": "Phi-3.5 Medium - Melhor modelo leve da Microsoft",
-        "default_params": {"temperature": 0.2, "num_predict": 100},
+        "params": {"temperature": 0.2, "num_predict": 100},
         "alternative_params": [
             {"temperature": 0.4, "num_predict": 120},
             {"temperature": 0.7, "num_predict": 150},
@@ -212,8 +232,9 @@ LLM_CONFIGS = {
         "provider": "ollama",
         "model_name": "deepseek-r1:8b",
         "description": "DeepSeek R1 8B - Raciocínio muito acima da média",
-        "default_params": {"temperature": 0, "num_predict": 4096},
+        "params": {},
         "alternative_params": [
+            {"temperature": 0, "num_predict": 4096},
             {"temperature": 0.5, "num_predict": 4096},  # mais criativo
             {"temperature": 0.8, "num_predict": 4096},  # brainstorming
         ],
@@ -225,7 +246,7 @@ LLM_CONFIGS = {
         "provider": "ollama",
         "model_name": "deepseek-r1:14b",
         "description": "DeepSeek R1 14B - Melhor custo/benefício para reasoning",
-        "default_params": {"temperature": 0.2, "num_predict": 120},
+        "params": {"temperature": 0.2, "num_predict": 120},
         "alternative_params": [
             {"temperature": 0.5, "num_predict": 150},
             {"temperature": 0.8, "num_predict": 200},
@@ -238,13 +259,43 @@ LLM_CONFIGS = {
         "provider": "ollama",
         "model_name": "deepseek-v3",
         "description": "DeepSeek V3 - Um dos melhores modelos open-source do mundo",
-        "default_params": {"temperature": 0.2, "num_predict": 100},
+        "params": {"temperature": 0.2, "num_predict": 100},
         "alternative_params": [
+            {"temperature": 0.2, "num_predict": 100},
             {"temperature": 0.4, "num_predict": 150},
             {"temperature": 0.8, "num_predict": 200},
         ],
         "requirements": "~16GB RAM (quantizado)",
         "download": "ollama pull deepseek-v3"
+    },
+    "deepseek-r1-distill-llama-8b": {
+        "provider": "huggingface",
+        "model_name": "deepseek-ai/DeepSeek-R1-Distill-Llama-8B",
+        "description": (
+            "DeepSeek R1 Distill Llama 8B - "
+            "Modelo com forte capacidade de reasoning, "
+            "destilado do R1 original usando Llama 8B"
+        ),
+        "params": {"max_new_tokens": 1024},
+        "alternative_params": [
+            {
+                "temperature": 0.0,
+                "max_new_tokens": 1024,
+                "do_sample": False
+            },
+            {
+                "temperature": 0.3,
+                "max_new_tokens": 1024,
+                "do_sample": True
+            },
+            {
+                "temperature": 0.6,
+                "max_new_tokens": 2048,
+                "do_sample": True
+            },
+        ],
+        "requirements": "API HuggingFace (sem GPU local)",
+        "download": "https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Llama-8B"
     },
 
     # ============================= QWEn ================================
@@ -252,7 +303,7 @@ LLM_CONFIGS = {
         "provider": "ollama",
         "model_name": "qwen2:7b",
         "description": "Qwen 2 7B - Excelente para português",
-        "default_params": {"temperature": 0.0, "num_predict": 100},
+        "params": {"temperature": 0.0, "num_predict": 100},
         "alternative_params": [
             {"temperature": 0.3, "num_predict": 100},
             {"temperature": 0.5, "num_predict": 100},
@@ -265,7 +316,7 @@ LLM_CONFIGS = {
         "provider": "ollama",
         "model_name": "qwen2.5:7b",
         "description": "Qwen 2.5 7B - Melhor modelo pequeno para PT-BR (2025)",
-        "default_params": {"temperature": 0.2, "num_predict": 100},
+        "params": {"temperature": 0.2, "num_predict": 100},
         "alternative_params": [
             {"temperature": 0.4, "num_predict": 100},
             {"temperature": 0.7, "num_predict": 150},
@@ -278,7 +329,7 @@ LLM_CONFIGS = {
         "provider": "ollama",
         "model_name": "qwen2.5:32b",
         "description": "Qwen 2.5 32B - Um dos melhores OSS do mundo",
-        "default_params": {"temperature": 0.2, "num_predict": 100},
+        "params": {"temperature": 0.2, "num_predict": 100},
         "alternative_params": [
             {"temperature": 0.4, "num_predict": 150},
             {"temperature": 0.7, "num_predict": 200},
@@ -290,14 +341,44 @@ LLM_CONFIGS = {
         "provider": "ollama",
         "model_name": "qwen3:8b",
         "description": "Qwen 3 8B - Novo modelo com melhorias significativas",
-        "default_params": {"temperature": 0.2, "num_predict": 4096},
+        "params": {},
         "alternative_params": [
+            {"temperature": 0.2, "num_predict": 4096},
             {"temperature": 0.4, "num_predict": 4096},
             {"temperature": 0.7, "num_predict": 4096},
         ],
         "requirements": "~8GB RAM",
         "download": "ollama pull qwen3:8b"
     
+    },
+    "bloomz": {
+        "provider": "huggingface",
+        "model_name": "bigscience/bloomz",
+        "description": (
+            "BLOOMZ - Família de modelos BLOOM finetunados em tarefas "
+            "multilingues e de instrução, capazes de seguir prompts em "
+            "diversas línguas zero-shot (incluindo português) 🧠🌍"
+        ),
+        "params": {},
+        "alternative_params": [
+            {
+                "temperature": 0,
+                "max_new_tokens": 256,
+                "do_sample": False
+            },
+            {
+                "temperature": 0.3,
+                "max_new_tokens": 256,
+                "do_sample": False
+            },
+            {
+                "temperature": 0.5,
+                "max_new_tokens": 512,
+                "do_sample": True
+            },
+        ],
+        "requirements": "API HuggingFace (sem GPU local)",
+        "download": "https://huggingface.co/bigscience/bloomz"
     }
 }
 
@@ -330,13 +411,5 @@ PROVIDER_CONFIGS = {
         "api_key_env": "HUGGINGFACE_API_KEY",
         "free_tier": True,
         "get_key": "https://huggingface.co/settings/tokens",
-    },
-    
-    "together": {
-        "provider_name": "Together AI",
-        "api_url": "https://api.together.xyz",
-        "api_key_env": "TOGETHER_API_KEY",
-        "pricing": "$0.20–0.88 / 1M tokens",
-        "get_key": "https://api.together.xyz/signup",
     },
 }

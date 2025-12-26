@@ -4,8 +4,8 @@ LLM Provider - Gerencia inicialização e comunicação com LLMs
 
 import os
 from typing import Dict, Any, Optional
-from pathlib import Path
 from loguru import logger
+from dotenv import load_dotenv
 
 # LangChain imports
 from langchain_core.prompts import ChatPromptTemplate
@@ -13,7 +13,7 @@ from langchain_core.output_parsers import StrOutputParser
 
 # Providers realmente utilizados
 try:
-    from langchain_community.chat_models import ChatOllama
+    from langchain_ollama import ChatOllama
 except ImportError:
     ChatOllama = None
 
@@ -29,11 +29,6 @@ try:
 except ImportError:
     ChatGroq = None
 
-try:
-    from langchain_together import ChatTogether
-except ImportError:
-    ChatTogether = None
-
 # Config imports
 import sys
 
@@ -45,30 +40,33 @@ class LLMProvider:
     Responsabilidades: inicialização, configuração de API keys, criação de chains
     """
 
-    def __init__(self, api_keys: Optional[Dict[str, str]] = None):
-        """
-        Args:
-            api_keys: Dicionário com chaves de API (opcional)
-        """
-        self._setup_api_keys(api_keys)
+    def __init__(self):
+        load_dotenv()               
+        self._setup_api_keys()
         logger.debug("LLMProvider inicializado")
 
-    def _setup_api_keys(self, api_keys: Optional[Dict[str, str]]):
-        """Configura API keys no ambiente"""
-        if not api_keys:
-            return
-
-        key_mapping = {
+    def _setup_api_keys(self):
+        """Configura chaves de API a partir do ambiente ou parâmetros"""
+    
+        expected_keys = {
             'huggingface': 'HUGGINGFACEHUB_API_TOKEN',
             'groq': 'GROQ_API_KEY',
-            'together': 'TOGETHER_API_KEY',
         }
 
-        for key, env_var in key_mapping.items():
-            if key in api_keys:
-                os.environ[env_var] = api_keys[key]
-                logger.debug(f"API key configurada: {key}")
+        for provider, env_var in expected_keys.items():
+            if os.getenv(env_var):
+                logger.debug(f"API key encontrada para provider: {provider}")
+                
+    def _validate_required_keys(self, provider: str):
+        required = {
+            "huggingface": "HUGGINGFACEHUB_API_TOKEN",
+            "groq": "GROQ_API_KEY",
+        }
 
+        env = required.get(provider)
+        if env and not os.getenv(env):
+            raise RuntimeError(f"Missing API key: {env}")
+        
     def initialize_llm(self, model: str) -> Any:
         """
         Inicializa uma LLM
@@ -85,9 +83,12 @@ class LLMProvider:
         config = LLM_CONFIGS[model]
         provider = config["provider"]
         model_name = config["model_name"]
-        params = config.get("default_params", {})
+        params = config.get("params", {})
 
         logger.debug(f"Inicializando {model} (provider: {provider})")
+        
+        # valida API key ANTES de instanciar
+        self._validate_required_keys(provider)
 
         try:
             return self._create_llm_instance(provider, model_name, params)
@@ -106,12 +107,15 @@ class LLMProvider:
         if provider == "ollama":
             if ChatOllama is None:
                 raise ImportError("langchain-community não instalado para ChatOllama")
+            
+            ollama_allowed = {"temperature", "num_predict", "top_p", "stop"}
+
+            ollama_params = self._filter_explicit_params(params, ollama_allowed)
 
             return ChatOllama(
                 model=model_name,
-                temperature=params.get("temperature", 0.0),
-                num_predict=params.get("num_predict", 200),
                 base_url=PROVIDER_CONFIGS["ollama"]["base_url"],
+                **ollama_params
             )
 
         # ------------------------------------------------------
@@ -120,15 +124,23 @@ class LLMProvider:
         elif provider == "huggingface":
             if ChatHuggingFace is None or HuggingFaceEndpoint is None:
                 raise ImportError("langchain-huggingface não instalado")
+            
+            hf_allowed = {
+                "max_new_tokens",
+                "temperature",
+                "top_p",
+                "top_k",
+                "do_sample",
+                "repetition_penalty",
+            }
+
+            hf_params = self._filter_explicit_params(params, hf_allowed)
         
             endpoint = HuggingFaceEndpoint(
                 repo_id=model_name,
                 task="chat-completion",
-                huggingfacehub_api_token=os.environ.get("HUGGINGFACE_API_KEY"),
-                max_new_tokens=params.get("max_new_tokens", 64),
-                temperature=params.get("temperature", 0.0),
-                top_p=params.get("top_p", 1.0),
-                do_sample=params.get("do_sample", False),
+                huggingfacehub_api_token=os.environ.get("HUGGINGFACEHUB_API_TOKEN"),
+                **hf_params
             )
         
             return ChatHuggingFace(llm=endpoint)
@@ -139,28 +151,33 @@ class LLMProvider:
         elif provider == "groq":
             if ChatGroq is None:
                 raise ImportError("langchain-groq não instalado")
+            
+            groq_allowed = {"temperature", "max_tokens", "top_p", "stop"}
+
+            groq_params = self._filter_explicit_params(params, groq_allowed)
 
             return ChatGroq(
                 model=model_name,
-                temperature=params.get("temperature", 0.0),
-                max_tokens=params.get("max_tokens", 200),
-            )
-
-        # ------------------------------------------------------
-        # TOGETHER (API barata)
-        # ------------------------------------------------------
-        elif provider == "together":
-            if ChatTogether is None:
-                raise ImportError("langchain-together não instalado")
-
-            return ChatTogether(
-                model=model_name,
-                temperature=params.get("temperature", 0.0),
-                max_tokens=params.get("max_tokens", 200),
+                **groq_params
             )
 
         else:
             raise ValueError(f"Provider '{provider}' não suportado")
+        
+    def _filter_explicit_params(self, params: Dict[str, Any], allowed: set) -> Dict[str, Any]:
+        """
+        Retorna apenas parâmetros explicitamente definidos
+        e suportados pelo provider
+        """
+        if not params:
+            return {}
+
+        return {
+            k: v
+            for k, v in params.items()
+            if k in allowed and v is not None
+        }
+
 
     def create_chain(self, llm: Any, template: str):
         """
