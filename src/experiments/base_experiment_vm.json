@@ -12,8 +12,8 @@
     "models": [
         "deepseek-r1-distill-llama-8b",
         "gemma3-4b",
-        "llama2-7b",
         "mistral-7b",
+        "llama2-7b",
         "llama3.1-8b"
     ],
     "prompt_type": "base",
