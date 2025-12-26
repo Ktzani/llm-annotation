@@ -3,7 +3,7 @@ LLM Provider - Gerencia inicialização e comunicação com LLMs
 """
 
 import os
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 from loguru import logger
 from dotenv import load_dotenv
 
@@ -28,9 +28,6 @@ try:
     from langchain_groq import ChatGroq
 except ImportError:
     ChatGroq = None
-
-# Config imports
-import sys
 
 from src.config.llms import LLM_CONFIGS, PROVIDER_CONFIGS
 
