@@ -40,7 +40,6 @@ class LLMAnnotator:
         results_dir: str,
         prompt_template = BASE_ANNOTATION_PROMPT,
         examples: Optional[List[Dict]] = None,
-        api_keys: Optional[Dict[str, str]] = None,
         use_langchain_cache: bool = True,
         use_alternative_params: bool = False
     ):
@@ -68,7 +67,7 @@ class LLMAnnotator:
         self.results_dir.mkdir(exist_ok=True, parents=True)
         
         # Inicializar componentes
-        self.llm_provider = LLMProvider(api_keys)
+        self.llm_provider = LLMProvider()
         self.cache_manager = CacheManager(cache_dir)
         self.langchain_cache = LangChainCacheManager(cache_dir, use_langchain_cache)
         self.response_processor = ResponseProcessor(categories)

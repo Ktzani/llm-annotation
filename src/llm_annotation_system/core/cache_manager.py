@@ -130,7 +130,7 @@ class LangChainCacheManager:
         self._setup()
     
     def _setup(self):
-        from langchain.globals import set_llm_cache, get_llm_cache
+        from langchain_core.globals import set_llm_cache, get_llm_cache
 
         if not self.enabled:
             # 🔥 ISSO É O QUE ESTAVA FALTANDO
