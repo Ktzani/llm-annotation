@@ -37,7 +37,7 @@ LLM_CONFIGS = {
         "provider": "ollama",
         "model_name": "llama3.1:8b",
         "description": "Llama 3.1 8B - Melhor modelo 8B da Meta (2025)",
-        "default_params": {"temperature": 0, "num_predict": 100},
+        "default_params": {"temperature": 0, "num_predict": 10},
         "alternative_params": [
             {"temperature": 0.4, "num_predict": 150},
             {"temperature": 0.7, "num_predict": 150},
@@ -45,12 +45,28 @@ LLM_CONFIGS = {
         "requirements": "~8GB RAM",
         "download": "ollama pull llama3.1:8b"
     },
+    "llama3.1-8b-hf": {
+        "provider": "huggingface",
+        "model_name": "meta-llama/Llama-3.1-8B-Instruct",
+        "description": "Llama 3.1 8B Instruct - HuggingFace Chat API (rápido, sem reasoning)",
+        "default_params": {
+            "temperature": 0.0,
+            "max_new_tokens": 100,
+            "do_sample": False
+        },
+        "alternative_params": [
+            {"temperature": 0.2, "max_new_tokens": 100},
+            {"temperature": 0.4, "max_new_tokens": 100},
+        ],
+        "requirements": "API HuggingFace (sem GPU local)",
+        "download": "https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct"
+    },
 
     "llama3.1-70b": {
         "provider": "ollama",
         "model_name": "llama3.1:70b",
         "description": "Llama 3.1 70B - Muito forte em tasks complexas",
-        "default_params": {"temperature": 0.2, "num_predict": 120},
+        "default_params": {"temperature": 0.2, "num_predict": 100},
         "alternative_params": [
             {"temperature": 0.4, "num_predict": 150},
             {"temperature": 0.7, "num_predict": 200},
@@ -64,7 +80,7 @@ LLM_CONFIGS = {
         "provider": "ollama",
         "model_name": "mistral:7b",
         "description": "Mistral 7B - Ótimo custo-benefício",
-        "default_params": {"temperature": 0, "num_predict": 100},
+        "default_params": {"temperature": 0, "num_predict": 10},
         "alternative_params": [
             {"temperature": 0.3, "num_predict": 100},
             {"temperature": 0.5, "num_predict": 100},
@@ -142,7 +158,7 @@ LLM_CONFIGS = {
         "provider": "ollama",
         "model_name": "gemma3:4b",
         "description": "Gemma 3 4B - Ótimo custo/benefício",
-        "default_params": {"temperature": 0, "num_predict": 100},
+        "default_params": {"temperature": 0, "num_predict": 10},
         "alternative_params": [
             {"temperature": 0.4, "num_predict": 120},
             {"temperature": 0.7, "num_predict": 200},
@@ -310,7 +326,7 @@ PROVIDER_CONFIGS = {
     
     "huggingface": {
         "provider_name": "HuggingFace Inference API",
-        "api_url": "https://api-inference.huggingface.co/models/",
+        "api_url": "https://huggingface.co/models",
         "api_key_env": "HUGGINGFACE_API_KEY",
         "free_tier": True,
         "get_key": "https://huggingface.co/settings/tokens",

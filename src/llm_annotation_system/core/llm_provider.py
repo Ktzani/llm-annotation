@@ -18,9 +18,11 @@ except ImportError:
     ChatOllama = None
 
 try:
-    from langchain_community.llms import HuggingFaceHub
+    from langchain_huggingface import ChatHuggingFace
+    from langchain_huggingface import HuggingFaceEndpoint
 except ImportError:
-    HuggingFaceHub = None
+    ChatHuggingFace = None
+    HuggingFaceEndpoint = None
 
 try:
     from langchain_groq import ChatGroq
@@ -116,16 +118,20 @@ class LLMProvider:
         # HUGGINGFACE HUB (API inference)
         # ------------------------------------------------------
         elif provider == "huggingface":
-            if HuggingFaceHub is None:
-                raise ImportError("langchain-community não instalado para HuggingFaceHub")
-
-            return HuggingFaceHub(
+            if ChatHuggingFace is None or HuggingFaceEndpoint is None:
+                raise ImportError("langchain-huggingface não instalado")
+        
+            endpoint = HuggingFaceEndpoint(
                 repo_id=model_name,
-                model_kwargs={
-                    "temperature": params.get("temperature", 0.0),
-                    "max_new_tokens": params.get("max_new_tokens", 200),
-                },
+                task="chat-completion",
+                huggingfacehub_api_token=os.environ.get("HUGGINGFACE_API_KEY"),
+                max_new_tokens=params.get("max_new_tokens", 64),
+                temperature=params.get("temperature", 0.0),
+                top_p=params.get("top_p", 1.0),
+                do_sample=params.get("do_sample", False),
             )
+        
+            return ChatHuggingFace(llm=endpoint)
 
         # ------------------------------------------------------
         # GROQ (ultra rápido)

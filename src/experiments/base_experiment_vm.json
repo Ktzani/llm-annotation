@@ -26,12 +26,12 @@
     },
     "cache": {
         "enabled": true,
-        "dir": "/home/ubuntu/llm-annotation/data/.cache"
+        "dir": "/home/<user>/llm-annotation/data/.cache" 
     },
     "results": {
         "save_model_metrics": true,
         "save_intermediate": true,
         "intermediate": 100,
-        "dir": "/home/ubuntu/llm-annotation/data/results"
+        "dir": "/home/<user>/llm-annotation/data/results"
     }
 }

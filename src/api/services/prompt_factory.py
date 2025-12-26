@@ -1,5 +1,5 @@
 from typing import Optional
-from src.api.schemas.enums import PromptType
+from src.api.schemas.prompt_enum import PromptType
 
 from src.config.prompts import (
     BASE_ANNOTATION_PROMPT,

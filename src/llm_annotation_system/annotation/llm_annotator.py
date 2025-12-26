@@ -8,6 +8,7 @@ from tqdm import tqdm
 from collections import Counter
 from loguru import logger
 import asyncio
+import time
 
 from src.llm_annotation_system.core.llm_provider import LLMProvider
 from src.llm_annotation_system.core.cache_manager import CacheManager, LangChainCacheManager
@@ -260,7 +261,7 @@ class LLMAnnotator:
         use_cache: bool,
         rep_strategy: ExecutionStrategy
     ) -> dict:
-        # start = time.perf_counter()
+        start = time.perf_counter()
         # logger.warning(f"[START] {model} @ {start:.3f}")
 
         annotations = await self.annotate_single(
@@ -271,8 +272,9 @@ class LLMAnnotator:
             rep_strategy=rep_strategy
         )
         
-        # end = time.perf_counter()
+        end = time.perf_counter()
         # logger.warning(f"[END]   {model} @ {end:.3f} | Δ={end-start:.2f}s")
+        elapsed = end - start
 
         result = {}
 
@@ -284,6 +286,8 @@ class LLMAnnotator:
         result[f"{model}_consensus_score"] = float(
             most_common[1] / len(annotations)
         )
+        
+        result[f"{model}_annotation_time_sec"] = elapsed
 
         return result
     

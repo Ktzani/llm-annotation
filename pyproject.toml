@@ -18,7 +18,7 @@ classifiers = [
 packages = [{ include = "src", from = "." }]
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = "^3.10"
 
 # Core dependencies
 pandas = "^2.0.0"

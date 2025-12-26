@@ -3,11 +3,12 @@
 # =============================================================================
 from src.config.prompts import BASE_ANNOTATION_PROMPT, FEW_SHOT_PROMPT, COT_PROMPT, SIMPLER_PROMPT
 from src.llm_annotation_system.annotation.execution_estrategy import ExecutionStrategy
+from src.api.schemas.dataset import DatasetConfig
 
 CACHE_DIR = rf"C:\Users\gabri\Documents\GitHub\llm-annotation\data\.cache"
 RESULTS_DIR = rf"C:\Users\gabri\Documents\GitHub\llm-annotation\data\results"
 
-DEFAULT_MODELS = [
+DEFAULT_MODELS: list[str] = [
     "deepseek-r1-8b",
     "qwen3-8b",
     "gemma3-4b",
@@ -21,10 +22,10 @@ DEFAULT_MODELS = [
 # Use 'split': 'train' como padrão (podemos combinar splits se necessário)
 # Ajuste 'sample_size' para começar com amostra pequena (se desejar). Ex: 1000 ou None para usar todo o split.
 # Ajuste 'combine_splits' para combinar múltiplos splits quando necessário. Ex: ["train", "test"]
-DATASET_CONFIG = {
+DATASET_CONFIG: DatasetConfig = {
     "split": "train",
     "combine_splits": ["train", "test"],
-    "sample_size": 10,
+    "sample_size": 50,
     "random_state": 42,
 }
 
@@ -36,7 +37,7 @@ EXPERIMENT_CONFIG = {
     "annotation": {
         "num_repetitions_per_llm": 1,
         "use_alternative_params": False,
-        "model_strategy": ExecutionStrategy.PARALLEL,
+        "model_strategy": ExecutionStrategy.SEQUENTIAL,
         "rep_strategy": ExecutionStrategy.PARALLEL,
     },
     
