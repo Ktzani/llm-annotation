@@ -6,11 +6,14 @@
             "train",
             "test"
         ],
-        "sample_size": 20,
+        "sample_size": 5000,
         "random_state": 42
     },
     "models": [
+        "deepseek-r1-8b",
         "gemma3-4b",
+        "mistral-7b",
+        "llama2-7b",
         "llama3.1-8b"
     ],
     "prompt_type": "base",

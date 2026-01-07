@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 from loguru import logger
 
@@ -65,6 +65,8 @@ async def run_experiment_background(
             model_strategy=config.annotation.model_strategy,
             rep_strategy=config.annotation.rep_strategy,
         )
+        
+        df_annotations["ground_truth"] = ground_truth
 
         experiments[experiment_id].progress = 0.7
         experiments[experiment_id].message = "Anotações completas. Calculando métricas..."
@@ -78,9 +80,12 @@ async def run_experiment_background(
             "has_ground_truth": ground_truth is not None
         }
 
+        date_path = date.today()
+        date_path = date_path.strftime("%Y-%m-%d")
+
         # 4. Salvar resultados
-        output_dir = annotator.results_dir or f"results/{experiment_id}"
-        output_dir = Path(output_dir).joinpath(experiment_id)
+        output_dir = annotator.results_dir or f"results/{date_path}"
+        output_dir = Path(output_dir).joinpath(date_path)
         output_dir.mkdir(parents=True, exist_ok=True)
 
         df_annotations.to_csv(
@@ -88,8 +93,7 @@ async def run_experiment_background(
             index=False,
         )
         
-        if ground_truth and config.results.save_model_metrics:
-            df_annotations["ground_truth"] = ground_truth
+        if config.results.save_model_metrics:
             df_metrics = annotator.evaluate_model_metrics(
                 df_annotations,
                 ground_truth_col="ground_truth",

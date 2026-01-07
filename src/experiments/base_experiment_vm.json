@@ -10,7 +10,7 @@
         "random_state": 42
     },
     "models": [
-        "deepseek-r1-distill-llama-8b",
+        "deepseek-r1-8b",
         "gemma3-4b",
         "mistral-7b",
         "llama2-7b",
@@ -26,12 +26,12 @@
     },
     "cache": {
         "enabled": true,
-        "dir": "/home/<user>/llm-annotation/data/.cache" 
+        "dir": "/home/ec2-user/llm-annotation/data/.cache" 
     },
     "results": {
         "save_model_metrics": true,
         "save_intermediate": true,
         "intermediate": 100,
-        "dir": "/home/<user>/llm-annotation/data/results"
+        "dir": "/home/ec2-user/llm-annotation/data/results"
     }
 }
