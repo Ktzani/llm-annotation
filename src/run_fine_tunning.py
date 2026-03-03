@@ -286,7 +286,7 @@ class FineTuningPipeline:
 
 def main():
     """Função principal"""
-    dataset_name = "sst1"
+    dataset_name = "movie_review"
     model_name = "roberta-base"
     
     # Configuração
