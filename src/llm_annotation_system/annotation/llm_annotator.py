@@ -346,9 +346,9 @@ class LLMAnnotator:
 
             # Métricas considerando -1 como classe válida
             acc = accuracy_score(y_true, y_pred)
-            f1 = f1_score(y_true, y_pred, average="weighted")
-            prec = precision_score(y_true, y_pred, average="weighted", zero_division=0)
-            rec = recall_score(y_true, y_pred, average="weighted", zero_division=0)
+            f1 = f1_score(y_true, y_pred, average="macro")
+            prec = precision_score(y_true, y_pred, average="macro", zero_division=0)
+            rec = recall_score(y_true, y_pred, average="macro", zero_division=0)
 
             # Coverage: % de predições != -1
             coverage = (y_pred != -1).mean()
@@ -356,9 +356,9 @@ class LLMAnnotator:
             results.append({
                 "model": model_name,
                 "accuracy": acc,
-                "f1_weighted": f1,
-                "precision_weighted": prec,
-                "recall_weighted": rec,
+                "f1_macro": f1,
+                "precision_macro": prec,
+                "recall_macro": rec,
                 "coverage": coverage,
                 "error_rate": 1 - acc,
                 "invalid_predictions_rate": 1 - coverage
@@ -367,7 +367,7 @@ class LLMAnnotator:
             logger.info(f"Métricas para {model_name}: Acc={acc:.4f}, F1={f1:.4f}, Prec={prec:.4f}, Rec={rec:.4f}, Cov={coverage:.4f}")
 
         df_metrics = pd.DataFrame(results)
-        df_metrics = df_metrics.sort_values("f1_weighted", ascending=False)
+        df_metrics = df_metrics.sort_values("f1_macro", ascending=False)
 
         if output_csv:
             if output_dir is None:
