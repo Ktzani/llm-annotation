@@ -1,10 +1,10 @@
 """
 Annotation Engine - Motor de anotação
 """
-
 from typing import List, Dict, Optional
 from loguru import logger
 import asyncio
+import httpx
 
 from src.llm_annotation_system.core.llm_provider import LLMProvider
 from src.llm_annotation_system.core.cache_manager import CacheManager
@@ -52,7 +52,7 @@ class AnnotationEngine:
         model: str,
         rep: int,
         use_cache: bool
-    ) -> int:
+    ) -> dict:
         try:
             cache_key = self.cache_manager.get_key(model, text, {"rep": rep})
 
@@ -67,8 +67,11 @@ class AnnotationEngine:
                     logger.debug(f"{model} rep {rep+1}: cache miss")
             else:
                 response = await self._ainvoke_chain(chain, text)
+                
+            print(response)
 
-            return self.response_processor.extract_category(response)
+            result = self.response_processor.extract_label_and_confidence(response)
+            return result
 
         except Exception as e:
             logger.error(
@@ -104,10 +107,13 @@ class AnnotationEngine:
         classifications = []
         
         # Criar chain
-        chain = self.llm_provider.create_chain(
-            llm=llm,
-            template=self.template,
-        )
+        if isinstance(llm, dict) and llm.get("provider") == "ollama":
+            chain = llm
+        else:
+            chain = self.llm_provider.create_chain(
+                llm=llm,
+                template=self.template,
+            )
         
         # ===============================
         # 🔁 SEQUENCIAL
@@ -203,5 +209,42 @@ class AnnotationEngine:
         """
         return chain.invoke({"text": text})
     
-    async def _ainvoke_chain(self, chain: any, text: str) -> str:
-        return await chain.ainvoke({"text": text})
+    async def _ainvoke_chain(self, chain: any, text: str):
+        # -----------------------------
+        # OLLAMA VIA API
+        # -----------------------------
+        if isinstance(chain, dict) and chain.get("provider") == "ollama":
+
+            prompt = self.template.format(text=text)
+
+            payload = {
+                "model": chain["model_name"],
+                "prompt": prompt,
+                "options": { **chain.get("params", {}) },
+                "logprobs": chain.get("logprobs", True), 
+                "stream": False
+            }
+
+            async with httpx.AsyncClient() as client:
+                r = await client.post(
+                    f"{chain['base_url']}/api/generate",
+                    json=payload
+                )
+
+            data = r.json()
+
+            return {
+                "content": data.get("response"),
+                "thinking": data.get("thinking"),
+                "logprobs": data.get("logprobs")
+            }
+
+        # -----------------------------
+        # LANGCHAIN (GROQ / HF)
+        # -----------------------------
+        response = await chain.ainvoke({"text": text})
+
+        return {
+            "content": response.content,
+            "logprobs": getattr(response, "response_metadata", {}).get("logprobs")
+        }
