@@ -144,7 +144,7 @@ async def run_single(index: int = 0):
         return
 
     text = texts[index]
-    model = DEFAULT_MODELS[0] if DEFAULT_MODELS else "deepseek-r1-8b"
+    model = DEFAULT_MODELS[2] if DEFAULT_MODELS else "deepseek-r1-8b"
 
     logger.warning(f"  Modo: anotação única")
     logger.warning(f"  Índice: {index}")
@@ -213,7 +213,7 @@ async def run_dataset():
 # =============================================================================
 # Controle de execução — altere aqui para debug
 # =============================================================================
-DEBUG_SINGLE = True  # True = anota apenas um texto; False = anota o dataset completo
+DEBUG_SINGLE = False  # True = anota apenas um texto; False = anota o dataset completo
 
 async def main():
     if DEBUG_SINGLE:

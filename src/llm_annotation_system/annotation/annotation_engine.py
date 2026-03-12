@@ -67,8 +67,6 @@ class AnnotationEngine:
                     logger.debug(f"{model} rep {rep+1}: cache miss")
             else:
                 response = await self._ainvoke_chain(chain, text)
-                
-            print(response)
 
             result = self.response_processor.extract_label_and_confidence(response)
             return result
@@ -225,19 +223,36 @@ class AnnotationEngine:
                 "stream": False
             }
 
-            async with httpx.AsyncClient() as client:
-                r = await client.post(
-                    f"{chain['base_url']}/api/generate",
-                    json=payload
-                )
+            try:
+                async with httpx.AsyncClient(timeout=60) as client:
+                    r = await client.post(
+                        f"{chain['base_url']}/api/generate",
+                        json=payload
+                    )
+    
+                # levanta erro se status != 200
+                r.raise_for_status()
+    
+                data = r.json()
+    
+                return {
+                    "content": data.get("response"),
+                    "thinking": data.get("thinking"),
+                    "logprobs": data.get("logprobs")
+                }
 
-            data = r.json()
+            except httpx.HTTPStatusError as e:
+                logger.error(f"Ollama HTTP error: {e.response.status_code}")
+                logger.error(f"Response text: {e.response.text}")
+                raise
 
-            return {
-                "content": data.get("response"),
-                "thinking": data.get("thinking"),
-                "logprobs": data.get("logprobs")
-            }
+            except httpx.RequestError as e:
+                logger.error(f"Request error while calling Ollama: {e}")
+                raise
+
+            except Exception as e:
+                logger.exception("Unexpected error calling Ollama")
+                raise
 
         # -----------------------------
         # LANGCHAIN (GROQ / HF)

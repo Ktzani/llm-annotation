@@ -16,8 +16,8 @@
     "annotation": {
         "num_repetitions_per_llm": 1,
         "use_alternative_params": false,
-        "model_strategy": "parallel",
-        "rep_strategy": "parallel"
+        "model_strategy": "sequential",
+        "rep_strategy": "sequential"
     },
     "cache": {
         "enabled": false,
