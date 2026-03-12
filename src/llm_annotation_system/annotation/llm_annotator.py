@@ -3,6 +3,7 @@ LLM Annotator - Classe principal refatorada
 """
 from typing import List, Dict, Any, Optional
 from pathlib import Path
+from matplotlib.pylab import annotations
 import pandas as pd
 from tqdm import tqdm
 from collections import Counter
@@ -271,6 +272,9 @@ class LLMAnnotator:
             rep_strategy=rep_strategy
         )
         
+        labels = [a["label"] for a in annotations]
+        confidences = [a["confidence"] for a in annotations]
+        
         end = time.perf_counter()
         # logger.warning(f"[END]   {model} @ {end:.3f} | Δ={end-start:.2f}s")
         elapsed = end - start
@@ -278,12 +282,14 @@ class LLMAnnotator:
         result = {}
 
         for rep_idx, annotation in enumerate(annotations):
-            result[f"{model}_rep{rep_idx+1}"] = annotation
+            result[f"{model}_rep{rep_idx+1}"] = annotation["label"]
+            result[f"{model}_rep{rep_idx+1}_conf"] = annotation["confidence"]
 
-        most_common = Counter(annotations).most_common(1)[0]
+        most_common = Counter(labels).most_common(1)[0]
+        
         result[f"{model}_consensus"] = int(most_common[0])
         result[f"{model}_consensus_score"] = float(
-            most_common[1] / len(annotations)
+            most_common[1] / len(labels)
         )
         
         result[f"{model}_annotation_time_sec"] = elapsed

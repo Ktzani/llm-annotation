@@ -114,6 +114,22 @@ class LLMProvider:
                 base_url=PROVIDER_CONFIGS["ollama"]["base_url"],
                 **ollama_params
             )
+            
+        elif provider == "ollama-api":
+            ollama_allowed = {"temperature", "num_predict", "top_p", "stop"}
+
+            ollama_params = self._filter_explicit_params(params, ollama_allowed)
+
+            return {
+                "provider": "ollama",
+                "model_name": model_name,
+                "base_url": PROVIDER_CONFIGS["ollama"]["base_url"],
+                "params": {
+                    **ollama_params,
+                },
+                "logprobs": True,
+                "top_logprobs": 5
+            }
 
         # ------------------------------------------------------
         # HUGGINGFACE HUB (API inference)
@@ -189,5 +205,5 @@ class LLMProvider:
             Chain configurada
         """
         prompt = ChatPromptTemplate.from_template(template)
-        chain = prompt | llm | StrOutputParser()
+        chain = prompt | llm
         return chain
