@@ -80,8 +80,7 @@ async def run_experiment_background(
             "has_ground_truth": ground_truth is not None
         }
 
-        date_path = date.today()
-        date_path = date_path.strftime("%Y-%m-%d")
+        date_path = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
         # 4. Salvar resultados
         output_dir = annotator.results_dir or f"results/{date_path}"
