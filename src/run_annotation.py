@@ -16,15 +16,14 @@ Uso:
 import asyncio
 import sys
 import json
-import argparse
 from pathlib import Path
-from datetime import date
+from datetime import datetime
 
 from loguru import logger
 
 from src.api.schemas.experiment import ExperimentRequest
 from src.api.services.prompt_factory import get_prompt_template
-from src.utils.data_loader import load_hf_dataset, load_hf_dataset_as_dataframe, list_available_datasets
+from src.utils.data_loader import load_hf_dataset, list_available_datasets
 from src.llm_annotation_system.annotation.llm_annotator import LLMAnnotator
 
 
@@ -96,7 +95,7 @@ logger.info("Datasets disponíveis:")
 for dataset in list_available_datasets():
     logger.info(f"  - {dataset}")
 
-dataset_name = "sst2"  # Ajuste conforme necessário
+dataset_name = "agnews"  # Ajuste conforme necessário
 
 texts, categories, ground_truth = load_hf_dataset(
     dataset_name=dataset_name,
@@ -188,8 +187,7 @@ async def run_dataset():
     # -------------------------------------------------------------------------
     # 5) Salvando resultados
     # -------------------------------------------------------------------------
-    date_path = date.today().strftime("%Y-%m-%d")
-    experiment_id = f"{date_path}"
+    experiment_id = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
     output_dir = annotator.results_dir or f"results/{experiment_id}"
     output_dir = Path(output_dir).joinpath(experiment_id)
@@ -201,7 +199,7 @@ async def run_dataset():
     logger.success(f"✓ Anotações salvas em: {annotations_path}")
 
     # --- Métricas ---
-    df_metrics = annotator.evaluate_model_metrics(
+    annotator.evaluate_model_metrics(
         df_annotations,
         ground_truth_col="ground_truth",
         output_csv=True,

@@ -74,7 +74,6 @@ class ResponseProcessor:
         confidence = None
 
         try:
-
             if logprobs:
 
                 inside_think = False
@@ -95,9 +94,7 @@ class ResponseProcessor:
                     if inside_think:
                         continue
 
-                    # token da classe
                     if token == label_token:
-
                         logprob = token_info["logprob"]
                         confidence = math.exp(logprob)
                         break

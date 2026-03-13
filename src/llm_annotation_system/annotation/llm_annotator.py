@@ -3,7 +3,6 @@ LLM Annotator - Classe principal refatorada
 """
 from typing import List, Dict, Any, Optional
 from pathlib import Path
-from matplotlib.pylab import annotations
 import pandas as pd
 from tqdm import tqdm
 from collections import Counter
@@ -273,7 +272,6 @@ class LLMAnnotator:
         )
         
         labels = [a["label"] for a in annotations]
-        confidences = [a["confidence"] for a in annotations]
         
         end = time.perf_counter()
         # logger.warning(f"[END]   {model} @ {end:.3f} | Δ={end-start:.2f}s")
