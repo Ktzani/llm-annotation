@@ -67,9 +67,9 @@ class AnnotationEngine:
                     logger.debug(f"{model} rep {rep+1}: cache miss")
             else:
                 response = await self._ainvoke_chain(chain, text)
-
+                
             result = self.response_processor.extract_label_and_confidence(response)
-            return result
+            return result 
 
         except Exception as e:
             logger.error(
@@ -255,11 +255,8 @@ class AnnotationEngine:
                 raise
 
         # -----------------------------
-        # LANGCHAIN (GROQ / HF)
+        # LANGCHAIN (GROQ / HF / CHATOLLAMA)
         # -----------------------------
         response = await chain.ainvoke({"text": text})
 
-        return {
-            "content": response.content,
-            "logprobs": getattr(response, "response_metadata", {}).get("logprobs")
-        }
+        return response

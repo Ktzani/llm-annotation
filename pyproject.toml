@@ -56,6 +56,7 @@ uvicorn = "^0.38.0"
 evaluate = "^0.4.6"
 accelerate = "^1.12.0"
 torch = {version = "^2.5.1", source = "pytorch"}
+hf-transfer = "^0.1.9"
 
 [[tool.poetry.source]]
 name = "pytorch"

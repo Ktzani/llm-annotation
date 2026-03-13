@@ -205,5 +205,5 @@ class LLMProvider:
             Chain configurada
         """
         prompt = ChatPromptTemplate.from_template(template)
-        chain = prompt | llm
+        chain = prompt | llm 
         return chain
