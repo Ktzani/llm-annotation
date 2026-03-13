@@ -5,7 +5,6 @@ Response Processor - Processa e extrai respostas das LLMs
 from typing import List
 from loguru import logger
 import re
-import math
 
 class ResponseProcessor:
     """
@@ -63,52 +62,6 @@ class ResponseProcessor:
         
         logger.warning(f"Categoria {value} não está na lista de válidas: {self.categories}")
         return -1
-
-    def extract_label_and_confidence(self, response):
-        content = response.get("content", "")
-        logprobs = response.get("logprobs")
-
-        label = self.extract_category(content)
-        label_token = str(label)
-
-        confidence = None
-
-        try:
-
-            if logprobs:
-
-                inside_think = False
-
-                for token_info in logprobs:
-
-                    token = token_info["token"].strip()
-
-                    # detectar reasoning
-                    if token == "<think>":
-                        inside_think = True
-                        continue
-
-                    if token == "</think>":
-                        inside_think = False
-                        continue
-
-                    if inside_think:
-                        continue
-
-                    # token da classe
-                    if token == label_token:
-
-                        logprob = token_info["logprob"]
-                        confidence = math.exp(logprob)
-                        break
-
-        except Exception:
-            logger.warning("Logprob do label não disponível")
-
-        return {
-            "label": label,
-            "confidence": confidence
-        }
     
     def validate_response(self, response: str) -> bool:
         """

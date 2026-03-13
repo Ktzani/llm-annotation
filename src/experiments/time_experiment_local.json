@@ -2,22 +2,27 @@
     "dataset_name": "sst1",
     "dataset_config": {
         "split": "train",
-        "combine_splits": [],
+        "combine_splits": [
+            "train",
+            "test"
+        ],
         "sample_size": 20,
         "random_state": 42
     },
     "models": [
-        "deepseek-r1-8b",
-        "qwen3-8b",
+        "deepseek-r1-distill-llama-8b",
+        "gemma3-4b",
+        "llama2-7b",
+        "mistral-7b",
         "llama3.1-8b"
     ],
-    "prompt_type": "simpler",
+    "prompt_type": "base",
     "custom_prompt": "",
     "annotation": {
         "num_repetitions_per_llm": 1,
         "use_alternative_params": false,
         "model_strategy": "sequential",
-        "rep_strategy": "sequential"
+        "rep_strategy": "parallel"
     },
     "cache": {
         "enabled": false,
