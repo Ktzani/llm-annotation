@@ -1,10 +1,10 @@
 """
 Annotation Engine - Motor de anotação
 """
-
 from typing import List, Dict, Optional
 from loguru import logger
 import asyncio
+import httpx
 
 from src.llm_annotation_system.core.llm_provider import LLMProvider
 from src.llm_annotation_system.core.cache_manager import CacheManager
@@ -52,7 +52,7 @@ class AnnotationEngine:
         model: str,
         rep: int,
         use_cache: bool
-    ) -> int:
+    ) -> dict:
         try:
             cache_key = self.cache_manager.get_key(model, text, {"rep": rep})
 
@@ -68,7 +68,8 @@ class AnnotationEngine:
             else:
                 response = await self._ainvoke_chain(chain, text)
 
-            return self.response_processor.extract_category(response)
+            result = self.response_processor.extract_label_and_confidence(response)
+            return result
 
         except Exception as e:
             logger.error(
@@ -104,10 +105,13 @@ class AnnotationEngine:
         classifications = []
         
         # Criar chain
-        chain = self.llm_provider.create_chain(
-            llm=llm,
-            template=self.template,
-        )
+        if isinstance(llm, dict) and llm.get("provider") == "ollama":
+            chain = llm
+        else:
+            chain = self.llm_provider.create_chain(
+                llm=llm,
+                template=self.template,
+            )
         
         # ===============================
         # 🔁 SEQUENCIAL
@@ -203,5 +207,59 @@ class AnnotationEngine:
         """
         return chain.invoke({"text": text})
     
-    async def _ainvoke_chain(self, chain: any, text: str) -> str:
-        return await chain.ainvoke({"text": text})
+    async def _ainvoke_chain(self, chain: any, text: str):
+        # -----------------------------
+        # OLLAMA VIA API
+        # -----------------------------
+        if isinstance(chain, dict) and chain.get("provider") == "ollama":
+
+            prompt = self.template.format(text=text)
+
+            payload = {
+                "model": chain["model_name"],
+                "prompt": prompt,
+                "options": { **chain.get("params", {}) },
+                "logprobs": chain.get("logprobs", True), 
+                "stream": False
+            }
+
+            try:
+                async with httpx.AsyncClient(timeout=60) as client:
+                    r = await client.post(
+                        f"{chain['base_url']}/api/generate",
+                        json=payload
+                    )
+    
+                # levanta erro se status != 200
+                r.raise_for_status()
+    
+                data = r.json()
+    
+                return {
+                    "content": data.get("response"),
+                    "thinking": data.get("thinking"),
+                    "logprobs": data.get("logprobs")
+                }
+
+            except httpx.HTTPStatusError as e:
+                logger.error(f"Ollama HTTP error: {e.response.status_code}")
+                logger.error(f"Response text: {e.response.text}")
+                raise
+
+            except httpx.RequestError as e:
+                logger.error(f"Request error while calling Ollama: {e}")
+                raise
+
+            except Exception as e:
+                logger.exception("Unexpected error calling Ollama")
+                raise
+
+        # -----------------------------
+        # LANGCHAIN (GROQ / HF)
+        # -----------------------------
+        response = await chain.ainvoke({"text": text})
+
+        return {
+            "content": response.content,
+            "logprobs": getattr(response, "response_metadata", {}).get("logprobs")
+        }

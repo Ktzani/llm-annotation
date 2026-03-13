@@ -50,7 +50,7 @@ LLM_CONFIGS = {
         "download": "ollama pull llama3:8b"
     },
     "llama3.1-8b": {
-        "provider": "ollama",
+        "provider": "ollama-api",
         "model_name": "llama3.1:8b",
         "description": "Llama 3.1 8B - Melhor modelo 8B da Meta (2025)",
         "params": {},
@@ -229,7 +229,7 @@ LLM_CONFIGS = {
     # ======================== DEEPSEEK (R1 & V3) =============================
 
     "deepseek-r1-8b": {
-        "provider": "ollama",
+        "provider": "ollama-api",
         "model_name": "deepseek-r1:8b",
         "description": "DeepSeek R1 8B - Raciocínio muito acima da média",
         "params": {},
@@ -338,7 +338,7 @@ LLM_CONFIGS = {
         "download": "ollama pull qwen2.5:32b"
     },
     "qwen3-8b": {
-        "provider": "ollama",
+        "provider": "ollama-api",
         "model_name": "qwen3:8b",
         "description": "Qwen 3 8B - Novo modelo com melhorias significativas",
         "params": {},
