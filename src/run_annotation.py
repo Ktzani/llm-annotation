@@ -18,6 +18,7 @@ import sys
 import json
 from pathlib import Path
 from datetime import datetime
+import pandas as pd
 
 from loguru import logger
 
@@ -97,11 +98,26 @@ for dataset in list_available_datasets():
 
 dataset_name = "agnews"  # Ajuste conforme necessário
 
+remove_annotaded_texts = True # True para remover textos já anotados (baseado em um CSV existente)
+annotated_texts_path = rf"data\results\agnews\intermediate_11000.csv"  # Caminho para o CSV com textos já anotados
+
 texts, categories, ground_truth = load_hf_dataset(
     dataset_name=dataset_name,
     cache_dir=cache_dir,
     dataset_global_config=dataset_cfg
 )
+
+if remove_annotaded_texts: 
+    logger.warning(f"Removendo textos já anotados...")
+    logger.info(f"Textos antes: {len(texts)}")
+    df = pd.read_csv(annotated_texts_path)
+
+    annotated_texts = set(df["text"])
+
+    texts = [t for t in texts if t not in annotated_texts]
+    
+    logger.info(f"Textos anotados encontrados: {len(annotated_texts)}")
+    logger.info(f"Textos após remoção: {len(texts)}")
 
 logger.info(f"Textos: {len(texts)}")
 logger.info(f"Categorias: {categories}")

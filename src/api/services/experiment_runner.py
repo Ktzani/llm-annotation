@@ -11,6 +11,8 @@ from src.llm_annotation_system.annotation.llm_annotator import LLMAnnotator
 
 from src.api.core.state import experiments
 
+import pandas as pd
+
 
 async def run_experiment_background(
     experiment_id: str,
@@ -27,6 +29,18 @@ async def run_experiment_background(
             cache_dir=config.cache.dir,
             dataset_global_config=config.dataset_config,
         )
+
+        if config.dataset_config.remove_texts.remove:
+            logger.warning(f"Removendo textos já anotados...")
+            logger.info(f"Textos antes: {len(texts)}")
+            df = pd.read_csv(config.dataset_config.remove_texts.annotated_texts_path)
+
+            annotated_texts = set(df["text"])
+
+            texts = [t for t in texts if t not in annotated_texts]
+
+            logger.info(f"Textos anotados encontrados: {len(annotated_texts)}")
+            logger.info(f"Textos após remoção: {len(texts)}")
 
         experiments[experiment_id].progress = 0.2
         experiments[experiment_id].message = f"Dataset carregado: {len(texts)} textos"
