@@ -27,3 +27,13 @@ class AnnotationConfig(BaseModel):
         default=ExecutionStrategy.PARALLEL,
         description="Estratégia de execução entre repetições do mesmo modelo."
     )
+    
+    keep_alive: int | str | None = Field(
+        default=None,
+        ge=0,
+        description=(
+            "Tempo em segundos para manter conexões ativas (keep-alive) com a LLM. "
+            "Útil para reduzir latência em múltiplas requisições. "
+            "0 significa desativado."
+        )
+    )

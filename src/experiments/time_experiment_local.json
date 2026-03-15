@@ -17,7 +17,8 @@
         "num_repetitions_per_llm": 1,
         "use_alternative_params": false,
         "model_strategy": "sequential",
-        "rep_strategy": "sequential"
+        "rep_strategy": "sequential",
+        "keep_alive": null
     },
     "cache": {
         "enabled": false,

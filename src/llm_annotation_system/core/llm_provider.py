@@ -6,6 +6,7 @@ import os
 from typing import Dict, Any
 from loguru import logger
 from dotenv import load_dotenv
+import httpx
 
 # LangChain imports
 from langchain_core.prompts import ChatPromptTemplate
@@ -37,10 +38,13 @@ class LLMProvider:
     Responsabilidades: inicialização, configuração de API keys, criação de chains
     """
 
-    def __init__(self):
+    def __init__(self, keep_alive: int | str | None = None):
         load_dotenv()               
         self._setup_api_keys()
         logger.debug("LLMProvider inicializado")
+        
+        self.client = httpx.AsyncClient(timeout=60)
+        self.keep_alive = keep_alive
 
     def _setup_api_keys(self):
         """Configura chaves de API a partir do ambiente ou parâmetros"""
@@ -102,16 +106,15 @@ class LLMProvider:
         # OLLAMA (Modelos Locais)
         # ------------------------------------------------------
         if provider == "ollama":
-            if ChatOllama is None:
-                raise ImportError("langchain-community não instalado para ChatOllama")
-            
+
             ollama_allowed = {"temperature", "num_predict", "top_p", "stop"}
-
+            
             ollama_params = self._filter_explicit_params(params, ollama_allowed)
-
+    
             return ChatOllama(
                 model=model_name,
                 base_url=PROVIDER_CONFIGS["ollama"]["base_url"],
+                keep_alive=self.keep_alive,
                 **ollama_params
             )
             

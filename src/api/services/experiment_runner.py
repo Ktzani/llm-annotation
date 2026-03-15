@@ -47,6 +47,7 @@ async def run_experiment_background(
             prompt_template=prompt_template,
             use_langchain_cache=config.cache.enabled,
             use_alternative_params=config.annotation.use_alternative_params,
+            keep_alive=config.annotation.keep_alive
         )
         
         experiments[experiment_id].progress = 0.3

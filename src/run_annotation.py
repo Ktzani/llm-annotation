@@ -211,7 +211,7 @@ async def run_dataset():
 # =============================================================================
 # Controle de execução — altere aqui para debug
 # =============================================================================
-DEBUG_SINGLE = False  # True = anota apenas um texto; False = anota o dataset completo
+DEBUG_SINGLE = True  # True = anota apenas um texto; False = anota o dataset completo
 
 async def main():
     if DEBUG_SINGLE:

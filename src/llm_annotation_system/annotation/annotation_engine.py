@@ -220,15 +220,15 @@ class AnnotationEngine:
                 "prompt": prompt,
                 "options": { **chain.get("params", {}) },
                 "logprobs": chain.get("logprobs", True), 
-                "stream": False
+                "stream": False,
+                "keep_alive": chain.get("keep_alive", None)
             }
 
             try:
-                async with httpx.AsyncClient(timeout=60) as client:
-                    r = await client.post(
-                        f"{chain['base_url']}/api/generate",
-                        json=payload
-                    )
+                r = await self.llm_provider.client.post(
+                    f"{chain['base_url']}/api/generate",
+                    json=payload
+                )
     
                 # levanta erro se status != 200
                 r.raise_for_status()
@@ -257,6 +257,8 @@ class AnnotationEngine:
         # -----------------------------
         # LANGCHAIN (GROQ / HF / CHATOLLAMA)
         # -----------------------------
-        response = await chain.ainvoke({"text": text})
+        response = await chain.ainvoke(
+            {"text": text},
+        )
 
         return response

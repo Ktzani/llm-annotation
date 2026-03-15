@@ -17,7 +17,9 @@
         "num_repetitions_per_llm": 1,
         "use_alternative_params": false,
         "model_strategy": "parallel",
-        "rep_strategy": "parallel"
+        "rep_strategy": "parallel",
+        "keep_alive": "24h"
+
     },
     "cache": {
         "enabled": true,
