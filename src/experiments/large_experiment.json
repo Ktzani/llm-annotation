@@ -4,7 +4,11 @@
         "split": "train",
         "combine_splits": [],
         "sample_size": null,
-        "random_state": 42
+        "random_state": 42,
+        "remove_texts": {
+            "remove": true,
+            "annotated_texts_path": "/workspace/llm-annotation/data/results/agnews/intermediate_11000.csv"
+        }
     },
     "models": [
         "deepseek-r1-8b",

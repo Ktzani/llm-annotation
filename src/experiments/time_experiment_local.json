@@ -4,7 +4,11 @@
         "split": "train",
         "combine_splits": [],
         "sample_size": 20,
-        "random_state": 42
+        "random_state": 42,
+        "remove_texts": {
+            "remove": false,
+            "annotated_texts_path": ""
+        }
     },
     "models": [
         "deepseek-r1-8b",
