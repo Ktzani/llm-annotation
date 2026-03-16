@@ -1,6 +1,7 @@
 """
 Annotation Engine - Motor de anotação
 """
+from time import time
 from typing import List, Dict, Optional
 from loguru import logger
 import asyncio
@@ -54,6 +55,9 @@ class AnnotationEngine:
         use_cache: bool
     ) -> dict:
         try:
+
+    
+            
             cache_key = self.cache_manager.get_key(model, text, {"rep": rep})
 
             if use_cache:
@@ -67,8 +71,14 @@ class AnnotationEngine:
                     logger.debug(f"{model} rep {rep+1}: cache miss")
             else:
                 response = await self._ainvoke_chain(chain, text)
-                
+            t0 = time.perf_counter()
+            
             result = self.response_processor.extract_label_and_confidence(response)
+            
+            t1 = time.perf_counter()
+            logger.debug(
+                f"{model} rep {rep+1}: extract label time {t1 - t0:.2f}s"
+            )
             return result 
 
         except Exception as e:
@@ -241,12 +251,9 @@ class AnnotationEngine:
     
                 data = r.json()
                 
-                t2 = time.perf_counter()
-                
                 print(
                     chain["model_name"],
                     "http:", round(t1 - t0, 2),
-                    "parse:", round(t2 - t1, 2)
                 )
     
                 return {
