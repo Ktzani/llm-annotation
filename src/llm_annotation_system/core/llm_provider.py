@@ -131,7 +131,8 @@ class LLMProvider:
                     **ollama_params,
                 },
                 "logprobs": True,
-                "top_logprobs": 5
+                "top_logprobs": 5,
+                "keep_alive": self.keep_alive       
             }
 
         # ------------------------------------------------------
