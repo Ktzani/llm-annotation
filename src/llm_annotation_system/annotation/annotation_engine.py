@@ -225,15 +225,29 @@ class AnnotationEngine:
             }
 
             try:
+                import time
+                
+                t0 = time.perf_counter()
+                
                 r = await self.llm_provider.client.post(
                     f"{chain['base_url']}/api/generate",
                     json=payload
                 )
+                
+                t1 = time.perf_counter()
     
                 # levanta erro se status != 200
                 r.raise_for_status()
     
                 data = r.json()
+                
+                t2 = time.perf_counter()
+                
+                print(
+                    chain["model_name"],
+                    "http:", round(t1 - t0, 2),
+                    "parse:", round(t2 - t1, 2)
+                )
     
                 return {
                     "content": data.get("response"),
