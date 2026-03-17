@@ -214,7 +214,6 @@ class LLMAnnotator:
         self,
         texts: List[str],
         num_repetitions: Optional[int] = 1,
-        save_intermediate: bool = True,
         intermediate: int = 10,
         use_cache: bool = True,
         model_strategy: ExecutionStrategy = ExecutionStrategy.SEQUENTIAL,

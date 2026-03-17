@@ -74,7 +74,6 @@ async def run_experiment_background(
         df_annotations = await annotator.annotate_dataset(
             texts=texts,
             num_repetitions=config.annotation.num_repetitions_per_llm,
-            save_intermediate=config.results.save_intermediate,
             intermediate=config.results.intermediate,
             use_cache=config.cache.enabled,
             model_strategy=config.annotation.model_strategy,
@@ -108,14 +107,14 @@ async def run_experiment_background(
             index=False,
         )
         
-        if config.results.save_model_metrics:
-            df_metrics = annotator.evaluate_model_metrics(
-                df_annotations,
-                ground_truth_col="ground_truth",
-                output_csv=config.results.save_model_metrics,
-                output_dir=output_dir
-            )
-            results["metrics"] = df_metrics.to_dict(orient="records")
+
+        df_metrics = annotator.evaluate_model_metrics(
+            df_annotations,
+            ground_truth_col="ground_truth",
+            output_csv=config.results.save_model_metrics,
+            output_dir=output_dir
+        )
+        results["metrics"] = df_metrics.to_dict(orient="records")
 
 
         experiments[experiment_id].status = "completed"

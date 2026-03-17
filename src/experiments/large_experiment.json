@@ -32,8 +32,6 @@
         "dir": "/workspace/llm-annotation/data/.cache" 
     },
     "results": {
-        "save_model_metrics": true,
-        "save_intermediate": true,
         "intermediate": 500,
         "dir": "/workspace/llm-annotation/data/results"
     }
