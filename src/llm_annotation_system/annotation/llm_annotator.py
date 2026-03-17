@@ -314,7 +314,7 @@ class LLMAnnotator:
                 async with buffer_lock:
                     buffer.append(text_results)
     
-                    if save_intermediate and len(buffer) >= intermediate:
+                    if len(buffer) >= intermediate:
                         df_chunk = pd.DataFrame(buffer.copy())
                         buffer.clear()
     
@@ -381,10 +381,7 @@ class LLMAnnotator:
         logger.info(f"Tempo total: {total_elapsed:.2f}s")
         logger.info(f"Throughput médio: {total / total_elapsed:.2f} textos/s")
     
-        # 🔥 retorno final
-        if not tasks:
-            logger.info("Todos os textos já foram processados. Retornando checkpoint.")
-            return pd.read_csv(file_path)
+        return pd.read_csv(file_path)
     
     def get_cache_stats(self) -> Dict:
         """Retorna estatísticas do cache"""
