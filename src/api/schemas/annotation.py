@@ -28,6 +28,15 @@ class AnnotationConfig(BaseModel):
         description="Estratégia de execução entre repetições do mesmo modelo."
     )
     
+    max_concurrent_texts: int = Field(
+        default=4,
+        ge=1,
+        description=(
+            "Número máximo de textos a serem processados simultaneamente. "
+            "Útil para controlar o uso de recursos e evitar sobrecarga."
+        )
+    )
+
     keep_alive: int | str | None = Field(
         default=None,
         description=(

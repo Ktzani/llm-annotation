@@ -79,6 +79,7 @@ async def run_experiment_background(
             use_cache=config.cache.enabled,
             model_strategy=config.annotation.model_strategy,
             rep_strategy=config.annotation.rep_strategy,
+            max_concurrent_texts=config.annotation.max_concurrent_texts
         )
         
         df_annotations["ground_truth"] = ground_truth

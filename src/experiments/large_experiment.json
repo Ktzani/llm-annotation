@@ -7,8 +7,8 @@
         "sample_size": null,
         "random_state": 42,
         "remove_texts": {
-            "remove": true,
-            "annotated_texts_path": "/workspace/llm-annotation/data/results/agnews/intermediate_12500.csv"
+            "remove": false,
+            "annotated_texts_path": "/workspace/llm-annotation/data/results/agnews/intermediate.csv"
         }
     },
     "models": [
@@ -23,6 +23,7 @@
         "use_alternative_params": false,
         "model_strategy": "parallel",
         "rep_strategy": "parallel",
+        "max_concurrent_texts": 4,
         "keep_alive": 30
 
     },

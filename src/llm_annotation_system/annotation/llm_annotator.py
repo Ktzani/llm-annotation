@@ -1,6 +1,7 @@
 """
 LLM Annotator - Classe principal
 """
+from os import sync
 from typing import List, Dict, Any, Optional
 from pathlib import Path
 import pandas as pd
@@ -19,6 +20,11 @@ from src.llm_annotation_system.annotation.execution_estrategy import ExecutionSt
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 
 from src.config.prompts import BASE_ANNOTATION_PROMPT
+
+import hashlib
+
+def get_text_id(text):
+    return hashlib.md5(text.encode()).hexdigest()
 
 class LLMAnnotator:
     """
@@ -161,97 +167,6 @@ class LLMAnnotator:
             use_cache=use_cache,
             rep_strategy=rep_strategy
         )
-    
-    async def annotate_dataset(
-        self,
-        texts: List[str],
-        num_repetitions: Optional[int] = None,
-        save_intermediate: bool = True,
-        intermediate: int = 10,
-        use_cache: bool = True,
-        model_strategy: ExecutionStrategy = ExecutionStrategy.SEQUENTIAL,
-        rep_strategy: ExecutionStrategy = ExecutionStrategy.SEQUENTIAL
-    ) -> pd.DataFrame:
-        """
-        Anota dataset completo
-        
-        Args:
-            texts: Lista de textos
-            num_repetitions: Número de repetições (usa config se None)
-            prompt_template: Template do prompt
-            examples: Exemplos para few-shot
-            save_intermediate: Se True, salva resultados intermediários
-            model_strategy: Rodar os modelos sequencialmente ou paralelo
-            rep_strategy: Rodar as repeticoes dentro de cada modelo sequencialmente ou paralelo
-            
-        Returns:
-            DataFrame com anotações
-        """
-            
-        total_annotations = len(texts) * len(self.models) * num_repetitions
-        
-        logger.info(f"Iniciando anotação")
-        logger.info(f"Textos: {len(texts)} | Modelos: {len(self.models)} | Repetições: {num_repetitions}")
-        logger.info(f"Total de anotações: {total_annotations}")
-
-        results = []
-    
-        for idx, text in enumerate(tqdm(texts, desc="Anotando")):
-            text_results = {
-                "text_id": idx,
-                "text": text[:200],
-            }
-    
-            # ===============================
-            # 🔁 MODELOS SEQUENCIAL
-            # ===============================
-            if model_strategy == ExecutionStrategy.SEQUENTIAL:
-                for model in self.models:
-                    result = await self._annotate_model(
-                        text=text,
-                        model=model,
-                        num_repetitions=num_repetitions,
-                        use_cache=use_cache,
-                        rep_strategy=rep_strategy
-                    )
-                    text_results.update(result)
-    
-            # ===============================
-            # 🚀 MODELOS PARALELO
-            # ===============================
-            else:
-                tasks = [
-                    self._annotate_model(
-                        text=text,
-                        model=model,
-                        num_repetitions=num_repetitions,
-                        use_cache=use_cache,
-                        rep_strategy=rep_strategy
-                    )
-                    for model in self.models
-                ]
-    
-                model_results = await asyncio.gather(*tasks)
-    
-                for result in model_results:
-                    text_results.update(result)
-    
-            results.append(text_results)
-
-            # Salvar resultados intermediários
-            if save_intermediate and (idx + 1) % intermediate == 0:
-                pd.DataFrame(results).to_csv(
-                    self.results_dir / f"intermediate_{idx+1}.csv",
-                    index=False,
-                    encoding="utf-8"
-                )
-                logger.debug(f"Salvos {idx+1} textos")
-    
-        self.cache_manager.save()
-    
-        df = pd.DataFrame(results)
-    
-        return df
 
     async def _annotate_model(
         self,
@@ -294,6 +209,183 @@ class LLMAnnotator:
         result[f"{model}_annotation_time_sec"] = elapsed
 
         return result
+    
+    async def annotate_dataset(
+        self,
+        texts: List[str],
+        num_repetitions: Optional[int] = 1,
+        save_intermediate: bool = True,
+        intermediate: int = 10,
+        use_cache: bool = True,
+        model_strategy: ExecutionStrategy = ExecutionStrategy.SEQUENTIAL,
+        rep_strategy: ExecutionStrategy = ExecutionStrategy.SEQUENTIAL,
+        max_concurrent_texts: int = 5
+    ) -> pd.DataFrame:
+        
+        total_annotations = len(texts) * len(self.models) * num_repetitions
+        
+        logger.info(f"Iniciando anotação")
+        logger.info(f"Textos: {len(texts)} | Modelos: {len(self.models)} | Repetições: {num_repetitions}")
+        logger.info(f"Total de anotações: {total_annotations}")
+        
+        file_path = self.results_dir / "intermediate.csv"
+        if file_path.exists():
+            df_existing = pd.read_csv(file_path)
+            processed_ids = set(df_existing["text_id"].tolist())
+            file_exists = True
+
+            logger.info(f"Checkpoint encontrado: {len(processed_ids)} textos já processados")
+        else:
+            processed_ids = set()
+            file_exists = False
+    
+        semaphore = asyncio.Semaphore(max_concurrent_texts)
+    
+        total = len(texts)
+        start_global = time.perf_counter()
+    
+        # métricas
+        completed = 0
+        total_time = 0.0
+    
+        lock = asyncio.Lock()
+    
+        # 🔥 buffer temporário (batch)
+        buffer = []
+        buffer_lock = asyncio.Lock()
+    
+        async def process_text(text):
+            nonlocal completed, total_time, file_exists
+    
+            async with semaphore:
+                start = time.perf_counter()
+    
+                text_results = {
+                    "text_id": get_text_id(text),
+                    "text": text,
+                    "text_len": len(text)
+                }
+    
+                # ===============================
+                # 🔁 MODELOS SEQUENCIAL
+                # ===============================
+                if model_strategy == ExecutionStrategy.SEQUENTIAL:
+                    for model in self.models:
+                        result = await self._annotate_model(
+                            text=text,
+                            model=model,
+                            num_repetitions=num_repetitions,
+                            use_cache=use_cache,
+                            rep_strategy=rep_strategy
+                        )
+                        text_results.update(result)
+                        
+                # ===============================
+                # 🚀 MODELOS PARALELO
+                # ===============================
+                else:
+                    tasks = [
+                        self._annotate_model(
+                            text=text,
+                            model=model,
+                            num_repetitions=num_repetitions,
+                            use_cache=use_cache,
+                            rep_strategy=rep_strategy
+                        )
+                        for model in self.models
+                    ]
+    
+                    model_results = await asyncio.gather(*tasks)
+    
+                    for result in model_results:
+                        text_results.update(result)
+    
+                elapsed = time.perf_counter() - start
+    
+                # ===============================
+                # Atualiza métricas
+                # ===============================
+                async with lock:
+                    completed += 1
+                    total_time += elapsed
+    
+                # ===============================
+                # BUFFER + SAVE EM LOTE
+                # ===============================
+                async with buffer_lock:
+                    buffer.append(text_results)
+    
+                    if save_intermediate and len(buffer) >= intermediate:
+                        df_chunk = pd.DataFrame(buffer.copy())
+                        buffer.clear()
+    
+                        await asyncio.to_thread(
+                            df_chunk.to_csv,
+                            file_path,
+                            mode="a",
+                            header=not file_exists,
+                            index=False,
+                            encoding="utf-8"
+                        )
+    
+                        # depois da primeira escrita
+                        file_exists = True
+    
+                return True 
+    
+        # cria tasks
+        tasks = [
+            process_text(text)
+            for text in texts
+            if get_text_id(text) not in processed_ids
+        ]
+    
+        remaining = len(tasks)
+        
+        pbar = tqdm(total=remaining, desc="Anotando", smoothing=0.05)
+    
+        for coro in asyncio.as_completed(tasks):
+            result = await coro
+    
+            # métricas
+            current_done = completed
+            avg_time = total_time / current_done
+            total_elapsed = time.perf_counter() - start_global
+            throughput = current_done / total_elapsed
+    
+            pbar.update(1)
+            pbar.set_postfix({
+                "avg_s": f"{avg_time:.2f}",
+                "it/s": f"{throughput:.2f}"
+            })
+    
+        pbar.close()
+    
+        # 🔥 salva resto do buffer (final)
+        if buffer:
+            df_chunk = pd.DataFrame(buffer)
+    
+            await asyncio.to_thread(
+                df_chunk.to_csv,
+                file_path,
+                mode="a",
+                header=not file_exists,
+                index=False,
+                encoding="utf-8"
+            )
+    
+        self.cache_manager.save()
+    
+        total_elapsed = time.perf_counter() - start_global
+    
+        logger.info("Finalizado ✅")
+        logger.info(f"Tempo total: {total_elapsed:.2f}s")
+        logger.info(f"Throughput médio: {total / total_elapsed:.2f} textos/s")
+    
+        # 🔥 retorno final
+        if not tasks:
+            logger.info("Todos os textos já foram processados. Retornando checkpoint.")
+            return pd.read_csv(file_path)
     
     def get_cache_stats(self) -> Dict:
         """Retorna estatísticas do cache"""
