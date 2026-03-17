@@ -20,9 +20,14 @@ class DatasetConfig(BaseModel):
     Configuração de carregamento e amostragem do dataset.
     """
 
-    split: str = Field(
-        default="train",
+    split: Optional[str] = Field(
+        default=None,
         description="Split principal do dataset HuggingFace a ser utilizado (ex: train, test, validation)."
+    )
+
+    hf_file: Optional[str] = Field(
+        default=None,
+        description="Nome do arquivo específico a ser baixado do HuggingFace Hub (ex: data.parquet)."
     )
 
     combine_splits: Optional[List[str]] = Field(

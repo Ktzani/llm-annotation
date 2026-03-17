@@ -1,13 +1,14 @@
 {
     "dataset_name": "agnews",
     "dataset_config": {
-        "split": "train",
-        "combine_splits": [],
+        "split": null,
+        "combine_splits": null,
+        "hf_file": "data.parquet",
         "sample_size": null,
         "random_state": 42,
         "remove_texts": {
             "remove": true,
-            "annotated_texts_path": "/workspace/llm-annotation/data/results/agnews/intermediate_11000.csv"
+            "annotated_texts_path": "/workspace/llm-annotation/data/results/agnews/intermediate_12500.csv"
         }
     },
     "models": [
@@ -22,7 +23,7 @@
         "use_alternative_params": false,
         "model_strategy": "parallel",
         "rep_strategy": "parallel",
-        "keep_alive": "24h"
+        "keep_alive": 30
 
     },
     "cache": {

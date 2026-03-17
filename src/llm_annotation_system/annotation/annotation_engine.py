@@ -1,11 +1,12 @@
 """
 Annotation Engine - Motor de anotação
 """
-from time import time
+
 from typing import List, Dict, Optional
 from loguru import logger
 import asyncio
 import httpx
+import time
 
 from src.llm_annotation_system.core.llm_provider import LLMProvider
 from src.llm_annotation_system.core.cache_manager import CacheManager
@@ -71,14 +72,8 @@ class AnnotationEngine:
                     logger.debug(f"{model} rep {rep+1}: cache miss")
             else:
                 response = await self._ainvoke_chain(chain, text)
-            t0 = time.perf_counter()
-            
+     
             result = self.response_processor.extract_label_and_confidence(response)
-            
-            t1 = time.perf_counter()
-            logger.debug(
-                f"{model} rep {rep+1}: extract label time {t1 - t0:.2f}s"
-            )
             return result 
 
         except Exception as e:
@@ -235,7 +230,6 @@ class AnnotationEngine:
             }
 
             try:
-                import time
                 
                 t0 = time.perf_counter()
                 

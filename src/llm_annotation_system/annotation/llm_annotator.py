@@ -262,7 +262,7 @@ class LLMAnnotator:
         rep_strategy: ExecutionStrategy
     ) -> dict:
         start = time.perf_counter()
-        logger.warning(f"[START] {model} @ {start:.3f}")
+        # logger.warning(f"[START] {model} @ {start:.3f}")
 
         annotations = await self.annotate_single(
             text=text,
@@ -275,7 +275,7 @@ class LLMAnnotator:
         labels = [a["label"] for a in annotations]
         
         end = time.perf_counter()
-        logger.warning(f"[END]   {model} @ {end:.3f} | Δ={end-start:.2f}s")
+        # logger.warning(f"[END]   {model} @ {end:.3f} | Δ={end-start:.2f}s")
         elapsed = end - start
 
         result = {}

@@ -8,7 +8,8 @@ import sys
 import os
 
 from src.config.datasets_collected import DATASETS, LABEL_MEANINGS
-from datasets import load_dataset, concatenate_datasets
+from datasets import load_dataset, concatenate_datasets, Dataset
+from huggingface_hub import hf_hub_download
 
 logger.remove()
 logger.add(sys.stderr, level="INFO",
@@ -43,15 +44,36 @@ def load_hf_dataset(
     # 2. Configurações globais
     # ------------------------------
     split = dataset_specific_config.get("split", dataset_global_config.split)
+    hf_file = dataset_specific_config.get("hf_file", dataset_global_config.hf_file)
     combine_splits = dataset_specific_config.get("combine_splits", dataset_global_config.combine_splits)
     sample_size = dataset_specific_config.get("sample_size", dataset_global_config.sample_size)
-    random_state = dataset_specific_config.get("sample_size", dataset_global_config.random_state)
+    random_state = dataset_specific_config.get("random_state", dataset_global_config.random_state)
 
     try:
         # ================================================================
+        # DOWNLOAD DIRETO DE ARQUIVO DO HF (PARQUET / CSV / ETC)
+        # ================================================================
+        if hf_file:
+            logger.info("Baixando parquet direto do HuggingFace Hub")
+
+            file_path = hf_hub_download(
+                repo_id=dataset_specific_config['path'],
+                repo_type="dataset",
+                filename=hf_file,
+                cache_dir=os.path.join(cache_dir, "hf")
+            )
+
+            logger.info(f"Arquivo baixado em: {file_path}")
+
+            df = pd.read_parquet(file_path)
+            dataset = Dataset.from_pandas(df)
+
+            logger.info(f"Dataset carregado: {len(dataset)} exemplos") 
+
+        # ================================================================
         # COMBINAÇÃO DE SPLITS (SE APLICÁVEL)
         # ================================================================
-        if combine_splits:
+        elif combine_splits:
             logger.info(f"Combinando splits: {combine_splits}")
             datasets_list = []
 
@@ -75,7 +97,7 @@ def load_hf_dataset(
         else:
             dataset = load_dataset(
                 dataset_specific_config["path"],
-                split=split,
+                split=split,    
                 cache_dir=os.path.join(cache_dir, "hf")
             )
             logger.info(f"Split '{split}': {len(dataset)} exemplos")
