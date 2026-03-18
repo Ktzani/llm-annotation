@@ -121,12 +121,13 @@ def load_hf_dataset(
         # ================================================================
         if random_state:
             dataset = dataset.shuffle(seed=random_state)
+            logger.info(f"Dataset embaralhado com seed={random_state}")
         
         if sample_size:
             sample_size = min(sample_size, len(dataset))
             
             dataset = dataset.select(range(sample_size))
-            logger.info(f"Amostra reduzida para {sample_size} exemplos (seed={random_state})")
+            logger.info(f"Amostra reduzida para {sample_size} exemplos")
 
         # ================================================================
         # EXTRAIR TEXTO
