@@ -21,7 +21,7 @@ class CacheManager:
         self.cache_dir = self.cache_dir.joinpath("manager")
         self.cache_dir.mkdir(exist_ok=True, parents=True)
         self.cache_file = self.cache_dir / "response_cache.json"
-        self.enabled = enabled  # ← armazenar
+        self.enabled = enabled
     
         if not self.enabled:
             self.cache = {}
