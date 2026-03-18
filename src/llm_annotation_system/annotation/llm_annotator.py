@@ -224,6 +224,10 @@ class LLMAnnotator:
         logger.info(f"Iniciando anotação")
         logger.info(f"Textos: {len(texts)} | Modelos: {len(self.models)} | Repetições: {num_repetitions}")
         logger.info(f"Total de anotações: {total_annotations}")
+        logger.info(f"Strategy - Modelos: {model_strategy.name} | Repetições: {rep_strategy.name}")
+        logger.info(f"Cache: {'Ativado' if use_cache else 'Desativado'}")
+        logger.info(f"Salvamento intermediário a cada {intermediate} textos")
+        logger.info(f"Máximo de textos processados simultaneamente: {max_concurrent_texts}")
         
         file_path = self.results_dir / "intermediate.csv"
         if file_path.exists():
