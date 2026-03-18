@@ -390,7 +390,6 @@ class LLMAnnotator:
         self,
         df: pd.DataFrame,
         ground_truth_col: str = "ground_truth",
-        output_csv: bool = False,
         output_dir: Optional[Path] = None
     ) -> pd.DataFrame:
         """
@@ -460,12 +459,12 @@ class LLMAnnotator:
         df_metrics = pd.DataFrame(results)
         df_metrics = df_metrics.sort_values("f1_macro", ascending=False)
 
-        if output_csv:
-            if output_dir is None:
-                output_dir = self.results_dir
-            output_path = output_dir / "model_metrics.csv"
-            df_metrics.to_csv(output_path, index=False)
-            logger.success(f"Métricas por modelo salvas em: {output_path}")
+        if output_dir is None:
+            output_dir = self.results_dir
+        
+        output_path = output_dir / "model_metrics.csv"
+        df_metrics.to_csv(output_path, index=False)
+        logger.success(f"Métricas por modelo salvas em: {output_path}")
 
         logger.success("✓ Métricas calculadas com sucesso")
 

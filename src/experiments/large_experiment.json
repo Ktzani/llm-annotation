@@ -24,7 +24,7 @@
         "model_strategy": "parallel",
         "rep_strategy": "parallel",
         "max_concurrent_texts": 4,
-        "keep_alive": 30
+        "keep_alive": "24h"
     },
     "cache": {
         "enabled": true,
