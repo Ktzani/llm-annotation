@@ -242,7 +242,6 @@ class LLMAnnotator:
     
         semaphore = asyncio.Semaphore(max_concurrent_texts)
     
-        total = len(texts)
         start_global = time.perf_counter()
     
         # métricas
@@ -361,6 +360,12 @@ class LLMAnnotator:
             })
     
         pbar.close()
+        
+        total_elapsed = time.perf_counter() - start_global
+        
+        logger.info("Finalizado ✅")
+        logger.info(f"Tempo total: {total_elapsed:.2f}s")
+        logger.info(f"Throughput médio: {remaining / total_elapsed:.2f} textos/s")
     
         # 🔥 salva resto do buffer (final)
         if buffer:
@@ -376,12 +381,6 @@ class LLMAnnotator:
             )
     
         self.cache_manager.save()
-    
-        total_elapsed = time.perf_counter() - start_global
-    
-        logger.info("Finalizado ✅")
-        logger.info(f"Tempo total: {total_elapsed:.2f}s")
-        logger.info(f"Throughput médio: {total / total_elapsed:.2f} textos/s")
     
         return pd.read_csv(file_path)
     
