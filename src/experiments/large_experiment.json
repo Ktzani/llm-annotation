@@ -25,7 +25,6 @@
         "rep_strategy": "parallel",
         "max_concurrent_texts": 4,
         "keep_alive": 30
-
     },
     "cache": {
         "enabled": true,

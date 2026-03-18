@@ -1,13 +1,14 @@
 {
     "dataset_name": "sst1",
     "dataset_config": {
-        "split": "train",
-        "combine_splits": [],
+        "split": null,
+        "combine_splits": null,
+        "hf_file": "data.parquet",
         "sample_size": 20,
         "random_state": 42,
         "remove_texts": {
             "remove": false,
-            "annotated_texts_path": ""
+            "annotated_texts_path": "/workspace/llm-annotation/data/results/agnews/intermediate.csv"
         }
     },
     "models": [
@@ -22,6 +23,7 @@
         "use_alternative_params": false,
         "model_strategy": "sequential",
         "rep_strategy": "sequential",
+        "max_concurrent_texts": 1,
         "keep_alive": null
     },
     "cache": {
@@ -29,9 +31,7 @@
         "dir": "C:\\Users\\gabri\\Documents\\GitHub\\llm-annotation\\data\\.cache"
     },
     "results": {
-        "save_model_metrics": true,
-        "save_intermediate": true,
-        "intermediate": 100,
+        "intermediate": 1,
         "dir": "C:\\Users\\gabri\\Documents\\GitHub\\llm-annotation\\data\\results"
     }
 }
