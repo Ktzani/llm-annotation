@@ -196,3 +196,10 @@ Nada muda.
 1️⃣ Refatorar `LLMAnnotator.annotate_dataset()` para async paralelo  
 2️⃣ Ajustar o `main()` para suportar async  
 3️⃣ Definir limites ideais de concorrência por modelo
+
+
+OLLAMA_NUM_PARALLEL=5  OLLAMA_FLASH_ATTENTION=1 OLLAMA_KV_CACHE_TYPE=q8_0 OLLAMA_CONTEXT_LENGTH=4096 OLLAMA_KEEP_ALIVE=24h ollama serve
+
+curl http://localhost:11434/api/generate -d '{"model": "qwen3:8b"}'
+curl http://localhost:11434/api/generate -d '{"model": "llama3.1:8b"}'
+curl http://localhost:11434/api/generate -d '{"model": "deepseek-r1:8b"}'
