@@ -75,7 +75,6 @@ async def run_experiment_background(
             texts=texts,
             num_repetitions=config.annotation.num_repetitions_per_llm,
             intermediate=config.results.intermediate,
-            use_cache=config.cache.enabled,
             model_strategy=config.annotation.model_strategy,
             rep_strategy=config.annotation.rep_strategy,
             max_concurrent_texts=config.annotation.max_concurrent_texts
