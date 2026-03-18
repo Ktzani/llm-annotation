@@ -119,11 +119,12 @@ def load_hf_dataset(
         # ================================================================
         # AMOSTRAGEM
         # ================================================================
-        if sample_size is not None:
+        if random_state:
+            dataset = dataset.shuffle(seed=random_state)
+        
+        if sample_size:
             sample_size = min(sample_size, len(dataset))
             
-            if random_state:
-                dataset = dataset.shuffle(seed=random_state)
             dataset = dataset.select(range(sample_size))
             logger.info(f"Amostra reduzida para {sample_size} exemplos (seed={random_state})")
 
