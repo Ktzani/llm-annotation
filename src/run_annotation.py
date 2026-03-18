@@ -153,7 +153,6 @@ async def run_dataset(
     annotator.evaluate_model_metrics(
         df_annotations,
         ground_truth_col="ground_truth",
-        output_csv=True,
         output_dir=output_dir
     )
     logger.success(f"✓ Métricas salvas em: {output_dir}")

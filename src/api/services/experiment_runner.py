@@ -110,7 +110,6 @@ async def run_experiment_background(
         df_metrics = annotator.evaluate_model_metrics(
             df_annotations,
             ground_truth_col="ground_truth",
-            output_csv=True,
             output_dir=output_dir
         )
         results["metrics"] = df_metrics.to_dict(orient="records")
