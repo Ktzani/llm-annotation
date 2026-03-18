@@ -45,7 +45,7 @@ class LLMAnnotator:
         results_dir: str,
         prompt_template = BASE_ANNOTATION_PROMPT,
         examples: Optional[List[Dict]] = None,
-        use_langchain_cache: bool = True,
+        use_cache: bool = True,
         use_alternative_params: bool = False,
         keep_alive: int | str | None = None
     ):
@@ -67,6 +67,7 @@ class LLMAnnotator:
         self.results_dir = self.results_dir.joinpath(dataset_name)
         
         self.use_alternative_params = use_alternative_params
+        self.use_cache = use_cache
         
         # Criar diretórios
         self.cache_dir.mkdir(exist_ok=True, parents=True)
@@ -74,8 +75,8 @@ class LLMAnnotator:
         
         # Inicializar componentes
         self.llm_provider = LLMProvider(keep_alive=keep_alive)
-        self.cache_manager = CacheManager(cache_dir)
-        self.langchain_cache = LangChainCacheManager(cache_dir, use_langchain_cache)
+        self.cache_manager = CacheManager(cache_dir, enabled=use_cache)
+        self.langchain_cache = LangChainCacheManager(cache_dir, enabled=use_cache)
         self.response_processor = ResponseProcessor(categories)
         self.annotation_engine = AnnotationEngine(
             llm_provider=self.llm_provider,
@@ -140,7 +141,6 @@ class LLMAnnotator:
         text: str,
         model: str,
         num_repetitions: int = 1,
-        use_cache: bool = True,
         rep_strategy: ExecutionStrategy = ExecutionStrategy.SEQUENTIAL
     ) -> List[str]:
         """
@@ -163,7 +163,7 @@ class LLMAnnotator:
             model=model,
             llm=self.llms[model],
             num_repetitions=num_repetitions,
-            use_cache=use_cache,
+            use_cache=self.use_cache,
             rep_strategy=rep_strategy
         )
 
@@ -172,7 +172,6 @@ class LLMAnnotator:
         text: str,
         model: str,
         num_repetitions: int,
-        use_cache: bool,
         rep_strategy: ExecutionStrategy
     ) -> dict:
         start = time.perf_counter()
@@ -181,7 +180,6 @@ class LLMAnnotator:
             text=text,
             model=model,
             num_repetitions=num_repetitions,
-            use_cache=use_cache,
             rep_strategy=rep_strategy
         )
         
@@ -213,7 +211,6 @@ class LLMAnnotator:
         texts: List[str],
         num_repetitions: Optional[int] = 1,
         intermediate: int = 10,
-        use_cache: bool = True,
         model_strategy: ExecutionStrategy = ExecutionStrategy.SEQUENTIAL,
         rep_strategy: ExecutionStrategy = ExecutionStrategy.SEQUENTIAL,
         max_concurrent_texts: int = 5
@@ -225,7 +222,7 @@ class LLMAnnotator:
         logger.info(f"Textos: {len(texts)} | Modelos: {len(self.models)} | Repetições: {num_repetitions}")
         logger.info(f"Total de anotações: {total_annotations}")
         logger.info(f"Strategy - Modelos: {model_strategy.name} | Repetições: {rep_strategy.name}")
-        logger.info(f"Cache: {'Ativado' if use_cache else 'Desativado'}")
+        logger.info(f"Cache: {'Ativado' if self.use_cache else 'Desativado'}")
         logger.info(f"Salvamento intermediário a cada {intermediate} textos")
         logger.info(f"Máximo de textos processados simultaneamente: {max_concurrent_texts}")
         
@@ -275,7 +272,6 @@ class LLMAnnotator:
                             text=text,
                             model=model,
                             num_repetitions=num_repetitions,
-                            use_cache=use_cache,
                             rep_strategy=rep_strategy
                         )
                         text_results.update(result)
@@ -289,7 +285,6 @@ class LLMAnnotator:
                             text=text,
                             model=model,
                             num_repetitions=num_repetitions,
-                            use_cache=use_cache,
                             rep_strategy=rep_strategy
                         )
                         for model in self.models
@@ -379,7 +374,7 @@ class LLMAnnotator:
                 index=False,
                 encoding="utf-8"
             )
-    
+            
         self.cache_manager.save()
     
         return pd.read_csv(file_path)

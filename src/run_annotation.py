@@ -76,7 +76,6 @@ async def run_single(
     texts: list, 
     ground_truth: list, 
     models: list, 
-    cache_enabled: bool, 
     rep_strategy: str, 
     index: int = 0
 ):
@@ -98,7 +97,6 @@ async def run_single(
         text=text,
         model=model,
         num_repetitions=3,
-        use_cache=cache_enabled,
         rep_strategy=rep_strategy
     )
 
@@ -114,11 +112,9 @@ async def run_dataset(
     texts: list, 
     ground_truth: list, 
     num_repetitions: int, 
-    cache_enabled: bool, 
     intermediate: str, 
     model_strategy: str, 
     rep_strategy: str, 
-    results_dir: str, 
     max_concurrent_texts: int
 ):
     """Anota o dataset completo e salva os resultados."""
@@ -127,7 +123,6 @@ async def run_dataset(
     df_annotations = await annotator.annotate_dataset(
         texts=texts,
         num_repetitions=num_repetitions,
-        use_cache=cache_enabled,
         intermediate=intermediate,
         model_strategy=model_strategy,
         rep_strategy=rep_strategy,
@@ -226,7 +221,7 @@ async def main():
         cache_dir=cache_dir,
         results_dir=results_dir,
         prompt_template=PROMPT_TEMPLATE,
-        use_langchain_cache=cache_enabled,
+        use_cache=cache_enabled,
         use_alternative_params=use_alternative_params,
         keep_alive=keep_alive
     )
@@ -242,7 +237,6 @@ async def main():
             texts=texts,
             ground_truth=ground_truth,
             models=DEFAULT_MODELS,
-            cache_enabled=cache_enabled,
             rep_strategy=rep_strategy,
             index=0
         )
@@ -252,11 +246,9 @@ async def main():
             texts=texts,
             ground_truth=ground_truth,
             num_repetitions=num_repetitions,
-            cache_enabled=cache_enabled,
             intermediate=intermediate,
             model_strategy=model_strategy,
             rep_strategy=rep_strategy,
-            results_dir=results_dir,
             max_concurrent_texts=max_concurrent_texts
         )
 

@@ -59,7 +59,7 @@ async def run_experiment_background(
             cache_dir=config.cache.dir,
             results_dir=config.results.dir,
             prompt_template=prompt_template,
-            use_langchain_cache=config.cache.enabled,
+            use_cache=config.cache.enabled,
             use_alternative_params=config.annotation.use_alternative_params,
             keep_alive=config.annotation.keep_alive
         )

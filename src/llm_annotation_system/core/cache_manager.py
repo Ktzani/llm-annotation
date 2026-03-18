@@ -16,15 +16,18 @@ class CacheManager:
     Responsabilidades: salvar, carregar, verificar cache
     """
     
-    def __init__(self, cache_dir: str = CACHE_DIR):
-        """
-        Args:
-            cache_dir: Diretório para cache
-        """
+    def __init__(self, cache_dir: str = CACHE_DIR, enabled: bool = True):
         self.cache_dir = Path(cache_dir)
         self.cache_dir = self.cache_dir.joinpath("manager")
         self.cache_dir.mkdir(exist_ok=True, parents=True)
         self.cache_file = self.cache_dir / "response_cache.json"
+        self.enabled = enabled  # ← armazenar
+    
+        if not self.enabled:
+            self.cache = {}
+            logger.warning("Cache DESATIVADO explicitamente")
+            return
+    
         self.cache = self._load()
         logger.debug(f"Cache inicializado: {self.cache_file}")
     
@@ -43,6 +46,9 @@ class CacheManager:
     
     def save(self):
         """Salva cache no disco"""
+        if not self.enabled:
+            return
+        
         try:
             with open(self.cache_file, 'w', encoding='utf-8') as f:
                 json.dump(self.cache, f, indent=2, ensure_ascii=False)
@@ -75,6 +81,9 @@ class CacheManager:
         Returns:
             Resposta em cache ou None
         """
+        if not self.enabled:
+            return None
+        
         return self.cache.get(key)
     
     def set(self, key: str, value: str):
@@ -85,6 +94,9 @@ class CacheManager:
             key: Chave do cache
             value: Resposta
         """
+        if not self.enabled:
+            return
+        
         self.cache[key] = value
         
         # Auto-save a cada 10 entradas
@@ -135,7 +147,7 @@ class LangChainCacheManager:
         if not self.enabled:
             # 🔥 ISSO É O QUE ESTAVA FALTANDO
             set_llm_cache(None)
-            logger.info("Cache LangChain DESATIVADO explicitamente")
+            logger.warning("Cache LangChain DESATIVADO explicitamente")
             return
 
         try:
