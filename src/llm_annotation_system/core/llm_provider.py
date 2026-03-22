@@ -43,7 +43,7 @@ class LLMProvider:
         self._setup_api_keys()
         logger.debug("LLMProvider inicializado")
         
-        self.client = httpx.AsyncClient(timeout=60)
+        self.client = httpx.AsyncClient(timeout=120)
         self.keep_alive = keep_alive
 
     def _setup_api_keys(self):
