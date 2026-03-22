@@ -159,3 +159,16 @@ class LangChainCacheManager:
 
         except ImportError:
             logger.warning("langchain.cache não disponível - cache desativado")
+            
+    def stats(self) -> Dict[str, Any]:
+        """Retorna estatísticas do cache do LangChain"""
+        from langchain_core.globals import get_llm_cache
+        cache = get_llm_cache()
+        if cache is None:
+            return {"enabled": False}
+        
+        # Supondo que o SQLiteCache tenha um método stats() - isso pode variar
+        if hasattr(cache, "stats"):
+            return cache.stats()
+        
+        return {"enabled": True, "info": "Stats não disponíveis para este tipo de cache"}

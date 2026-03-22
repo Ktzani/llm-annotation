@@ -13,6 +13,9 @@ from src.api.core.state import experiments
 
 import pandas as pd
 
+from src.utils.evaluate_model_metrics import evaluate_model_metrics
+from src.utils.get_text_id_from_text import get_text_id_from_text
+
 
 async def run_experiment_background(
     experiment_id: str,
@@ -80,7 +83,18 @@ async def run_experiment_background(
             max_concurrent_texts=config.annotation.max_concurrent_texts
         )
         
-        df_annotations["ground_truth"] = ground_truth
+        df_gt = pd.DataFrame({
+            "text": texts,
+            "ground_truth": ground_truth
+        })
+
+        df_gt["text_id"] = df_gt["text"].apply(get_text_id_from_text)
+
+        df_annotations = df_annotations.merge(
+            df_gt[["text_id", "ground_truth"]],
+            on="text_id",
+            how="left"
+        )
 
         experiments[experiment_id].progress = 0.7
         experiments[experiment_id].message = "Anotações completas. Calculando métricas..."
@@ -106,13 +120,14 @@ async def run_experiment_background(
             index=False,
         )
 
-        df_metrics = annotator.evaluate_model_metrics(
+        df_metrics = evaluate_model_metrics(
             df_annotations,
+            models=annotator.models,
             ground_truth_col="ground_truth",
             output_dir=output_dir
         )
+        
         results["metrics"] = df_metrics.to_dict(orient="records")
-
 
         experiments[experiment_id].status = "completed"
         experiments[experiment_id].completed_at = datetime.now()
