@@ -4,7 +4,7 @@
         "split": null,
         "combine_splits": null,
         "hf_file": "data.parquet",
-        "sample_size": 20,
+        "sample_size": 10,
         "random_state": 42,
         "remove_texts": {
             "remove": false,

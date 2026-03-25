@@ -180,8 +180,8 @@ async def main():
     experiment = "time_experiment_local"
     config_path = Path(f"C:\\Users\\gabri\\Documents\\GitHub\\llm-annotation\\src\\experiments\\{experiment}.json")
 
-    dataset_name = "agnews"
-    annotated_texts_path = rf"data\results\agnews\intermediate.csv"
+    dataset_name = "movie_review"  # Exemplo: "agnews", "yelp_review_full", "imdb", "amazon_polarity", etc.
+    annotated_texts_path = rf"data\results\{dataset_name}\intermediate.csv"
 
     logger.success("✓ Setup completo")
 

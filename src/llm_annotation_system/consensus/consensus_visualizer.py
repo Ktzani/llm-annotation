@@ -144,7 +144,7 @@ class ConsensusVisualizer:
                 z=matrix.values,
                 x=matrix.columns,
                 y=matrix.index,
-                colorscale="greens",
+                colorscale="Reds",
                 zmin=0,
                 zmax=1,
                 colorbar=dict(title="Cohen's Kappa"),
