@@ -15,7 +15,7 @@ from src.api.schemas.experiment import ExperimentRequest
 from src.api.services.prompt_factory import get_prompt_template
 from src.utils.data_loader import load_hf_dataset, list_available_datasets
 from src.llm_annotation_system.annotation.llm_annotator import LLMAnnotator
-from src.utils.evaluate_model_metrics import evaluate_model_metrics
+from src.llm_annotation_system.core.evaluate_model_metrics import evaluate_model_metrics
 from src.utils.get_text_id_from_text import get_text_id_from_text
 
 
@@ -131,18 +131,22 @@ async def run_dataset(
         max_concurrent_texts=max_concurrent_texts
     )
     
-    df_gt = pd.DataFrame({
-        "text": texts,
-        "ground_truth": ground_truth
-    })
+    # Remover duplicatas de texto, mantendo a primeira ocorrência
+    df_annotations = df_annotations.drop_duplicates(subset=["text"])
+    
+    if texts:
+        df_gt = pd.DataFrame({
+            "text": texts,
+            "ground_truth": ground_truth
+        })
 
-    df_gt["text_id"] = df_gt["text"].apply(get_text_id_from_text)
+        df_gt["text_id"] = df_gt["text"].apply(get_text_id_from_text)
 
-    df_annotations = df_annotations.merge(
-        df_gt[["text_id", "ground_truth"]],
-        on="text_id",
-        how="left"
-    )
+        df_annotations = df_annotations.merge(
+            df_gt[["text_id", "ground_truth"]],
+            on="text_id",
+            how="left"
+        )
 
     logger.success("✓ Anotações completas")
 
@@ -177,10 +181,10 @@ async def main():
     # =========================================================================
     DEBUG_SINGLE = False  # True = anota apenas um texto; False = anota o dataset completo
 
-    experiment = "time_experiment_local"
+    experiment = "large_experiment"
     config_path = Path(f"C:\\Users\\gabri\\Documents\\GitHub\\llm-annotation\\src\\experiments\\{experiment}.json")
 
-    dataset_name = "movie_review"  # Exemplo: "agnews", "yelp_review_full", "imdb", "amazon_polarity", etc.
+    dataset_name = "dblp"  # Exemplo: "agnews", "yelp_review_full", "imdb", "amazon_polarity", etc.
     annotated_texts_path = rf"data\results\{dataset_name}\intermediate.csv"
 
     logger.success("✓ Setup completo")
@@ -211,9 +215,10 @@ async def main():
         dataset_name=dataset_name,
         cache_dir=cache_dir,
         dataset_cfg=dataset_cfg,
-        remove_annotated_texts=dataset_cfg.remove_texts.remove,
+        remove_annotated_texts=dataset_cfg.remove_texts,
         annotated_texts_path=annotated_texts_path
     )
+    
 
     logger.info(f"Textos: {len(texts)}")
     logger.info(f"Categorias: {categories}")

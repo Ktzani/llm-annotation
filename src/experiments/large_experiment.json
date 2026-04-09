@@ -6,10 +6,7 @@
         "hf_file": "data.parquet",
         "sample_size": null,
         "random_state": 42,
-        "remove_texts": {
-            "remove": false,
-            "annotated_texts_path": "/workspace/llm-annotation/data/results/agnews/intermediate.csv"
-        }
+        "remove_texts": true
     },
     "models": [
         "deepseek-r1-8b",
@@ -27,11 +24,11 @@
         "keep_alive": "24h"
     },
     "cache": {
-        "enabled": true,
-        "dir": "/workspace/llm-annotation/data/.cache" 
+        "enabled": false,
+        "dir": "C:\\Users\\gabri\\Documents\\GitHub\\llm-annotation\\data\\.cache" 
     },
     "results": {
         "intermediate": 500,
-        "dir": "/workspace/llm-annotation/data/results"
+        "dir": "C:\\Users\\gabri\\Documents\\GitHub\\llm-annotation\\data\\results"
     }
 }

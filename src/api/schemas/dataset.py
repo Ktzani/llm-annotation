@@ -1,20 +1,6 @@
 from pydantic import BaseModel, Field
 from typing import Optional, List
 
-class DatasetRemovedTextsConfig(BaseModel):
-    """
-    Configurações específicas para remoção de textos já anotados.
-    """
-    remove: bool = Field(
-        default=False,
-        description="Indica se os textos já anotados devem ser removidos do dataset."
-    )
-
-    annotated_texts_path: Optional[str] = Field(
-        default=None,
-        description="Caminho para o CSV contendo os textos já anotados. Necessário se remove_annotated_texts for True."
-    )
-
 class DatasetConfig(BaseModel):
     """
     Configuração de carregamento e amostragem do dataset.
@@ -45,9 +31,9 @@ class DatasetConfig(BaseModel):
         description="Seed para reprodutibilidade da amostragem do dataset."
     )
     
-    remove_texts: DatasetRemovedTextsConfig = Field(
-        default_factory=DatasetRemovedTextsConfig,
-        description="Configurações para remoção de textos já anotados."
+    remove_texts: Optional[bool] = Field(
+        default=False,
+        description="Indica se os textos já anotados devem ser removidos do dataset."
     )
     
     

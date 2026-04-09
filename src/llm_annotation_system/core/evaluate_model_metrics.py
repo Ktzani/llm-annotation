@@ -49,12 +49,21 @@ def evaluate_model_metrics(
 
             y_true = df_clean[ground_truth_col]
             y_pred = df_clean[col]
-
-            # Métricas considerando -1 como classe inválida
-            acc = accuracy_score(y_true, y_pred)
-            f1 = f1_score(y_true, y_pred, average="macro")
-            prec = precision_score(y_true, y_pred, average="macro", zero_division=0)
-            rec = recall_score(y_true, y_pred, average="macro", zero_division=0)
+            
+            # Filtrar instâncias válidas (remover -1)
+            valid_mask = (y_true != -1) & (y_pred != -1)
+            
+            y_true_valid = y_true[valid_mask]
+            y_pred_valid = y_pred[valid_mask]
+            
+            # Métricas apenas nas predições válidas
+            if len(y_true_valid) > 0:
+                acc = accuracy_score(y_true_valid, y_pred_valid)
+                f1 = f1_score(y_true_valid, y_pred_valid, average="macro")
+                prec = precision_score(y_true_valid, y_pred_valid, average="macro", zero_division=0)
+                rec = recall_score(y_true_valid, y_pred_valid, average="macro", zero_division=0)
+            else:
+                acc, f1, prec, rec = 0, 0, 0, 0
 
             # Coverage: % de predições != -1
             coverage = (y_pred != -1).mean()

@@ -6,10 +6,7 @@
         "hf_file": "data.parquet",
         "sample_size": 10,
         "random_state": 42,
-        "remove_texts": {
-            "remove": false,
-            "annotated_texts_path": "/workspace/llm-annotation/data/results/agnews/intermediate.csv"
-        }
+        "remove_texts": true
     },
     "models": [
         "deepseek-r1-8b",

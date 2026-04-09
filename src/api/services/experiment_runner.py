@@ -13,7 +13,7 @@ from src.api.core.state import experiments
 
 import pandas as pd
 
-from src.utils.evaluate_model_metrics import evaluate_model_metrics
+from src.llm_annotation_system.core.evaluate_model_metrics import evaluate_model_metrics
 from src.utils.get_text_id_from_text import get_text_id_from_text
 
 
@@ -33,7 +33,7 @@ async def run_experiment_background(
             dataset_global_config=config.dataset_config,
         )
 
-        if config.dataset_config.remove_texts.remove:
+        if config.dataset_config.remove_texts:
             logger.warning(f"Removendo textos já anotados...")
             logger.info(f"Textos antes: {len(texts)}")
             df = pd.read_csv(config.dataset_config.remove_texts.annotated_texts_path)
@@ -83,18 +83,22 @@ async def run_experiment_background(
             max_concurrent_texts=config.annotation.max_concurrent_texts
         )
         
-        df_gt = pd.DataFrame({
-            "text": texts,
-            "ground_truth": ground_truth
-        })
+        # Remover duplicatas de texto, mantendo a primeira ocorrência
+        df_annotations = df_annotations.drop_duplicates(subset=["text"])
+        
+        if texts:
+            df_gt = pd.DataFrame({
+                "text": texts,
+                "ground_truth": ground_truth
+            })
 
-        df_gt["text_id"] = df_gt["text"].apply(get_text_id_from_text)
+            df_gt["text_id"] = df_gt["text"].apply(get_text_id_from_text)
 
-        df_annotations = df_annotations.merge(
-            df_gt[["text_id", "ground_truth"]],
-            on="text_id",
-            how="left"
-        )
+            df_annotations = df_annotations.merge(
+                df_gt[["text_id", "ground_truth"]],
+                on="text_id",
+                how="left"
+            )
 
         experiments[experiment_id].progress = 0.7
         experiments[experiment_id].message = "Anotações completas. Calculando métricas..."

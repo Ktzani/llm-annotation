@@ -127,8 +127,8 @@ class FineTuningPipeline:
         
         # Dataset anotado (consenso)
         df_annotations = (
-            df[["text_id", "text", "most_common_annotation"]]
-            .rename(columns={"most_common_annotation": "label"})
+            df[["text_id", "text", "resolved_annotation"]]
+            .rename(columns={"resolved_annotation": "label"})
         )
         df_annotations = add_label_description(
             df_annotations,
