@@ -33,7 +33,8 @@ class SupervisedFineTuner(FineTuner):
         train_ds = self.tokenizer.encode(train_ds)
         
         if eval_ds is not None:
-            eval_ds = self.tokenizer.encode(eval_ds)    
+            eval_ds = self.tokenizer.encode(eval_ds)  
+              
         model = self.model_factory(
             self.model_name,
             self.label_schema
