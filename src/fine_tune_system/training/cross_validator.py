@@ -1,8 +1,8 @@
 from typing import List, Dict, Optional
 import numpy as np
+from datasets import Dataset
 
 from src.fine_tune_system.fine_tune.fine_tune_factory import FineTunerFactory
-
 
 class CrossValidator:
     def __init__(self, fine_tuner_factory: FineTunerFactory):
@@ -13,8 +13,8 @@ class CrossValidator:
 
     def run(
         self,
-        cv_splits: List[Dict[str, object]],
-        test_ds: Optional[object] = None,
+        cv_splits: List[Dict[str, Dataset]],
+        test_ds: Optional[Dataset] = None,
         fine_tune_type: Optional[str] = "supervised"
     ) -> Dict:
 

@@ -2,12 +2,14 @@
 import numpy as np
 import evaluate
 
+from datasets import Dataset
+
 class MetricsComputer:
     def __init__(self):
         self.accuracy = evaluate.load("accuracy")
         self.f1 = evaluate.load("f1")
 
-    def __call__(self, eval_pred):
+    def __call__(self, eval_pred: Dataset):
         logits, labels = eval_pred
         preds = np.argmax(logits, axis=1)
 

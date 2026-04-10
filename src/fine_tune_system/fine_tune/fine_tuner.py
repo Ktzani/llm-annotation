@@ -3,9 +3,9 @@ from abc import ABC, abstractmethod
 class FineTuner(ABC):
 
     @abstractmethod
-    def fit(self, train_ds, eval_ds=None):
+    def fit(self, train_ds: list, eval_ds: list = None):
         pass
 
     @abstractmethod
-    def evaluate(self, test_ds) -> dict:
+    def evaluate(self, test_ds: list) -> dict:
         pass

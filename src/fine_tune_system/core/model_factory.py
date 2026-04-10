@@ -1,7 +1,9 @@
 from transformers import AutoModelForSequenceClassification
 
+from src.fine_tune_system.training.label_schema import LabelSchema
+
 class ModelFactory:
-    def __init__(self, model_name: str, label_schema):
+    def __init__(self, model_name: str, label_schema: LabelSchema):
         self.model_name = model_name
         self.label_schema = label_schema
 

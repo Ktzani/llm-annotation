@@ -1,10 +1,12 @@
+import pandas as pd
+
 class LabelSchema:
     def __init__(self, id2label: dict[int, str]):
         self.id2label = id2label
         self.label2id = {v: k for k, v in id2label.items()}
 
     @classmethod
-    def from_dataframe(cls, df):
+    def from_dataframe(cls, df: pd.DataFrame):
         mapping = (
             df[["label", "label_description"]]
             .drop_duplicates()

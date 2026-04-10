@@ -1,4 +1,6 @@
 from transformers import AutoTokenizer
+from datasets import Dataset
+
 from src.fine_tune_system.core.tokenizer import Tokenizer
 
 class HFTokenizer(Tokenizer):
@@ -9,7 +11,7 @@ class HFTokenizer(Tokenizer):
         )
         self.max_length = max_length
 
-    def encode(self, dataset):
+    def encode(self, dataset: Dataset) -> Dataset:
         # 1. Garantir labels
         if "label" in dataset.column_names:
             dataset = dataset.rename_column("label", "labels")
