@@ -365,7 +365,10 @@ def main():
         dataset_name=dataset_name,
         model_name=model_name,
         num_epochs=20,
-        learning_rate=5e-5
+        learning_rate=5e-5,
+        train_batch_size=32,
+        eval_batch_size=64,
+        max_length=256
     )
     
     # Executar pipeline
