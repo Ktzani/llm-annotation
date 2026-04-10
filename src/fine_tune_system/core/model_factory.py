@@ -8,7 +8,7 @@ class ModelFactory:
         self.label_schema = label_schema
 
     def create(self):
-        tokenizer = AutoModelForSequenceClassification.from_pretrained(
+        model  = AutoModelForSequenceClassification.from_pretrained(
             self.model_name,
             num_labels=self.label_schema.num_labels(),
             id2label=self.label_schema.id2label,
@@ -18,6 +18,6 @@ class ModelFactory:
         )
         
         if 'roberta' in self.model_name:
-            tokenizer.add_prefix_space = True
+            model.add_prefix_space = True
             
-        return tokenizer
+        return model 

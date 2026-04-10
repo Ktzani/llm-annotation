@@ -6,40 +6,44 @@ from src.fine_tune_system.fine_tune.fine_tune_factory import FineTunerFactory
 
 class CrossValidator:
     def __init__(self, fine_tuner_factory: FineTunerFactory):
-        """
-        fine_tuner_factory: instância de FineTunerFactory
-        """
         self.fine_tuner_factory = fine_tuner_factory
 
     def run(
         self,
-        cv_splits: List[Dict[str, Dataset]],
+        cv_splits: Dict[int, Dict[str, Dataset]],
         test_ds: Optional[Dataset] = None,
         fine_tune_type: Optional[str] = "supervised"
     ) -> Dict:
 
         fold_metrics = []
+        fold_metrics_dict = {}  # ✅ guarda por fold
         test_metrics_all = []
 
-        for i, split in enumerate(cv_splits):
-            print(f"\n🚀 Fold {i+1}/{len(cv_splits)}")
+        for fold, split in cv_splits.items():
+            print(f"\n🚀 Fold {fold}")
 
-            # 🔥 cria um NOVO fine-tuner a cada fold
             fine_tuner = self.fine_tuner_factory.create(type=fine_tune_type)
+
+            eval_split = "val" if "val" in split else "test"
+
+            train_ds = split["train"]
+            val_ds = split[eval_split]
 
             # treino
             fine_tuner.fit(
-                train_ds=split["train"],
-                eval_ds=split["val"]
+                train_ds=train_ds,
+                eval_ds=val_ds
             )
 
             # validação
-            val_metrics = fine_tuner.evaluate(split["val"])
+            val_metrics = fine_tuner.evaluate(val_ds)
+
             fold_metrics.append(val_metrics)
+            fold_metrics_dict[fold] = val_metrics  # ✅ chave do fold
 
-            print(f"📊 Val metrics: {val_metrics}")
+            print(f"📊 Val metrics (fold {fold}): {val_metrics}")
 
-            # test opcional
+            # teste opcional
             if test_ds is not None:
                 test_metrics = fine_tuner.evaluate(test_ds)
                 test_metrics_all.append(test_metrics)
@@ -47,6 +51,7 @@ class CrossValidator:
                 print(f"🧪 Test metrics: {test_metrics}")
 
         results = {
+            "folds": fold_metrics_dict,  # ✅ métricas individuais
             "cv": self._aggregate_metrics(fold_metrics)
         }
 
