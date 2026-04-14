@@ -36,12 +36,13 @@ services:
 
     volumes:
       - ../data:/app/data
+      - ../src:/app/src
 
     restart: unless-stopped
 
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 60s
+      interval: 120s
       timeout: 10s
       retries: 3
       start_period: 60s

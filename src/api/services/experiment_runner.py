@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import datetime
 from pathlib import Path
 from loguru import logger
 
@@ -34,7 +34,7 @@ async def run_experiment_background(
         )
 
         if config.dataset_config.remove_texts:
-            annotated_texts_path = rf"data\results\{config.dataset_name}\intermediate.csv"
+            annotated_texts_path = Path("data") / "results" / config.dataset_name / "intermediate.csv"
             
             logger.warning(f"Removendo textos já anotados...")
             logger.info(f"Textos antes: {len(texts)}")

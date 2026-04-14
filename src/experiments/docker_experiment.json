@@ -4,7 +4,7 @@
         "split": null,
         "combine_splits": null,
         "hf_file": "data.parquet",
-        "sample_size": null,
+        "sample_size": 5,
         "random_state": 42,
         "remove_texts": true
     },
@@ -18,10 +18,10 @@
     "annotation": {
         "num_repetitions_per_llm": 1,
         "use_alternative_params": false,
-        "model_strategy": "parallel",
-        "rep_strategy": "parallel",
-        "max_concurrent_texts": 4,
-        "keep_alive": "24h"
+        "model_strategy": "sequential",
+        "rep_strategy": "sequential",
+        "max_concurrent_texts": 1,
+        "keep_alive": null
     },
     "cache": {
         "enabled": false,
