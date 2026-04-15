@@ -2,7 +2,7 @@ from typing import List, Dict, Optional, Tuple
 import pandas as pd
 from loguru import logger
 
-from src.api.schemas.dataset import DatasetConfig
+from src.api.schemas.annotation_experiment.dataset import DatasetConfig
 
 import sys
 import os
