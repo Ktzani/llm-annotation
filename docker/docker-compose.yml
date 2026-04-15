@@ -1,0 +1,48 @@
+# =============================================================
+# docker/docker-compose.yml — llm-annotation
+#
+# Cada pesquisador sobe sua própria instância com:
+#   GPU_IDS=<n> PORT=<p> docker compose -f docker/docker-compose.yml up -d
+#
+# Exemplos:
+#   GPU única  → GPU_IDS=0 PORT=8000 docker compose -f docker/docker-compose.yml up -d
+#   Multi-GPU  → GPU_IDS=0,1,2 PORT=8001 docker compose -f docker/docker-compose.yml up -d
+#   Todas GPUs → GPU_IDS=all PORT=8002 docker compose -f docker/docker-compose.yml up -d
+# =============================================================
+name: llm-annotation
+
+services:
+  llm-annotation:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: llm-annotation:latest
+    container_name: "llm-annotation-gpu${GPU_IDS:-0}"
+
+    ports:
+      - "${PORT:-8000}:8000"
+
+    environment:
+      GPU_ID: "${GPU_IDS:-0}"
+
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              # Aceita "0", "0,1,2" ou "all"
+              device_ids: ["${GPU_IDS:-0}"]
+              capabilities: [gpu]
+
+    volumes:
+      - ../data:/app/data
+      - ../src:/app/src
+
+    restart: unless-stopped
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 120s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
