@@ -73,6 +73,8 @@ class FineTuningConfig:
         self.weight_decay = weight_decay
         self.max_length = max_length
         self.seed = seed
+        
+
 class FineTuningPipeline:
     """Pipeline principal para fine-tuning"""
     
@@ -324,6 +326,7 @@ class FineTuningPipeline:
         logger.info("Fine-tuning com CONSENSO LLM")
         logger.info("=" * 60)
         
+        ## ! TODO !
         if run_type == "unique":
             logger.warning("⚠️ Modo 'unique' é apenas para teste rápido. Use 'cv' para avaliação robusta.")
             # metrics_consensus = self.run_fine_tuning(
@@ -355,29 +358,3 @@ class FineTuningPipeline:
         logger.info(f"\n{results[['source', 'eval_accuracy', 'eval_f1_macro']].to_string(index=False)}")
         
         return results
-
-def main():
-    """Função principal"""
-    dataset_name = "movie_review"
-    model_name = "roberta-base"
-    
-    # Configuração
-    config = FineTuningConfig(
-        dataset_name=dataset_name,
-        model_name=model_name,
-        num_epochs=20,
-        learning_rate=5e-5,
-        train_batch_size=32,
-        eval_batch_size=64,
-        max_length=256
-    )
-    
-    # Executar pipeline
-    pipeline = FineTuningPipeline(config)
-    results = pipeline.run(run_type="cv")
-    
-    return results
-
-
-if __name__ == "__main__":
-    main()

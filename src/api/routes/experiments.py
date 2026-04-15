@@ -2,8 +2,8 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException
 import uuid
 from datetime import datetime
 
-from src.api.core.state import experiments
-from src.api.schemas.experiment import ExperimentRequest, ExperimentStatus
+from src.api.core.state import experiments, cancellation_tokens
+from src.api.schemas.annotation_experiment.experiment import ExperimentRequest, ExperimentStatus
 from src.api.services.experiment_runner import run_experiment_background
 
 from loguru import logger
@@ -57,3 +57,17 @@ async def delete_experiment(experiment_id: str):
     
     del experiments[experiment_id]
     return {"message": "Experimento removido com sucesso"}
+
+# !! TODO !! - endpoint de cancelamento
+@router.post("/{experiment_id}/cancel")
+async def cancel_experiment(experiment_id: str):
+    if experiment_id not in experiments:
+        raise HTTPException(status_code=404, detail="Experimento não encontrado")
+
+    if experiments[experiment_id].status != "running":
+        raise HTTPException(status_code=400, detail="Experimento não está em execução")
+
+    cancellation_tokens[experiment_id].cancel()
+    experiments[experiment_id].status = "cancelled"
+    experiments[experiment_id].message = "Cancelamento solicitado"
+    return {"message": "Cancelamento solicitado"}
