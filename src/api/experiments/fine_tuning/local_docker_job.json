@@ -1,0 +1,20 @@
+{
+    "dataset": {
+        "dataset_name": "movie_review",
+        "cache_dir": "/app/data/.cache",
+        "results_dir": "/app/data/results",
+        "specific_date": "latest"
+    },
+    "hyperparams": {
+        "learning_rate": 0.00005,
+        "num_epochs": 20,
+        "train_batch_size": 32,
+        "eval_batch_size": 64,
+        "weight_decay": 0.01,
+        "max_length": 256,
+        "seed": 42
+    },
+
+    "model_name": "roberta-base",
+    "run_type": "cv"
+}
