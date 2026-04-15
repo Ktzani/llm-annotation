@@ -1,6 +1,7 @@
 from typing import List, Dict, Optional
 import numpy as np
 from datasets import Dataset
+from loguru import logger
 
 import torch
 from concurrent.futures import ProcessPoolExecutor, as_completed
@@ -78,6 +79,10 @@ class CrossValidator:
         # fold num processo separado e usar a GPU toda para ele)
         if torch.cuda.is_available():
             torch.cuda.set_device(0)
+            
+        else:
+            logger.warning("⚠️ CUDA não disponível. Rodando na CPU (muito lento!)")
+            raise RuntimeError("CUDA não disponível")
 
         fine_tuner = self.fine_tuner_factory.create(
             type=fine_tune_type,
@@ -88,11 +93,6 @@ class CrossValidator:
 
         train_ds = split["train"]
         val_ds = split[eval_split]
-        
-        print("CUDA disponível:", torch.cuda.is_available())
-        print("Qtde GPUs:", torch.cuda.device_count())
-        print("GPU atual:", torch.cuda.current_device())
-        print("Nome:", torch.cuda.get_device_name(0))
 
         fine_tuner.fit(
             train_ds=train_ds,
