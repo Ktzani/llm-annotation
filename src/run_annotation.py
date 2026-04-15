@@ -11,7 +11,7 @@ import pandas as pd
 
 from loguru import logger
 
-from src.api.schemas.experiment import ExperimentRequest
+from src.api.schemas.annotation_experiment.experiment import ExperimentRequest
 from src.api.services.prompt_factory import get_prompt_template
 from src.utils.data_loader import load_hf_dataset, list_available_datasets
 from src.llm_annotation_system.annotation.llm_annotator import LLMAnnotator

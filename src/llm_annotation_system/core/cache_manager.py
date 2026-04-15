@@ -8,7 +8,7 @@ from typing import Dict, Any, Optional
 from pathlib import Path
 from loguru import logger
 
-from src.experiments.base_experiment import CACHE_DIR
+CACHE_DIR = rf"C:\Users\gabri\Documents\GitHub\llm-annotation\data\.cache"
 
 class CacheManager:
     """

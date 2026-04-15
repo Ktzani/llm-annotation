@@ -5,6 +5,7 @@ from src.api.core.config import setup_logger, setup_cors
 from src.api.routes.experiments import router as experiments_router
 from src.api.routes.datasets import router as datasets_router
 from src.api.routes.health import router as health_router
+from src.api.routes.fine_tuning import router as fine_tuning_router
 
 setup_logger()
 
@@ -17,6 +18,7 @@ app = FastAPI(
 setup_cors(app)
 
 app.include_router(experiments_router)
+app.include_router(fine_tuning_router)
 app.include_router(datasets_router)
 app.include_router(health_router)
 
