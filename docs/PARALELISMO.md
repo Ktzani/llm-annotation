@@ -208,3 +208,7 @@ curl http://localhost:11434/api/generate -d '{"model": "deepseek-r1:8b"}'
 brev copy -r ./data lbd-8a100-server:/home/nvidia/workspace/catizani/llm-annotation
 
 brev copy ./data/results/results.zip lbd-8a100-server:/home/nvidia/workspace/catizani/llm-annotation/data
+
+docker build -f docker/Dockerfile -t llm-annotation:latest .
+
+GPU_ID=<GPUS> PORT=8000 docker compose -f docker/docker-compose.yml up -d
