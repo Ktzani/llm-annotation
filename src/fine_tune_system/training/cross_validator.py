@@ -22,7 +22,7 @@ class CrossValidator:
         for fold, split in cv_splits.items():
             print(f"\n🚀 Fold {fold}")
 
-            fine_tuner = self.fine_tuner_factory.create(type=fine_tune_type)
+            fine_tuner = self.fine_tuner_factory.create(type=fine_tune_type, fold=fold)
 
             eval_split = "val" if "val" in split else "test"
 

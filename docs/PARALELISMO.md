@@ -203,3 +203,8 @@ OLLAMA_NUM_PARALLEL=5  OLLAMA_FLASH_ATTENTION=1 OLLAMA_KV_CACHE_TYPE=q8_0 OLLAMA
 curl http://localhost:11434/api/generate -d '{"model": "qwen3:8b"}'
 curl http://localhost:11434/api/generate -d '{"model": "llama3.1:8b"}'
 curl http://localhost:11434/api/generate -d '{"model": "deepseek-r1:8b"}'
+
+
+brev copy -r ./data lbd-8a100-server:/home/nvidia/workspace/catizani/llm-annotation
+
+brev copy ./data/results/results.zip lbd-8a100-server:/home/nvidia/workspace/catizani/llm-annotation/data

@@ -7,6 +7,10 @@ from src.fine_tune_system.fine_tune.supervised_fine_tuner import SupervisedFineT
 from src.fine_tune_system.core.tokenizer import Tokenizer
 from src.fine_tune_system.training.label_schema import LabelSchema
 
+from copy import deepcopy
+from pathlib import Path
+
+
 class FineTunerFactory:
     def __init__(
         self,
@@ -26,17 +30,32 @@ class FineTunerFactory:
         self.trainer_builder = trainer_builder
         self.metrics_computer = metrics_computer
 
-    def create(self, type: str = "supervised"):
+    def create(
+        self,
+        type: str = "supervised",
+        fold: int = 0
+    ):
+
+        # cópia independente para cada fold
+        training_args = deepcopy(self.training_args)
+
+        # pasta específica
+        training_args.output_dir = str(
+            Path(self.training_args.output_dir) / f"fold_{fold}"
+        )
+
         if type == "supervised":
             return SupervisedFineTuner(
                 model_name=self.model_name,
-                training_args=self.training_args,
+                training_args=training_args,
                 label_schema=self.label_schema,
                 tokenizer=self.tokenizer,
                 model_factory=self.model_factory,
                 trainer_builder=self.trainer_builder,
                 metrics_computer=self.metrics_computer,
             )
-            
-        else: 
-            raise ValueError(f"Tipo de fine-tuning '{type}' não suportado.")
+
+        else:
+            raise ValueError(
+                f"Tipo de fine-tuning '{type}' não suportado."
+            )
