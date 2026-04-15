@@ -323,6 +323,7 @@ class FineTuningPipeline:
         logger.info("\n" + "=" * 60)
         logger.info("Fine-tuning com CONSENSO LLM")
         logger.info("=" * 60)
+        
         if run_type == "unique":
             logger.warning("⚠️ Modo 'unique' é apenas para teste rápido. Use 'cv' para avaliação robusta.")
             # metrics_consensus = self.run_fine_tuning(
