@@ -11,7 +11,7 @@ setup_logger()
 
 app = FastAPI(
     title="LLM Annotation API",
-    description="API para experimentação de anotação com múltiplos LLMs",
+    description="API para experimentação de anotação com múltiplos LLMs e fine-tuning",
     version="1.0.0",
 )
 
@@ -32,6 +32,9 @@ async def root():
             "POST /experiments": "Criar novo experimento",
             "GET /experiments/{experiment_id}": "Obter status do experimento",
             "GET /experiments": "Listar todos os experimentos",
+            "POST /fine-tuning": "Iniciar job de fine-tuning",
+            "GET /fine-tuning/{job_id}": "Obter status do job de fine-tuning",
+            "GET /fine-tuning": "Listar todos os jobs de fine-tuning",
             "GET /datasets": "Listar datasets disponíveis",
             "GET /health": "Health check"
         }
