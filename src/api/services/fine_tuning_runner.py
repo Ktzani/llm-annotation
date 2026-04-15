@@ -47,7 +47,7 @@ async def run_fine_tuning_background(
         fine_tuning_jobs[job_id].message = f"Pipeline criado. Executando run_type='{config.run_type}'..."
 
         # pipeline.run() é síncrono — rodamos direto (já estamos numa background task)
-        results_df: pd.DataFrame = pipeline.run(run_type=config.run_type)
+        results_df: pd.DataFrame = pipeline.run(run_type=config.run_type, max_parallel_folds=config.max_parallel_folds)
 
         # ── 4. Serializar resultados ───────────────────────────────────────
         results_records = results_df.to_dict(orient="records")
@@ -60,6 +60,7 @@ async def run_fine_tuning_background(
             "dataset_name": config.dataset.dataset_name,
             "model_name": config.model_name,
             "run_type": config.run_type,
+            "max_parallel_folds": config.max_parallel_foldss,
             "metrics": results_records,
         }
 

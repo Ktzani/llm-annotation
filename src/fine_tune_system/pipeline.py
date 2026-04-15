@@ -270,6 +270,7 @@ class FineTuningPipeline:
         cv_splits: pd.DataFrame,
         label_schema: LabelSchema,
         experiment_name: str,
+        max_parallel_folds: int = 4,
         test_ds: Optional[Dataset] = None
     ):
         """Executa cross-validation"""
@@ -292,7 +293,7 @@ class FineTuningPipeline:
         )
 
         # cross-validator
-        cv = CrossValidator(fine_tuner_factory=factory)
+        cv = CrossValidator(fine_tuner_factory=factory, max_parallel_folds=max_parallel_folds)
 
         results = cv.run(
             cv_splits=cv_splits,
@@ -305,7 +306,7 @@ class FineTuningPipeline:
 
         return results
     
-    def run(self, run_type: str = "unique") -> dict:
+    def run(self, run_type: str = "unique", max_parallel_folds: int = 4) -> dict:
         """Executa pipeline completo"""
         logger.info("=" * 60)
         logger.info("Iniciando pipeline de fine-tuning")
@@ -340,7 +341,8 @@ class FineTuningPipeline:
             metrics_consensus = self.run_cross_validation(
                 cv_splits=cv_aligned_annotaded_splits,
                 label_schema=label_schema,
-                experiment_name="consensus_llm_cv"
+                experiment_name="consensus_llm_cv",
+                max_parallel_folds=max_parallel_folds
             )
         
         else:

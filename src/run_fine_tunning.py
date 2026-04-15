@@ -37,7 +37,7 @@ def main():
     
     # Executar pipeline
     pipeline = FineTuningPipeline(config)
-    results = pipeline.run(run_type="cv")
+    results = pipeline.run(run_type="cv", max_parallel_folds=1)  # max_parallel_folds=1 para evitar paralelismo em teste local
     
     return results
 

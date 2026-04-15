@@ -16,6 +16,8 @@ class FineTuningRequest(BaseModel):
         default="cv",
         description="Tipo de execução: 'cv' (cross-validation) ou 'unique' (teste rápido)",
     )
+    
+    max_parallel_folds: int = Field(default=4, description="Número máximo de folds a serem processados em paralelo (apenas para 'cv')")
 
 class FineTuningStatus(BaseModel):
     """Status de um job de fine-tuning"""

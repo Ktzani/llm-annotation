@@ -16,5 +16,6 @@
     },
 
     "model_name": "roberta-base",
-    "run_type": "cv"
+    "run_type": "cv",
+    "max_parallel_folds": 1
 }
