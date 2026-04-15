@@ -23,6 +23,16 @@ class CrossValidator:
         fold_metrics = []
         fold_metrics_dict = {}
         test_metrics_all = []
+        
+        if torch.cuda.is_available():
+            torch.cuda.set_device(0)
+            logger.info("CUDA:", torch.cuda.is_available())
+            logger.info("Device:", torch.cuda.get_device_name(0))
+            logger.info("Current:", torch.cuda.current_device())
+            
+        else:
+            logger.warning("⚠️ CUDA não disponível. Rodando na CPU (muito lento!)")
+            raise RuntimeError("CUDA não disponível")
 
         with ProcessPoolExecutor(
             max_workers=self.max_parallel_folds
@@ -77,12 +87,6 @@ class CrossValidator:
 
         # ! EXECUÇÃO COM APENAS UMA GPU (podemos paralelizar em GPUs futuramente, mas por enquanto é mais simples rodar cada 
         # fold num processo separado e usar a GPU toda para ele)
-        if torch.cuda.is_available():
-            torch.cuda.set_device(0)
-            
-        else:
-            logger.warning("⚠️ CUDA não disponível. Rodando na CPU (muito lento!)")
-            raise RuntimeError("CUDA não disponível")
 
         fine_tuner = self.fine_tuner_factory.create(
             type=fine_tune_type,
