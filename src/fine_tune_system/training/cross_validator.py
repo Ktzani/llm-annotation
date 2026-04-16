@@ -17,7 +17,6 @@ class CrossValidator:
     def run(
         self,
         cv_splits: Dict[int, Dict[str, Dataset]],
-        test_ds: Optional[Dataset] = None,
         fine_tune_type: Optional[str] = "supervised",
     ) -> Dict:
 
@@ -43,7 +42,6 @@ class CrossValidator:
                     self._run_single_fold,
                     fold,
                     split,
-                    test_ds,
                     fine_tune_type,
                 ): fold
                 for fold, split in cv_splits.items()
