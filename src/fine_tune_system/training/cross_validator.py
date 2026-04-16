@@ -26,10 +26,9 @@ class CrossValidator:
         test_metrics_all = []
         
         if torch.cuda.is_available():
-            torch.cuda.set_device(0)
-            logger.info("CUDA:", torch.cuda.is_available())
-            logger.info("Device:", torch.cuda.get_device_name(0))
-            logger.info("Current:", torch.cuda.current_device())
+            print('CUDA:', torch.cuda.is_available())
+            print('Device:', torch.cuda.get_device_name(0))
+            print('Current:', torch.cuda.current_device())
             
         else:
             logger.warning("⚠️ CUDA não disponível. Rodando na CPU (muito lento!)")
