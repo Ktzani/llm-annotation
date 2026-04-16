@@ -13,11 +13,11 @@ class FineTuningRequest(BaseModel):
 
     model_name: str = Field(default="roberta-base", description="Modelo base para fine-tuning")
     run_type: str = Field(
-        default="cv",
-        description="Tipo de execução: 'cv' (cross-validation) ou 'unique' (teste rápido)",
+        default="cross-validation",
+        description="Tipo de execução: 'cross-validation' ou 'single' (teste rápido)",
     )
     
-    max_parallel_folds: int = Field(default=4, description="Número máximo de folds a serem processados em paralelo (apenas para 'cv')")
+    max_parallel_folds: int = Field(default=4, description="Número máximo de folds a serem processados em paralelo (apenas para 'cross-validation')")
 
 class FineTuningStatus(BaseModel):
     """Status de um job de fine-tuning"""

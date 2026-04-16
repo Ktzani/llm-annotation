@@ -8,6 +8,7 @@ entre ground truth e consenso de anotações LLM.
 import sys
 from pathlib import Path
 from typing import Optional, Dict
+import json
 
 import pandas as pd
 from datasets import Dataset
@@ -226,15 +227,14 @@ class FineTuningPipeline:
             metric_for_best_model="f1_macro",
             greater_is_better=True,
             logging_strategy="epoch",
-            save_total_limit=1,
+            save_total_limit=2,
             seed=self.config.seed,
         )
     
     def run_fine_tuning(
         self,
-        train_dataset: Dataset,
-        test_dataset: Dataset,
-        eval_dataset: Optional[Dataset],
+        train_ds: Dataset,
+        eval_ds: Dataset,
         label_schema: LabelSchema,
         experiment_name: str
     ) -> dict:
@@ -255,15 +255,18 @@ class FineTuningPipeline:
             trainer_builder=TrainerBuilder,
             metrics_computer=MetricsComputer(),
         )
-        
-        fine_tuner.fit(train_dataset, eval_dataset)
-        metrics = fine_tuner.evaluate(test_dataset)
-        metrics["source"] = experiment_name
+
+        fine_tuner.fit(
+            train_ds=train_ds,
+            eval_ds=eval_ds,
+        )
+
+        result = fine_tuner.best_val_metrics()
         
         logger.success(f"Fine-tuning concluído: {experiment_name}")
-        logger.info(f"Accuracy: {metrics['eval_accuracy']:.4f}, F1 Macro: {metrics['eval_f1_macro']:.4f}")
+        logger.info(f"Accuracy: {result['eval_accuracy']:.4f}, F1 Macro: {result['eval_f1_macro']:.4f}")
         
-        return metrics
+        return result
     
     def run_cross_validation(
         self,
@@ -271,7 +274,6 @@ class FineTuningPipeline:
         label_schema: LabelSchema,
         experiment_name: str,
         max_parallel_folds: int = 4,
-        test_ds: Optional[Dataset] = None
     ):
         """Executa cross-validation"""
         logger.info(f"\n🚀 Cross-validation: {experiment_name}")
@@ -298,7 +300,6 @@ class FineTuningPipeline:
         results = cv.run(
             cv_splits=cv_splits,
             fine_tune_type="supervised",
-            test_ds=test_ds
         )
 
         logger.success(f"CV finalizado: {experiment_name}")
@@ -306,7 +307,7 @@ class FineTuningPipeline:
 
         return results
     
-    def run(self, run_type: str = "unique", max_parallel_folds: int = 4) -> dict:
+    def run(self, run_type: str = "single", max_parallel_folds: int = 4) -> dict:
         """Executa pipeline completo"""
         logger.info("=" * 60)
         logger.info("Iniciando pipeline de fine-tuning")
@@ -327,18 +328,17 @@ class FineTuningPipeline:
         logger.info("Fine-tuning com CONSENSO LLM")
         logger.info("=" * 60)
         
-        ## ! TODO !
-        if run_type == "unique":
-            logger.warning("⚠️ Modo 'unique' é apenas para teste rápido. Use 'cv' para avaliação robusta.")
-            # metrics_consensus = self.run_fine_tuning(
-            #     train_dataset=train_consensus,
-            #     test_dataset=test_dataset,
-            #     eval_dataset=eval_dataset,
-            #     label_schema=label_schema,
-            #     experiment_name="consensus_llm"
-            # )
-        elif run_type == "cv":
-            metrics_consensus = self.run_cross_validation(
+        if run_type == "single":
+            logger.warning("⚠️ Modo 'single' é apenas para teste rápido. Use 'cross-validation' para avaliação robusta.")
+            results = self.run_fine_tuning(
+                train_ds=cv_aligned_annotaded_splits[0]["train"],
+                eval_ds=cv_aligned_annotaded_splits[0]["val"],
+                label_schema=label_schema,
+                experiment_name="consensus_llm_single"
+            )
+            
+        elif run_type == "cross-validation":
+            results = self.run_cross_validation(
                 cv_splits=cv_aligned_annotaded_splits,
                 label_schema=label_schema,
                 experiment_name="consensus_llm_cv",
@@ -349,14 +349,11 @@ class FineTuningPipeline:
             raise ValueError(f"Tipo de execução desconhecido: {run_type}")
         
         # Salvar resultados
-        results = pd.DataFrame([metrics_consensus])
-        output_path = self.fine_tune_output_dir / f"{self.config.model_name}_fine_tuning_results.csv"
-        results.to_csv(output_path, index=False)
+        output_path = self.fine_tune_output_dir / f"{self.config.model_name}_fine_tuning_results.json"
+
+        with open(output_path, "w", encoding="utf-8") as f:
+            json.dump(results, f, indent=4, ensure_ascii=False)
         
         logger.success(f"\nResultados salvos em: {output_path}")
-        logger.info("\n" + "=" * 60)
-        logger.info("RESULTADOS FINAIS")
-        logger.info("=" * 60)
-        logger.info(f"\n{results[['source', 'eval_accuracy', 'eval_f1_macro']].to_string(index=False)}")
         
         return results

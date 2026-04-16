@@ -23,6 +23,7 @@ def main():
     """Função principal"""
     dataset_name = "movie_review"
     model_name = "roberta-base"
+    run_type = "single"  # "single" ou "cross-validation"
     
     # Configuração
     config = FineTuningConfig(
@@ -37,7 +38,7 @@ def main():
     
     # Executar pipeline
     pipeline = FineTuningPipeline(config)
-    results = pipeline.run(run_type="cv", max_parallel_folds=1)  # max_parallel_folds=1 para evitar paralelismo em teste local
+    results = pipeline.run(run_type=run_type, max_parallel_folds=1)  # max_parallel_folds=1 para evitar paralelismo em teste local
     
     return results
 

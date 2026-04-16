@@ -31,6 +31,18 @@ class SupervisedFineTuner(FineTuner):
         self.metrics_computer = metrics_computer
 
         self._trainer = None
+        
+    
+    def best_val_metrics(self) -> dict:
+        if self._trainer is None:
+            raise RuntimeError("Fine-tuner must be fitted before evaluation")
+    
+        best_checkpoint = self._trainer.state.best_model_checkpoint
+        best_step = int(best_checkpoint.split("-")[-1])
+
+        for entry in self._trainer.state.log_history:
+            if entry.get("step") == best_step and "eval_loss" in entry:
+                return {k: v for k, v in entry.items() if k.startswith("eval_") or k == "epoch"}
 
     def fit(self, train_ds: Dataset, eval_ds: Dataset = None):
         train_ds = self.tokenizer.encode(train_ds)

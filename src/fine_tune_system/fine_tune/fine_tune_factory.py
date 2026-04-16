@@ -41,7 +41,7 @@ class FineTunerFactory:
 
         # pasta específica
         training_args.output_dir = str(
-            Path(self.training_args.output_dir) / f"fold_{fold}"
+            Path(self.training_args.output_dir, self.model_name, f"fold_{fold}")
         )
 
         if type == "supervised":

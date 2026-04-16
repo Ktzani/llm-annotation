@@ -80,13 +80,9 @@ class CrossValidator:
         self,
         fold: int,
         split: Dict[str, Dataset],
-        test_ds: Optional[Dataset],
         fine_tune_type: str,
     ) -> Dict:
-        print(f"\n🚀 Iniciando Fold {fold}")
-
-        # ! EXECUÇÃO COM APENAS UMA GPU (podemos paralelizar em GPUs futuramente, mas por enquanto é mais simples rodar cada 
-        # fold num processo separado e usar a GPU toda para ele)
+        logger.info(f"\n🚀 Iniciando Fold {fold}")
 
         fine_tuner = self.fine_tuner_factory.create(
             type=fine_tune_type,
@@ -103,18 +99,12 @@ class CrossValidator:
             eval_ds=val_ds,
         )
 
-        val_metrics = fine_tuner.evaluate(val_ds)
-
         result = {
             "fold": fold,
-            "val_metrics": val_metrics,
+            "val_metrics": fine_tuner.best_val_metrics(),
         }
 
-        print(f"✅ Fold {fold} concluído")
-
-        if test_ds is not None:
-            test_metrics = fine_tuner.evaluate(test_ds)
-            result["test_metrics"] = test_metrics
+        logger.info(f"✅ Fold {fold} concluído")
 
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
