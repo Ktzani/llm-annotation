@@ -1,3 +1,4 @@
+import os
 from typing import List, Dict, Optional
 import numpy as np
 from datasets import Dataset
@@ -12,6 +13,10 @@ class CrossValidator:
     def __init__(self, fine_tuner_factory: FineTunerFactory, max_parallel_folds: int = 4):
         self.fine_tuner_factory = fine_tuner_factory
         self.max_parallel_folds = max_parallel_folds
+        
+    def _init_worker(self):
+        """Garante que cada processo filho herda o CUDA_VISIBLE_DEVICES do pai"""
+        os.environ["CUDA_VISIBLE_DEVICES"] = os.environ.get("CUDA_VISIBLE_DEVICES", "0")
 
     def run(
         self,
@@ -35,7 +40,8 @@ class CrossValidator:
             raise RuntimeError("CUDA não disponível")
 
         with ProcessPoolExecutor(
-            max_workers=self.max_parallel_folds
+            max_workers=self.max_parallel_folds,
+            initializer=_init_worker
         ) as executor:
 
             futures = {
