@@ -70,9 +70,6 @@ class CVSplitAligner:
             missing = split_ids - annotated_ids
 
             logger.warning(
-                f"[Fold {fold} | {split_name}] ⚠️ Baixa cobertura"
-            )
-            logger.warning(
                 f"HF: {len(hf_df)} | Annotated: {len(aligned_df)} "
                 f"| Coverage: {coverage:.4f} | Missing: {len(missing)}"
             )
