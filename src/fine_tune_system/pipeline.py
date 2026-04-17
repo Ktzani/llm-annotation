@@ -126,6 +126,8 @@ class FineTuningPipeline:
             ~df_annotations["text_id"].isin(df_invalid["text_id"])
         ].reset_index(drop=True)
         
+        logger.info(f"Removidas {len(df_invalid)} instâncias inválidas")
+        
         return df_annotations
     
     def load_annotated_data(self) -> tuple[pd.DataFrame, pd.DataFrame]:
