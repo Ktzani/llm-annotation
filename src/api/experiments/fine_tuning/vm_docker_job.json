@@ -3,7 +3,7 @@
         "dataset_name": "movie_review",
         "cache_dir": "/app/data/.cache",
         "results_dir": "/app/data/results",
-        "specific_date": "2026-04-09_13-17-23"
+        "specific_date": "latest"
     },
     "hyperparams": {
         "learning_rate": 0.00005,

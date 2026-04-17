@@ -211,4 +211,4 @@ brev copy ./data/results/results.zip lbd-8a100-server:/home/nvidia/workspace/cat
 
 docker build -f docker/Dockerfile -t llm-annotation:latest .
 
-GPU_ID=<GPUS> PORT=8000 docker compose -f docker/docker-compose.yml up -d
+GPU_IDS=<GPUs> CUDA_DEVICE_IDS=<0, 1, ... (colocar a partir da quantidade de GPUs)> PORT=8000 docker compose -f docker/docker-compose.yml up -d
