@@ -67,16 +67,15 @@ class CVSplitAligner:
             # 🔍 cobertura
             coverage = len(aligned_df) / len(hf_df)
 
-            if coverage < 0.99:
-                missing = split_ids - annotated_ids
+            missing = split_ids - annotated_ids
 
-                logger.warning(
-                    f"[Fold {fold} | {split_name}] ⚠️ Baixa cobertura"
-                )
-                logger.warning(
-                    f"HF: {len(hf_df)} | Annotated: {len(aligned_df)} "
-                    f"| Coverage: {coverage:.4f} | Missing: {len(missing)}"
-                )
+            logger.warning(
+                f"[Fold {fold} | {split_name}] ⚠️ Baixa cobertura"
+            )
+            logger.warning(
+                f"HF: {len(hf_df)} | Annotated: {len(aligned_df)} "
+                f"| Coverage: {coverage:.4f} | Missing: {len(missing)}"
+            )
 
             aligned_ds = Dataset.from_pandas(aligned_df)
             aligned_splits[fold][split_name] = aligned_ds
