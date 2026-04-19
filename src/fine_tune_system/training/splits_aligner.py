@@ -1,3 +1,4 @@
+from langchain_huggingface import data
 import pandas as pd
 from typing import Dict, List
 from loguru import logger
@@ -23,7 +24,7 @@ class CVSplitAligner:
         
 
     # -------------------------
-    # 🧩 Adicionar IDs ao dataset do HF
+    # Adicionar IDs ao dataset do HF
     # -------------------------
     def _add_ids(self):
         """
@@ -41,12 +42,11 @@ class CVSplitAligner:
                 self.dataset[split][target_split]["text_id"] = self.dataset[split][target_split]["text"].apply(get_text_id_from_text)
             
     # -------------------------
-    # 🔗 Alinhar split
+    # Alinhar split
     # -------------------------
     def align_split(
         self,
         annotated_df: pd.DataFrame,
-        annotated_ids: set,
         fold: int,
         fold_data: Dict[str, pd.DataFrame],
         aligned_splits: dict[int, dict[str, Dataset]],
@@ -67,7 +67,7 @@ class CVSplitAligner:
             # 🔍 cobertura
             coverage = len(aligned_df) / len(hf_df)
 
-            missing = split_ids - annotated_ids
+            missing = split_ids - set(annotated_df[self.id_column])
 
             logger.warning(
                 f"HF: {len(hf_df)} | Annotated: {len(aligned_df)} "
@@ -82,7 +82,7 @@ class CVSplitAligner:
             )
 
     # -------------------------
-    # 📦 Alinhar todos splits
+    # Alinhar todos splits
     # -------------------------
     def align_datasets_splits(
         self,
@@ -95,33 +95,52 @@ class CVSplitAligner:
             "❌ IDs duplicados no dataset anotado!"
 
         aligned_splits = {}
-        annotated_ids = set(annotated_df[self.id_column])
 
         for fold, fold_data in self.dataset.items():
             logger.info(f"🔄 Alinhando fold {fold}...")
 
             self.align_split(
                 annotated_df,
-                annotated_ids,
                 fold,
                 fold_data,
                 aligned_splits
             )
 
         # -------------------------
-        # 🚨 Data leakage check
+        # Data leakage check + correção (remove do val/test o que está no train)
         # -------------------------
+        aligned_splits = self._remove_data_leakage(aligned_splits)
+
+        return aligned_splits
+    
+    def _remove_data_leakage(
+        self,
+        aligned_splits: Dict[int, Dict[str, Dataset]],
+    ) -> Dict[int, Dict[str, Dataset]]:
+        """Remove data leakage entre train e eval (val/test), mantendo apenas no train."""
+
         for fold, data in aligned_splits.items():
 
-            train_ids = set(data["train"][self.id_column])
+            train_df = data["train"]
 
             # suporta "val" OU "test"
             eval_split = "val" if "val" in data else "test"
-            test_ids = set(data[eval_split][self.id_column])
+            eval_df = data[eval_split]
 
-            intersection = train_ids & test_ids
+            train_ids = set(train_df[self.id_column])
+            eval_ids = set(eval_df[self.id_column])
 
-            assert len(intersection) == 0, \
-                f"❌ Data leakage no fold {fold}! ({len(intersection)} exemplos)"
+            leaked_ids = train_ids & eval_ids
+
+            if leaked_ids:
+                logger.warning(
+                    f"⚠️ Data leakage detectado no fold {fold}! "
+                    f"Removendo {len(leaked_ids)} instâncias do '{eval_split}'."
+                )
+
+                aligned_splits[fold][eval_split] = (
+                    eval_df[~eval_df[self.id_column].isin(leaked_ids)]
+                    .reset_index(drop=True)
+                )
 
         return aligned_splits

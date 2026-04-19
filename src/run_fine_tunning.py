@@ -21,7 +21,7 @@ from src.fine_tune_system.pipeline import FineTuningPipeline, FineTuningConfig
 
 def main():
     """Função principal"""
-    dataset_name = "movie_review"
+    dataset_name = "agnews"
     model_name = "roberta-base"
     run_type = "single"  # "single" ou "cross-validation"
     
