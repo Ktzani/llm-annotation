@@ -113,34 +113,23 @@ class CVSplitAligner:
 
         return aligned_splits
     
-    def _remove_data_leakage(
-        self,
-        aligned_splits: Dict[int, Dict[str, Dataset]],
-    ) -> Dict[int, Dict[str, Dataset]]:
-        """Remove data leakage entre train e eval (val/test), mantendo apenas no train."""
+    def _remove_data_leakage(self, aligned_splits):
 
         for fold, data in aligned_splits.items():
-
-            train_df = data["train"]
-
-            # suporta "val" OU "test"
+        
+            train_ds = data["train"]
             eval_split = "val" if "val" in data else "test"
-            eval_df = data[eval_split]
-
-            train_ids = set(train_df[self.id_column])
-            eval_ids = set(eval_df[self.id_column])
-
-            leaked_ids = train_ids & eval_ids
-
+            eval_ds = data[eval_split]
+    
+            leaked_ids = set(train_ds[self.id_column]) & set(eval_ds[self.id_column])
+    
             if leaked_ids:
                 logger.warning(
-                    f"⚠️ Data leakage detectado no fold {fold}! "
-                    f"Removendo {len(leaked_ids)} instâncias do '{eval_split}'."
+                    f"Leakage no fold {fold}: removendo {len(leaked_ids)} exemplos de {eval_split}"
                 )
-
-                aligned_splits[fold][eval_split] = (
-                    eval_df[~eval_df[self.id_column].isin(leaked_ids)]
-                    .reset_index(drop=True)
+    
+                aligned_splits[fold][eval_split] = eval_ds.filter(
+                    lambda x: x[self.id_column] not in leaked_ids
                 )
-
+    
         return aligned_splits
