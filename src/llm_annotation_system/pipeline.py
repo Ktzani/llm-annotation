@@ -156,7 +156,7 @@ class AnnotationPipeline:
         logger.info(f"Textos: {len(texts)} | Categorias: {categories} | GT: {'Sim' if ground_truth else 'Não'}")
         return texts, categories, ground_truth
 
-    async def run_single(
+    async def run_single_text(
         self,
         texts: list,
         ground_truth: Optional[list],
@@ -245,8 +245,8 @@ class AnnotationPipeline:
             remove_annotated=self.config.dataset_config.remove_texts or False
         )
 
-        if run_type == "single":
-            await self.run_single(texts, ground_truth, categories, index=single_index)
+        if run_type == "single_text":
+            await self.run_single_text(texts, ground_truth, categories, index=single_index)
             return None
         
         elif run_type == "dataset":
