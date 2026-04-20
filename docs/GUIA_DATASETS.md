@@ -19,7 +19,7 @@ Edite `src/config/datasets_collected.py` e adicione (ou ajuste) seu dataset:
 ```python
 DATASETS = {
     "meu_dataset": {
-        "path": "waashk/nome-do-dataset",
+        "path": "<hf-user>/nome-do-dataset",
         "text_column": "text",
         "label_column": "label",   # ou None
         "categories": None,        # extrair automaticamente das labels
@@ -224,7 +224,7 @@ Para datasets grandes, use `sample_size` para testes iniciais:
 
 Antes de executar anotação:
 
-- [ ] Dataset identificado em https://huggingface.co/waashk
+- [ ] Dataset identificado em https://huggingface.co/<hf-user>
 - [ ] Configuração adicionada em `datasets_collected.py`
 - [ ] Colunas `text_column` e `label_column` verificadas
 - [ ] Testado com `sample_size: 100`
