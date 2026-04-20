@@ -1,6 +1,6 @@
 # Sistema de Anotação Automática com Múltiplas LLMs
 
-Sistema completo para reduzir custos humanos na anotação de datasets através do uso de múltiplas LLMs e análise de consenso.
+Sistema completo para anotação automática de datasets usando múltiplas LLMs open-source com análise de consenso, seguido de fine-tuning supervisionado com RoBERTa.
 
 ## 📋 Índice
 
@@ -9,30 +9,34 @@ Sistema completo para reduzir custos humanos na anotação de datasets através 
 - [Instalação](#instalação)
 - [Uso Rápido](#uso-rápido)
 - [Estrutura do Projeto](#estrutura-do-projeto)
-- [Guia Detalhado](#guia-detalhado)
+- [Modelos Suportados](#modelos-suportados)
+- [Datasets Suportados](#datasets-suportados)
+- [Fine-Tuning](#fine-tuning)
+- [API REST](#api-rest)
 - [Resultados e Métricas](#resultados-e-métricas)
 - [FAQ](#faq)
 
 ## 🎯 Visão Geral
 
-Este projeto implementa uma metodologia para anotação automática de datasets usando múltiplas LLMs (Large Language Models) com análise de consenso. O objetivo é reduzir significativamente o custo e tempo necessários para anotação manual, mantendo alta qualidade nas classificações.
+Este projeto implementa uma metodologia para anotação automática de datasets usando múltiplas LLMs open-source com análise de consenso. O objetivo é reduzir significativamente o custo e tempo necessários para anotação manual, mantendo alta qualidade nas classificações. Os dados anotados são então usados para fine-tuning de um modelo RoBERTa via cross-validation.
 
 ### Características Principais
 
-✅ **Múltiplas LLMs**: Suporte para GPT-4, GPT-3.5, Claude 3, Gemini, e Cohere  
-✅ **Consenso Robusto**: Cada LLM anota múltiplas vezes para validação interna  
-✅ **Análise Estatística**: Métricas completas de concordância (Cohen's Kappa, Fleiss' Kappa, etc.)  
-✅ **Visualizações**: Gráficos e dashboards interativos  
-✅ **HuggingFace**: Integração completa com datasets do HuggingFace  
-✅ **Flexível**: Suporte para diferentes estratégias de resolução de conflitos  
-✅ **Cache**: Sistema de cache para economizar chamadas de API  
+- **LLMs Open-Source**: Suporte para Llama, Mistral, Gemma, Phi-3, DeepSeek, Qwen, via Ollama, HuggingFace API e Groq
+- **Consenso Robusto**: Cada LLM anota múltiplas vezes para validação interna
+- **Análise Estatística**: Métricas completas de concordância (Cohen's Kappa, Fleiss' Kappa, Krippendorff's Alpha)
+- **Fine-Tuning**: Pipeline completo de fine-tuning RoBERTa com cross-validation
+- **Prevenção de Data Leakage**: Remoção automática de instâncias repetidas entre treino e teste
+- **Rastreamento de Instâncias Inválidas**: Log de instâncias com label=-1 para depuração
+- **HuggingFace**: Integração com 30+ datasets do HuggingFace (namespace waashk)
+- **Cache**: Sistema de cache para economizar chamadas de API
+- **API REST**: Servidor FastAPI para gerenciamento de experimentos
+- **GPU**: Suporte a CUDA para fine-tuning acelerado
 
 ## 📊 Metodologia
 
-A metodologia implementada segue os seguintes passos:
-
 ### 1. Anotação Múltipla
-- 5 LLMs diferentes anotam cada instância do dataset
+- Múltiplas LLMs anotam cada instância do dataset
 - Cada LLM faz múltiplas anotações (padrão: 3x) da mesma instância
 - Validação de consenso interno para cada LLM
 
@@ -42,7 +46,7 @@ A metodologia implementada segue os seguintes passos:
 - Identificação de casos problemáticos (empates, discordâncias)
 
 ### 3. Validação de Parâmetros (LLM Hacking)
-- Teste de diferentes configurações (temperatura, top_p, etc.)
+- Teste de diferentes configurações (temperatura, num_predict, etc.)
 - Avaliação do impacto de variações de parâmetros
 - Identificação de configurações mais estáveis
 
@@ -51,8 +55,15 @@ Para casos sem consenso claro:
 - **Voto majoritário**: Escolhe a classe mais votada
 - **Threshold**: Aceita apenas se consenso ≥ X%
 - **Flag for review**: Marca para revisão humana
-- **Remove**: Remove instâncias problemáticas
+- **Remove outliers**: Remove instâncias da minoria abaixo do threshold
 - **Weighted vote**: Voto ponderado por confiabilidade do modelo
+- **Unanimous only**: Aceita apenas com 100% de acordo
+
+### 5. Fine-Tuning (RoBERTa)
+- Filtragem de instâncias inválidas (label=-1) e problemáticas
+- Prevenção de data leakage: remove instâncias do treino que aparecem no teste
+- Fine-tuning RoBERTa-base com cross-validation de 5 folds
+- Métricas por fold e métricas agregadas
 
 ## 🚀 Instalação
 
@@ -60,232 +71,277 @@ Para casos sem consenso claro:
 
 - Python 3.9+
 - Poetry (gerenciador de dependências)
-- API keys para as LLMs que deseja usar
+- Ollama (para modelos locais) **ou** HuggingFace API token **ou** Groq API key
 
 ### Instalação de Dependências
 
 ```bash
-# Instalar dependências com Poetry
 poetry install
 ```
 
-### Configurar API Keys
+### Configurar Variáveis de Ambiente
 
 Crie um arquivo `.env` na raiz do projeto:
 
 ```env
-OPENAI_API_KEY=sua-chave-aqui
-ANTHROPIC_API_KEY=sua-chave-aqui
-GOOGLE_API_KEY=sua-chave-aqui
+# Para HuggingFace API
+HF_TOKEN=seu-token-aqui
+
+# Para Groq API
+GROQ_API_KEY=sua-chave-aqui
+
+# Para fine-tuning com GPU (opcional)
+CUDA_VISIBLE_DEVICES=0
+```
+
+### Configurar Ollama (modelos locais)
+
+```bash
+# Instalar Ollama
+# https://ollama.com/download
+
+# Baixar um modelo
+ollama pull llama3.1:8b
+ollama pull mistral:7b
 ```
 
 ## 🏃 Uso Rápido
 
-### Opção 1: Notebook Jupyter (RECOMENDADO)
+### Executar Anotação
+
+```bash
+# Configurar experimento em um JSON (ver src/config/)
+poetry run python run_annotation.py
+```
+
+### Executar Fine-Tuning
+
+```bash
+poetry run python run_fine_tunning.py
+```
+
+### Iniciar API REST
+
+```bash
+poetry run uvicorn src.api.server:app --reload
+```
+
+### Notebook Jupyter
 
 ```bash
 poetry run jupyter notebook src/notebooks/analise_consenso_llms.ipynb
 ```
 
-Este notebook contém:
-- Setup completo
-- Exemplos de uso
-- Análises detalhadas
-- Visualizações
-- Interpretação de resultados
+## 🤖 Modelos Suportados
 
-### Opção 2: Script Principal
+Todos os modelos são open-source, sem custo de API proprietária:
 
-```bash
-# Exemplo básico
-poetry run python src/main.py
+| Família | Modelos | Provider |
+|---------|---------|----------|
+| **Meta LLaMA** | Llama2-7b, Llama3-8b, Llama3-70b, Llama3.1-8b, Llama3.1-70b | Ollama, HF |
+| **Mistral** | Mistral-7b, Mixtral-8x7b, Mistral Nemo-12b | Ollama, HF |
+| **Google Gemma** | Gemma-7b, Gemma2-9b, Gemma2-27b, Gemma3-4b | Ollama, HF |
+| **Microsoft Phi-3** | Phi3-mini, Phi3.5-mini, Phi3.5-medium | Ollama, HF |
+| **DeepSeek** | DeepSeek-R1-8b, R1-14b, R1-Distill-Llama-8B, DeepSeek-V3 | Ollama, Groq |
+| **Qwen** | Qwen2-7b, Qwen2.5-7b, Qwen2.5-32b, Qwen3-8b | Ollama, HF |
+| **BigScience** | BLOOMZ | HF |
 
-# Com datasets HuggingFace
-poetry run python src/main_huggingface.py --modo basico
-```
+**Providers:**
+- **Ollama**: Execução local (100% privado, sem custo de API)
+- **HuggingFace Inference API**: Nuvem
+- **Groq**: Muito rápido (300+ tokens/s), com tier gratuito
 
-## 🤗 Datasets do HuggingFace
+Configuração dos modelos em `src/config/llms.py`.
 
-Este projeto tem suporte completo para datasets do HuggingFace!
+## 🤗 Datasets Suportados
 
-### Início Rápido com HuggingFace
+30+ datasets configurados em `src/config/datasets_collected.py` (namespace `waashk` no HuggingFace):
 
-1. **Descobrir estrutura do dataset:**
-```bash
-poetry run python src/main_huggingface.py --modo descobrir --dataset waashk/seu-dataset
-```
+| Tipo | Datasets |
+|------|----------|
+| **Notícias** | AG News, Reuters-90 |
+| **Sentimento** | MPQA, Yelp 2013/2015, Movie Reviews, SST1/SST2, Vader Movie |
+| **Científico** | ACM, DBLP, WOS-11967, WOS-5736, OHSUMED |
+| **Web** | WebKB, 20 Newsgroups, Twitter, TREC |
+| **Médico** | Medline |
+| **Outros** | Books, Pang Movie |
 
-2. **Configurar dataset:**
-Edite `src/config/dataset_config.py` com as informações do seu dataset
-
-3. **Executar anotação:**
-```bash
-poetry run python src/main_huggingface.py --modo basico
-```
-
-### Documentação HuggingFace
-
-Ver guias completos:
-- [GUIA_DATASETS.md](docs/GUIA_DATASETS.md) - Guia completo
-
-### Arquivos Importantes
-
-- `src/config/dataset_config.py` - Configuração de datasets HuggingFace
-- `src/main_huggingface.py` - Script principal com HuggingFace
-- `docs/GUIA_DATASETS.md` - Guia completo de uso
-
-## 📁 Estrutura do Projeto
-
-```
-├── pyproject.toml                    # Configuração Poetry
-├── .env                              # API keys (criar)
-├── Makefile                          # Comandos úteis
-│
-├── src/
-│   ├── config/                       # Configurações
-│   │   ├── prompts.py               # Templates de prompts
-│   │   ├── llm_configs.py           # Configuração de modelos
-│   │   ├── experiment.py            # Parâmetros do experimento
-│   │   ├── evaluation.py            # Métricas de avaliação
-│   │   ├── conflict_resolution.py   # Estratégias de resolução
-│   │   └── dataset_config.py        # ⭐ Datasets HuggingFace
-│   │
-│   ├── llm_annotation_system/        # Código principal
-│   │   ├── llm_annotator.py         # Anotador principal
-│   │   ├── consensus_analyzer.py    # Análise de consenso
-│   │   └── visualizer.py            # Visualizações
-│   │
-│   ├── notebooks/                    # Jupyter Notebooks
-│   │   └── analise_consenso_llms.ipynb  # ⭐ Notebook principal
-│   │
-│   ├── main.py                       # Script exemplo básico
-│   └── main_huggingface.py           # ⭐ Script com HuggingFace
-│
-├── data/                             # Dados
-│   └── .cache/                       # Cache de datasets
-│
-├── results/                          # Resultados gerados
-│   ├── figures/                      # Visualizações
-│   ├── reports/                      # Relatórios CSV
-│   └── final/                        # Resultados finais
-│
-└── docs/                             # Documentação
-    ├── INSTRUCOES.md
-    ├── RESUMO_EXECUTIVO.md
-    └── GUIA_DATASETS.md          # ⭐ Guia HuggingFace
-    
-```
-
-## 📖 Guia Detalhado
-
-### Customizar Prompts
-
-Edite `src/config/prompts.py`:
+Para adicionar um dataset:
 
 ```python
-BASE_ANNOTATION_PROMPT = """You are an expert...
-{text}
-{categories}
-"""
-```
-
-### Adicionar Novos Modelos
-
-Em `src/config/llm_configs.py`:
-
-```python
-LLM_CONFIGS["seu-modelo"] = {
-    "provider": "openai",
-    "model_name": "nome-do-modelo",
-    "default_params": {"temperature": 0.0}
-}
-```
-
-### Configurar Datasets HuggingFace
-
-Em `src/config/dataset_config.py`:
-
-```python
-HUGGINGFACE_DATASETS = {
+# src/config/datasets_collected.py
+DATASETS = {
     "meu_dataset": {
         "path": "waashk/nome-dataset",
         "text_column": "text",
-        "label_column": "label",  # opcional
-        "categories": None,  # extrair automaticamente
-        "combine_splits": ["train", "test"],  # dataset completo
-        "sample_size": 100,  # começar pequeno
+        "label_column": "label",
+        "categories": None,             # extrair automaticamente
+        "combine_splits": ["train", "test"],
+        "sample_size": 100,
     }
 }
 ```
 
-### Testar Variações de Parâmetros
+## 🎛️ Fine-Tuning
 
-```python
-df = annotator.annotate_dataset(
-    texts=texts,
-    test_param_variations=True  # Testa diferentes parâmetros
-)
+O pipeline de fine-tuning treina um modelo RoBERTa com os rótulos gerados por consenso das LLMs.
+
+### Execução
+
+```bash
+poetry run python run_fine_tunning.py
+```
+
+### O pipeline faz automaticamente:
+1. Carrega as anotações de consenso geradas
+2. Remove instâncias com label inválido (label=-1) — com log
+3. Remove instâncias problemáticas marcadas no consenso
+4. Alinha splits HuggingFace com os dados anotados via `text_id`
+5. **Remove instâncias do teste que aparecem no treino** (prevenção de data leakage)
+6. Treina RoBERTa-base com cross-validation de 5 folds
+7. Calcula métricas por fold e agrega resultados
+
+### Prevenção de Data Leakage
+
+O sistema detecta e remove automaticamente instâncias duplicadas entre treino e teste, emitindo warning em vez de erro, para garantir avaliação justa:
+
+```
+WARNING: 42 instâncias do teste aparecem no treino e foram removidas (data leakage)
+```
+
+## 🌐 API REST
+
+O projeto inclui um servidor FastAPI para gerenciar experimentos via HTTP.
+
+```bash
+poetry run uvicorn src.api.server:app --reload
+# Docs: http://localhost:8000/docs
+```
+
+### Endpoints
+
+| Método | Rota | Descrição |
+|--------|------|-----------|
+| POST | `/experiments` | Criar experimento de anotação |
+| GET | `/experiments/{id}` | Status do experimento |
+| POST | `/fine-tuning` | Iniciar job de fine-tuning |
+| GET | `/fine-tuning/{id}` | Status do fine-tuning |
+| GET | `/datasets` | Listar datasets disponíveis |
+| GET | `/health` | Health check |
+
+## 📁 Estrutura do Projeto
+
+```
+├── pyproject.toml                      # Configuração Poetry
+├── .env                                # Variáveis de ambiente (criar)
+├── run_annotation.py                   # ⭐ Entry point: anotação
+├── run_fine_tunning.py                 # ⭐ Entry point: fine-tuning
+│
+├── src/
+│   ├── config/                         # Configurações
+│   │   ├── prompts.py                 # Templates de prompts
+│   │   ├── llms.py                    # ⭐ Registry de modelos open-source
+│   │   ├── datasets_collected.py      # ⭐ 30+ datasets HuggingFace
+│   │   ├── conflict_resolution.py     # Estratégias de resolução
+│   │   └── evaluation_metrics.py      # Métricas de avaliação
+│   │
+│   ├── llm_annotation_system/          # Pipeline de anotação
+│   │   ├── annotation/
+│   │   │   ├── llm_annotator.py       # Orquestrador principal
+│   │   │   └── annotation_engine.py   # Motor de anotação
+│   │   ├── core/
+│   │   │   ├── llm_provider.py        # Inicialização de modelos
+│   │   │   ├── response_processor.py  # Extração de labels
+│   │   │   └── cache_manager.py       # Cache de chamadas
+│   │   └── consensus/
+│   │       ├── consensus_calculator.py # Cálculo de consenso
+│   │       └── consensus_metrics.py   # Métricas estatísticas
+│   │
+│   ├── fine_tune_system/               # Pipeline de fine-tuning
+│   │   ├── fine_tune/
+│   │   │   └── supervised_fine_tuner.py # Fine-tuning RoBERTa
+│   │   ├── training/
+│   │   │   ├── cross_validator.py     # Cross-validation 5-fold
+│   │   │   ├── splits_aligner.py      # ⭐ Alinhamento + anti-leakage
+│   │   │   └── trainer_builder.py     # Configuração do HF Trainer
+│   │   └── pipeline.py                # Orquestração do fine-tuning
+│   │
+│   ├── api/                            # API REST (FastAPI)
+│   │   ├── server.py                  # Aplicação FastAPI
+│   │   ├── routes/                    # Endpoints
+│   │   └── services/                  # Lógica de negócio
+│   │
+│   ├── utils/                          # Utilitários
+│   │   ├── data_loader.py             # Carregamento HuggingFace
+│   │   └── get_text_id_from_text.py   # Geração de IDs únicos
+│   │
+│   └── notebooks/
+│       └── analise_consenso_llms.ipynb # ⭐ Notebook de análise
+│
+├── data/
+│   └── .cache/                         # Cache de datasets
+│
+├── results/                            # Resultados gerados
+│   ├── figures/                        # Visualizações
+│   ├── reports/                        # Relatórios CSV
+│   └── final/                          # Resultados finais
+│
+└── docs/                               # Documentação
+    ├── INSTRUCOES.md
+    ├── RESUMO_EXECUTIVO.md
+    └── GUIA_DATASETS.md
 ```
 
 ## 📊 Resultados e Métricas
 
-### Interpretação
+### Interpretação do Consenso
 
 **Cohen's Kappa**:
-- `> 0.80`: Excelente ✅
-- `0.60 - 0.80`: Bom ✅
-- `0.40 - 0.60`: Moderado ⚠️
-- `< 0.40`: Fraco ❌
+- `> 0.80`: Excelente
+- `0.60 - 0.80`: Bom
+- `0.40 - 0.60`: Moderado
+- `< 0.40`: Fraco
 
 **Consenso Score**:
-- `≥ 80%`: Alto - aceitar ✅
-- `60-80%`: Médio - revisar amostra ⚠️
-- `< 60%`: Baixo - revisão obrigatória ❌
+- `≥ 80%`: Alto — aceitar
+- `60-80%`: Médio — revisar amostra
+- `< 60%`: Baixo — revisão obrigatória
 
 ### Arquivos Gerados
 
-1. **dataset_anotado_final.csv**: Dataset com anotações finais
-2. **annotations_complete.csv**: Todas anotações detalhadas
-3. **high_confidence_annotations.csv**: Consenso ≥ 80%
-4. **needs_human_review.csv**: Casos problemáticos
-5. **experiment_summary.json**: Estatísticas completas
-6. **interactive_dashboard.html**: Dashboard interativo
-
-## 🔧 Comandos Make
-
-```bash
-make help              # Ver todos os comandos
-make install           # Instalar dependências
-make notebook          # Abrir Jupyter Notebook
-make clean             # Limpar arquivos temporários
-make format            # Formatar código
-make lint              # Verificar código
-```
+| Arquivo | Conteúdo |
+|---------|----------|
+| `dataset_anotado_final.csv` | Dataset com anotações finais de consenso |
+| `annotations_complete.csv` | Todas as anotações detalhadas por modelo |
+| `high_confidence_annotations.csv` | Instâncias com consenso ≥ 80% |
+| `needs_human_review.csv` | Casos problemáticos para revisão |
+| `experiment_summary.json` | Estatísticas completas do experimento |
+| `interactive_dashboard.html` | Dashboard interativo (Plotly) |
 
 ## 💡 FAQ
 
-**Q: Quantos modelos usar?**  
-A: Recomendamos 5 modelos de diferentes provedores para consenso robusto.
+**Q: Preciso de API keys pagas?**
+A: Não. O sistema usa apenas modelos open-source via Ollama (local e gratuito), HuggingFace API (gratuito com limites) ou Groq (tier gratuito generoso).
 
-**Q: Quantas repetições?**  
-A: 3 repetições é um bom balanço entre confiabilidade e custo.
+**Q: Quantos modelos usar?**
+A: Recomendamos 3-5 modelos de arquiteturas diferentes para consenso robusto.
 
-**Q: Como reduzir custos?**  
-A: Use cache, amostras pequenas (`sample_size`), e modelos mais baratos inicialmente.
+**Q: Quantas repetições?**
+A: 3 repetições é um bom balanço entre confiabilidade e tempo de execução.
 
-**Q: O que fazer com casos sem consenso?**  
-A: Depende do caso - revisão humana é mais confiável, voto majoritário é mais rápido.
+**Q: O que é data leakage e como o sistema lida?**
+A: O sistema detecta automaticamente instâncias que aparecem tanto no treino quanto no teste e as remove do conjunto de avaliação, emitindo um warning no log.
 
-**Q: Como usar meus datasets do HuggingFace?**  
-A: Veja [GUIA_DATASETS.md](docs/GUIA_DATASETS.md) para instruções completas.
+**Q: O que significa label=-1?**
+A: A LLM retornou uma resposta fora das categorias configuradas. Essas instâncias são logadas e removidas antes do fine-tuning.
 
-**Q: Posso usar o dataset completo sem dividir train/test?**  
-A: Sim! Use `combine_splits: ["train", "test"]` em `dataset_config.py`.
+**Q: Como usar meus datasets do HuggingFace?**
+A: Adicione a configuração em `src/config/datasets_collected.py`. Veja [GUIA_DATASETS.md](docs/GUIA_DATASETS.md) para instruções completas.
 
 ## 📚 Documentação Adicional
 
-- [INSTRUCOES.md](docs/INSTRUCOES.md) - Guia rápido geral
+- [INSTRUCOES.md](docs/INSTRUCOES.md) - Guia completo de uso
 - [RESUMO_EXECUTIVO.md](docs/RESUMO_EXECUTIVO.md) - Resumo para orientador
-- [GUIA_DATASETS.md](docs/GUIA_DATASETS.md) - Guia completo HuggingFace
+- [GUIA_DATASETS.md](docs/GUIA_DATASETS.md) - Guia de datasets HuggingFace
 
 ---

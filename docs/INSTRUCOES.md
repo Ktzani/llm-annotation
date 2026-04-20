@@ -1,48 +1,56 @@
-# 📝 Instruções de Uso do Sistema
+# Instruções de Uso do Sistema
 
-## 🎯 O Que Você Tem
+## O Que Você Tem
 
-Um **sistema completo e profissional** para anotação automática com LLMs. O código está bem estruturado, documentado e pronto para uso em pesquisa.
+Um **sistema completo** para anotação automática com LLMs open-source e fine-tuning supervisionado. O código está organizado em dois pipelines principais: anotação com consenso e fine-tuning RoBERTa.
 
 ---
 
-## 📦 Estrutura do Projeto
+## Estrutura do Projeto
 
-### Código Principal
+### Configurações (`src/config/`)
 
-**src/config/** - Configurações centralizadas
-- `prompts.py` - Templates de prompts otimizados
-- `llm_configs.py` - Configuração de todos os modelos LLM
-- `experiment.py` - Parâmetros do experimento
-- `evaluation.py` - Métricas de avaliação
-- `conflict_resolution.py` - Estratégias de resolução de conflitos
-- `dataset_config.py` - ⭐ Configuração de datasets HuggingFace
+| Arquivo | Conteúdo |
+|---------|----------|
+| `prompts.py` | Templates de prompts (zero-shot, few-shot, chain-of-thought) |
+| `llms.py` | Registry de 25+ modelos open-source com parâmetros |
+| `datasets_collected.py` | 30+ datasets HuggingFace pré-configurados |
+| `conflict_resolution.py` | Estratégias de resolução de conflitos |
+| `evaluation_metrics.py` | Nomes das métricas de avaliação |
 
-**src/llm_annotation_system/** - Código principal
-- `llm_annotator.py` - Classe principal para anotação
-- `consensus_analyzer.py` - Análise de consenso e métricas
+### Pipeline de Anotação (`src/llm_annotation_system/`)
 
+| Módulo | Função |
+|--------|--------|
+| `annotation/llm_annotator.py` | Orquestrador — coordena modelos, cache, engine |
+| `annotation/annotation_engine.py` | Executa anotações com cache e repetições |
+| `core/llm_provider.py` | Inicializa modelos (Ollama, HF, Groq) |
+| `core/response_processor.py` | Extrai label e confiança da resposta da LLM |
+| `core/cache_manager.py` | Cache de chamadas para economizar tempo |
+| `consensus/consensus_calculator.py` | Calcula consenso e aplica estratégia de resolução |
+| `consensus/consensus_metrics.py` | Cohen's Kappa, Fleiss' Kappa, Krippendorff's Alpha |
 
-**src/utils/** - Utilitarios
-- `data_loader.py` - 
-- `visualizer.py` - Geração de visualizações e dashboards
+### Pipeline de Fine-Tuning (`src/fine_tune_system/`)
 
-### Scripts de Execução
+| Módulo | Função |
+|--------|--------|
+| `fine_tune/supervised_fine_tuner.py` | Fine-tuning RoBERTa-base |
+| `training/cross_validator.py` | Cross-validation 5-fold |
+| `training/splits_aligner.py` | Alinha splits + remove data leakage |
+| `training/trainer_builder.py` | Configura HuggingFace Trainer |
+| `pipeline.py` | Orquestrador do fine-tuning |
 
-- `src/main.py` - Exemplo básico de uso
-- `src/main_huggingface.py` - ⭐ Script principal com HuggingFace
+### Scripts de Entrada
 
-### Notebooks
+| Script | Função |
+|--------|--------|
+| `run_annotation.py` | Executa pipeline de anotação |
+| `run_fine_tunning.py` | Executa pipeline de fine-tuning |
+| `src/api/server.py` | Servidor REST (FastAPI) |
 
-- `src/notebooks/analise_consenso_llms.ipynb` - ⭐ Notebook completo
-
-### Documentação
-
-- `docs/README.md` - Documentação técnica completa
-- `docs/RESUMO_EXECUTIVO.md` - Sumário executivo
 ---
 
-## 🚀 Como Começar
+## Como Começar
 
 ### Passo 1: Instalar Dependências
 
@@ -50,300 +58,149 @@ Um **sistema completo e profissional** para anotação automática com LLMs. O c
 poetry install
 ```
 
-### Passo 2: Configurar API Keys
+### Passo 2: Configurar Variáveis de Ambiente
 
-Crie arquivo `.env` na raiz:
+Crie `.env` na raiz:
 
 ```env
-OPENAI_API_KEY=sua-key-openai
-ANTHROPIC_API_KEY=sua-key-anthropic
-GOOGLE_API_KEY=sua-key-google
+# Para HuggingFace API
+HF_TOKEN=seu-token-aqui
+
+# Para Groq API
+GROQ_API_KEY=sua-chave-aqui
+
+# Para GPU (fine-tuning)
+CUDA_VISIBLE_DEVICES=0
 ```
 
-### Passo 3: Escolher Modo de Uso
-
-#### Opção A: Com Datasets HuggingFace (RECOMENDADO)
+### Passo 3: Instalar Ollama (modelos locais)
 
 ```bash
-# 1. Descobrir estrutura do seu dataset
-poetry run python src/main_huggingface.py --modo descobrir --dataset waashk/seu-dataset
-
-# 2. Configurar em src/config/dataset_config.py
-# (use a sugestão gerada pelo comando acima)
-
-# 3. Executar anotação
-poetry run python src/main_huggingface.py --modo basico
+# https://ollama.com/download
+ollama pull llama3.1:8b   # ou qualquer modelo de src/config/llms.py
 ```
 
-#### Opção B: Com Dados Locais
+### Passo 4: Executar Anotação
 
 ```bash
-# Executar exemplo básico
-poetry run python src/main.py
+poetry run python run_annotation.py
 ```
 
-#### Opção C: Notebook Jupyter
+### Passo 5: Executar Fine-Tuning
 
 ```bash
-# Abrir notebook
-poetry run jupyter notebook src/notebooks/analise_consenso_llms.ipynb
+poetry run python run_fine_tunning.py
 ```
 
 ---
 
-## 📊 O Que o Sistema Faz
+## O Que o Sistema Faz
 
 ### 1. Anotação Automática
 
-- ✅ Múltiplas LLMs anotam cada texto
-- ✅ Cada LLM anota múltiplas vezes (validação interna)
-- ✅ Total: 15 anotações por instância (5 LLMs × 3 repetições)
-- ✅ Sistema de cache (não repete chamadas)
+- Múltiplas LLMs open-source anotam cada texto
+- Cada LLM anota múltiplas vezes (validação interna)
+- Sistema de cache (não repete chamadas)
+- Extração de label + confiança da resposta
 
 ### 2. Análise de Consenso
 
-- ✅ Calcula consenso entre LLMs
-- ✅ Calcula consenso interno de cada LLM
-- ✅ Identifica casos problemáticos (2-2-1, empates, etc.)
-- ✅ Métricas estatísticas completas (Cohen's Kappa, Fleiss', etc.)
+- Calcula consenso entre todas as LLMs
+- Identifica casos problemáticos (empates, discordâncias)
+- Métricas: Cohen's Kappa, Fleiss' Kappa, Krippendorff's Alpha
+- Estratégias configuráveis de resolução de conflitos
 
 ### 3. Validação com Ground Truth (Opcional)
 
-- ✅ Se dataset tem labels, valida automaticamente
-- ✅ Calcula accuracy, precision, recall, F1
-- ✅ Gera classification report
-- ✅ Identifica categorias problemáticas
+- Se dataset tem labels, valida automaticamente
+- Calcula accuracy, precision, recall, F1
+- Gera classification report
 
-### 4. Validação de Parâmetros
+### 4. Fine-Tuning RoBERTa
 
-- ✅ Testa diferentes temperaturas
-- ✅ Testa diferentes top_p
-- ✅ Analisa impacto nas anotações
-- ✅ "LLM hacking" para otimização
+- Remove instâncias com label=-1 (logadas para depuração)
+- Remove instâncias problemáticas do consenso
+- **Previne data leakage**: remove do teste instâncias presentes no treino
+- Cross-validation 5-fold com checkpoints por fold
 
-### 5. Visualizações
-
-- ✅ Heatmap de concordância entre modelos
-- ✅ Distribuição de consenso
-- ✅ Matriz de confusão
-- ✅ Comparação de modelos
-- ✅ Dashboard interativo (HTML)
-
-### 6. Outputs Gerados
+### 5. Outputs Gerados
 
 **CSVs:**
-- `dataset_anotado_final.csv` - Dataset final anotado
-- `annotations_complete.csv` - Todas as anotações detalhadas
-- `high_confidence_annotations.csv` - Consenso ≥ 80%
-- `needs_human_review.csv` - Casos problemáticos
-- `pairwise_agreement.csv` - Acordo entre pares de modelos
-- `confusion_matrix.csv` - Matriz de confusão
+- `dataset_anotado_final.csv` — Dataset final anotado
+- `annotations_complete.csv` — Todas as anotações detalhadas
+- `high_confidence_annotations.csv` — Consenso ≥ 80%
+- `needs_human_review.csv` — Casos problemáticos
 
 **Visualizações:**
-- `agreement_heatmap.png` - Heatmap de concordância
-- `consensus_distribution.png` - Distribuição de consenso
-- `model_comparison.png` - Comparação de modelos
-- `interactive_dashboard.html` - ⭐ Dashboard interativo
+- `agreement_heatmap.png` — Heatmap de concordância
+- `consensus_distribution.png` — Distribuição de consenso
+- `interactive_dashboard.html` — Dashboard interativo
 
 **Resumos:**
-- `experiment_summary.json` - Estatísticas completas
+- `experiment_summary.json` — Estatísticas completas
 
 ---
 
-## 🤗 Usar Datasets do HuggingFace
+## Modelos Disponíveis
 
-### Fluxo Completo
-
-#### 1. Descobrir Estrutura
-
-```bash
-poetry run python src/main_huggingface.py --modo descobrir --dataset waashk/seu-dataset
-```
-
-**Output:**
-```
-📋 Estrutura do dataset:
-   Colunas: ['text', 'label', 'id']
-   
-📝 Primeiros 3 exemplos...
-
-💡 Sugestão de configuração:
-"seu_dataset": {
-    "path": "waashk/seu-dataset",
-    "text_column": "text",
-    ...
-}
-```
-
-#### 2. Configurar Dataset
-
-Edite `src/config/dataset_config.py`:
+Todos open-source, sem custo de API proprietária:
 
 ```python
-HUGGINGFACE_DATASETS = {
+# src/config/llms.py — exemplos
+"llama3.1:8b"       # Meta, via Ollama
+"mistral:7b"        # Mistral AI, via Ollama
+"gemma2:9b"         # Google, via Ollama
+"phi3.5:mini"       # Microsoft, via Ollama
+"deepseek-r1:8b"    # DeepSeek, via Ollama
+"qwen2.5:7b"        # Alibaba, via Ollama
+```
+
+**Providers:**
+- **Ollama**: Local, gratuito, privado
+- **HuggingFace Inference API**: Nuvem, gratuito com limites
+- **Groq**: Nuvem, muito rápido, tier gratuito
+
+---
+
+## Usar Datasets do HuggingFace
+
+Configure em `src/config/datasets_collected.py`:
+
+```python
+DATASETS = {
     "meu_dataset": {
         "path": "waashk/nome-do-dataset",
-        "text_column": "text",              # Da descoberta
-        "label_column": "label",            # Opcional (para validação)
-        "categories": None,                  # Extrair automaticamente
-        "combine_splits": ["train", "test"], # Dataset completo!
-        "sample_size": 100,                  # Começar pequeno
-        "description": "Descrição do dataset"
-    },
+        "text_column": "text",
+        "label_column": "label",          # opcional (para validação)
+        "categories": None,               # extrair automaticamente
+        "combine_splits": ["train", "test"],
+        "sample_size": 100,               # começar pequeno
+    }
 }
 ```
 
-#### 3. Executar
-
-```bash
-poetry run python src/main_huggingface.py --modo basico
-```
-
-### Casos de Uso
-
-**Dataset com Labels (Validação):**
-```python
-"dataset_validacao": {
-    "path": "waashk/dataset-com-labels",
-    "text_column": "text",
-    "label_column": "label",  # ← Tem ground truth
-    "categories": None,       # Extrair das labels
-    "combine_splits": ["train", "test"],
-    "sample_size": None,
-}
-```
-**Resultado:** Sistema calcula accuracy automaticamente!
-
-**Dataset sem Labels (Anotação Pura):**
-```python
-"dataset_novo": {
-    "path": "waashk/textos-novos",
-    "text_column": "content",
-    "label_column": None,     # ← Sem labels
-    "categories": ["A", "B", "C"],  # ← Você define
-    "split": "train",
-    "sample_size": None,
-}
-```
-**Resultado:** Apenas anotações, sem validação
+Ver [GUIA_DATASETS.md](GUIA_DATASETS.md) para mais detalhes.
 
 ---
 
-## 💡 Dicas Importantes
+## Customizações
 
-### Para Reduzir Custos
+### Adicionar Novo Modelo
 
-1. **Sempre começar com amostra pequena**
-   ```python
-   "sample_size": 100  # ← Validar antes de escalar
-   ```
-
-2. **Usar modelos mais baratos primeiro**
-   - Teste com: GPT-3.5, Claude Sonnet, Gemini
-   - Depois adicione: GPT-4, Claude Opus
-
-3. **Aproveitar o cache**
-   - Sistema salva respostas automaticamente
-   - Não repete chamadas de API
-   - Economiza ~40% em custos
-
-### Para Melhorar Qualidade
-
-1. **Ajustar prompts** em `src/config/prompts.py`
-   - Adicione exemplos (few-shot learning)
-   - Teste Chain-of-Thought para casos complexos
-   - Seja específico nas instruções
-
-2. **Testar diferentes configurações**
-   ```python
-   df = annotator.annotate_dataset(
-       texts=texts,
-       test_param_variations=True  # ← Testa variações
-   )
-   ```
-
-3. **Analisar casos problemáticos**
-   - Arquivo `needs_human_review.csv`
-   - Entenda por que não há consenso
-   - Ajuste prompts ou categorias conforme necessário
-
-### Para Datasets Grandes
-
-1. **Processar em batches**
-   ```python
-   batch_size = 500
-   for i in range(0, len(texts), batch_size):
-       batch = texts[i:i+batch_size]
-       # Processar batch...
-   ```
-
-2. **Usar cache eficientemente**
-   - Cache fica em `data/.cache/huggingface/`
-   - Datasets baixados uma vez ficam em cache
-
----
-
-## 🎓 Material para Apresentação
-
-### Arquivos Prontos
-
-1. **docs/RESUMO_EXECUTIVO.md**
-   - Sumário executivo do projeto
-   - Metodologia detalhada
-   - Resultados esperados
-
-2. **src/notebooks/analise_consenso_llms.ipynb**
-   - Execute e gere os resultados
-   - Salve com outputs visíveis
-   - Use para apresentação
-
-3. **results/figures/interactive_dashboard.html**
-   - Dashboard interativo
-   - Abra no navegador
-   - Demonstre as análises
-
-### Pontos para Discussão
-
-1. **Metodologia Implementada**
-   - Multi-LLM com análise de consenso
-   - Validação interna por repetições
-   - Estratégias de resolução de conflitos
-
-2. **Questões de Pesquisa**
-   - Qual threshold ideal de consenso?
-   - Como lidar com casos 2-2-1?
-   - Few-shot learning melhora resultados?
-   - Qual configuração de parâmetros é melhor?
-
-3. **Resultados e Validação**
-   - Comparação com ground truth
-   - Análise de concordância entre modelos
-   - Custos vs qualidade
-
-4. **Próximos Passos**
-   - Validar em dataset maior
-   - Otimizar custos
-   - Preparar publicação
-
----
-
-## 🔧 Customizações
-
-### Adicionar Novos Modelos
-
-Em `src/config/llm_configs.py`:
+Em `src/config/llms.py`:
 
 ```python
 LLM_CONFIGS["novo-modelo"] = {
-    "provider": "openai",  # ou "anthropic", "google"
-    "model_name": "nome-exato-do-modelo",
+    "provider": "ollama",   # ou "huggingface", "groq"
+    "model_name": "nome:tag",
     "default_params": {
         "temperature": 0.0,
-        "max_tokens": 50,
+        "num_predict": 50,
     },
-    "alternative_params": {
-        "temperature": [0.0, 0.3, 0.5],  # Para testes
-    }
+    "alternative_params": [
+        {"temperature": 0.3},
+        {"temperature": 0.5},
+    ]
 }
 ```
 
@@ -353,57 +210,67 @@ Em `src/config/prompts.py`:
 
 ```python
 BASE_ANNOTATION_PROMPT = """
-Seu prompt customizado aqui.
+Classifique o texto abaixo.
 
-**Text to classify:**
+**Text:**
 {text}
 
-**Available Categories:**
+**Categories:**
 {categories}
+
+CLASSIFICATION:
 """
 ```
 
-### Ajustar Parâmetros do Experimento
+---
 
-Em `src/config/experiment.py`:
+## Dicas
 
-```python
-EXPERIMENT_CONFIG = {
-    "num_repetitions_per_llm": 5,      # Mais repetições
-    "consensus_threshold": 0.7,         # Threshold diferente
-    "test_param_variations": True,      # Testar variações
-}
-```
+### Para Reduzir Tempo de Execução
+
+1. Usar modelos menores (7b-8b) para triagem inicial
+2. Ativar cache (`cache_manager`) — evita re-anotação de textos já processados
+3. Usar Groq para execução mais rápida (300+ tokens/s)
+
+### Para Melhorar Qualidade
+
+1. Ajustar prompts em `src/config/prompts.py`
+2. Testar `few_shot` e `chain_of_thought` prompts
+3. Analisar `needs_human_review.csv` para entender discordâncias
+
+### Para Datasets Grandes
+
+1. Usar `sample_size` para testes antes de escalar
+2. Processar em batches
+3. Cache local em `data/.cache/huggingface/`
 
 ---
 
-## 📈 Estimativa de Custos
+## Checklist
 
-| Dataset | Chamadas API | Custo Estimado |
-|---------|--------------|----------------|
-| 100 textos | ~1.500 | $3-5 |
-| 1.000 textos | ~15.000 | $30-50 |
-| 10.000 textos | ~150.000 | $300-500 |
+Antes de executar:
 
-**Com cache e otimizações:** Redução de ~40%
-
-**Dica:** Comece pequeno, valide metodologia, depois escale.
-
----
-
-## ✅ Checklist
-
-Antes de executar em produção:
-
-- [ ] Dependências instaladas (`poetry install`)
-- [ ] API keys configuradas no `.env`
-- [ ] Dataset estruturado ou configurado (`dataset_config.py`)
-- [ ] Testado com amostra pequena (`sample_size: 100`)
-- [ ] Prompts revisados e otimizados
-- [ ] Categorias bem definidas
-- [ ] Resultados validados em amostra
-- [ ] Entendido custos estimados
-- [ ] Backup dos dados importantes
+- [ ] `poetry install` executado
+- [ ] Ollama instalado + pelo menos 1 modelo baixado
+- [ ] `.env` criado com as keys necessárias
+- [ ] Dataset configurado em `datasets_collected.py`
+- [ ] Testado com `sample_size: 100`
+- [ ] Prompts revisados para o domínio
 
 ---
 
+
+OLLAMA_NUM_PARALLEL=5  OLLAMA_FLASH_ATTENTION=1 OLLAMA_KV_CACHE_TYPE=q8_0 OLLAMA_CONTEXT_LENGTH=4096 OLLAMA_KEEP_ALIVE=24h ollama serve
+
+curl http://localhost:11434/api/generate -d '{"model": "qwen3:8b"}'
+curl http://localhost:11434/api/generate -d '{"model": "llama3.1:8b"}'
+curl http://localhost:11434/api/generate -d '{"model": "deepseek-r1:8b"}'
+
+
+brev copy -r ./data lbd-8a100-server:/home/nvidia/workspace/catizani/llm-annotation
+
+brev copy ./data/results/results.zip lbd-8a100-server:/home/nvidia/workspace/catizani/llm-annotation/data
+
+docker build -f docker/Dockerfile -t llm-annotation:latest .
+
+GPU_IDS=<GPUs> CUDA_DEVICE_IDS=<0, 1, ... (colocar a partir da quantidade de GPUs)> PORT=8000 docker compose -f docker/docker-compose.yml up -d

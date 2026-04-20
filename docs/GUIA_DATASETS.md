@@ -1,10 +1,10 @@
-# 🤗 Guia de Uso com Datasets do HuggingFace
+# Guia de Datasets HuggingFace
 
-Este guia mostra como integrar seus datasets do HuggingFace (waashk) com o sistema de anotação.
+Este guia explica como configurar e usar datasets do HuggingFace (namespace `waashk`) com o sistema de anotação.
 
 ---
 
-## 🚀 Início Rápido (3 Passos)
+## Início Rápido
 
 ### 1. Instalar Dependências
 
@@ -12,136 +12,93 @@ Este guia mostra como integrar seus datasets do HuggingFace (waashk) com o siste
 poetry install
 ```
 
-### 2. Descobrir Estrutura dos Seus Datasets
+### 2. Configurar Dataset
 
-```bash
-python src/main_huggingface.py --modo descobrir --dataset waashk/seu-dataset
-```
-
-Isso mostra:
-- ✅ Colunas disponíveis
-- ✅ Features
-- ✅ Exemplos
-- ✅ Sugestão de configuração
-
-### 3. Configurar e Executar
-
-Edite `src/config/dataset_config.py` e adicione seu dataset:
+Edite `src/config/datasets_collected.py` e adicione (ou ajuste) seu dataset:
 
 ```python
-HUGGINGFACE_DATASETS = {
+DATASETS = {
     "meu_dataset": {
         "path": "waashk/nome-do-dataset",
         "text_column": "text",
-        "label_column": "label",  # ou None
-        "categories": ["Cat1", "Cat2"],
-        "split": "train",
-        "sample_size": 100,  # Começar pequeno!
+        "label_column": "label",   # ou None
+        "categories": None,        # extrair automaticamente das labels
+        "combine_splits": ["train", "test"],
+        "sample_size": 100,        # começar pequeno
     },
 }
 ```
 
-Execute:
+### 3. Executar Anotação
 
 ```bash
-python src/main_huggingface.py --modo basico
+poetry run python run_annotation.py
+```
+
+### 4. Executar Fine-Tuning
+
+```bash
+poetry run python run_fine_tunning.py
 ```
 
 ---
 
-## 📋 Configuração Detalhada
+## Configuração Detalhada
 
-### Estrutura de Configuração
+### Campos do Dataset
 
 ```python
 "nome_dataset": {
     # OBRIGATÓRIOS
-    "path": str,           # Path no HuggingFace
-    "text_column": str,    # Coluna com textos
-    "split": str,          # "train", "test", etc
-    
+    "path": str,                     # Path no HuggingFace (ex: "waashk/ag-news")
+    "text_column": str,              # Coluna com textos
+
     # OPCIONAIS
-    "label_column": str,   # Coluna com labels (para validação)
-    "categories": list,    # ou None (extrair automaticamente)
-    "sample_size": int,    # ou None (carregar tudo)
-    "description": str,    # Descrição do dataset
-    
-    # AVANÇADO: Combinar múltiplos splits
-    "combine_splits": ["train", "test"],  # Usar dataset completo
-}
-```
+    "label_column": str | None,      # Coluna com labels (None = sem ground truth)
+    "categories": list | None,       # None = extrair automaticamente das labels
+    "sample_size": int | None,       # None = carregar tudo
+    "description": str,              # Descrição do dataset
 
-### Exemplo Real
-
-```python
-"sentiment_reviews": {
-    "path": "waashk/sentiment-reviews",
-    "text_column": "review_text",
-    "label_column": "sentiment",
-    "categories": None,  # Extrair automaticamente
+    # PARA COMBINAR MÚLTIPLOS SPLITS
+    "combine_splits": ["train", "test"],   # Combinar train + test
+    # OU usar split único
     "split": "train",
-    "sample_size": 500,
-    "description": "Reviews de produtos para análise de sentimento"
 }
 ```
 
 ---
 
-## 🎯 Casos de Uso
+## Casos de Uso
 
-### Caso 1: Dataset com Labels (Validação)
-
-Você tem labels para validar a qualidade:
+### Dataset com Labels (Validação)
 
 ```python
 "dataset_validacao": {
-    "path": "waashk/dataset-com-labels",
+    "path": "waashk/ag-news",
     "text_column": "text",
-    "label_column": "label",  # ← Importante!
-    "categories": None,  # Extrair das labels
-    "split": "train",
+    "label_column": "label",    # ← com ground truth
+    "categories": None,         # extrair automaticamente
+    "combine_splits": ["train", "test"],
     "sample_size": None,
 }
 ```
 
-O sistema automaticamente:
-- ✅ Extrai categorias dos labels
-- ✅ Calcula accuracy vs ground truth
-- ✅ Gera relatório de validação
+O sistema calcula accuracy, precision, recall e F1 automaticamente.
 
-### Caso 2: Dataset sem Labels (Anotação Pura)
-
-Você quer anotar do zero:
+### Dataset sem Labels (Anotação Pura)
 
 ```python
 "dataset_anotacao": {
-    "path": "waashk/textos-nao-rotulados",
+    "path": "waashk/textos-novos",
     "text_column": "content",
-    "label_column": None,  # ← Sem labels
-    "categories": ["Spam", "Ham", "Unsure"],  # ← Você define
+    "label_column": None,               # ← sem ground truth
+    "categories": ["Spam", "Ham"],      # ← você define as categorias
     "split": "train",
     "sample_size": None,
 }
 ```
 
-### Caso 3: Dataset Completo (Todos os Splits)
-
-Usar dataset inteiro para anotação:
-
-```python
-"dataset_completo": {
-    "path": "waashk/meu-dataset",
-    "text_column": "text",
-    "label_column": None,
-    "categories": ["A", "B", "C"],
-    "combine_splits": ["train", "test", "validation"],  # ← Combinar!
-    "sample_size": None,
-}
-```
-
-### Caso 4: Amostra Pequena (Teste)
-
-Começar com amostra para testar:
+### Amostra para Teste
 
 ```python
 "dataset_teste": {
@@ -150,303 +107,134 @@ Começar com amostra para testar:
     "label_column": "category",
     "categories": None,
     "split": "train",
-    "sample_size": 50,  # ← Apenas 50 para teste!
+    "sample_size": 50,    # ← apenas 50 para validar rapidamente
 }
 ```
 
 ---
 
-## 💻 Exemplos de Código
+## Datasets Pré-Configurados
 
-### Exemplo 1: Básico
+O arquivo `src/config/datasets_collected.py` já contém 30+ datasets configurados:
 
-```python
-from dataset_config import load_hf_dataset
-from llm_annotator import LLMAnnotator
+| Tipo | Datasets |
+|------|----------|
+| **Notícias** | `ag_news`, `reuters90` |
+| **Sentimento** | `mpqa`, `yelp_2013`, `yelp_2015`, `movie_reviews`, `sst1`, `sst2`, `vader_movie` |
+| **Científico** | `acm`, `dblp`, `wos_11967`, `wos_5736`, `ohsumed` |
+| **Web/Social** | `webkb`, `20newsgroups`, `twitter`, `trec` |
+| **Médico** | `medline` |
+| **Livros** | `books`, `pang_movie` |
 
-# Carregar dataset
-texts, categories, ground_truth = load_hf_dataset("meu_dataset")
-
-# Configurar
-api_keys = {...}
-models = ["gpt-4-turbo", "claude-3-opus", "gemini-pro"]
-
-# Anotar
-annotator = LLMAnnotator(models, categories, api_keys)
-df = annotator.annotate_dataset(texts, num_repetitions=3)
-df = annotator.calculate_consensus(df)
-
-# Validar (se houver ground truth)
-if ground_truth:
-    df['ground_truth'] = ground_truth
-    from sklearn.metrics import accuracy_score
-    acc = accuracy_score(df['ground_truth'], df['most_common_annotation'])
-    print(f"Accuracy: {acc:.2%}")
-```
-
-### Exemplo 2: Dataset Customizado
-
-```python
-from dataset_config import load_custom_dataset
-
-# Carregar sem pré-configurar
-texts, categories, labels = load_custom_dataset(
-    hf_path="waashk/dataset-qualquer",
-    text_column="minha_coluna",
-    label_column=None,
-    categories=["X", "Y", "Z"],
-    combine_splits=["train", "test"],  # Dataset completo
-    sample_size=100
-)
-```
-
-### Exemplo 3: Como DataFrame
-
-```python
-from dataset_config import load_hf_dataset_as_dataframe
-
-# Carregar como pandas DataFrame
-df = load_hf_dataset_as_dataframe("meu_dataset")
-
-# Análise exploratória
-print(df.head())
-print(df['ground_truth'].value_counts())
-
-# Usar com anotador
-texts = df['text'].tolist()
-```
+Para usar um dataset já configurado, basta referenciar a chave no script de anotação.
 
 ---
 
-## 🔍 Descobrir Estrutura
+## Prevenção de Data Leakage no Fine-Tuning
 
-Não sabe a estrutura do seu dataset?
+Ao executar `run_fine_tunning.py`, o sistema automaticamente:
 
-### Método 1: Via Script
+1. Gera um `text_id` único para cada instância (hash do texto)
+2. Identifica instâncias presentes tanto no treino quanto no teste/validação
+3. Remove essas instâncias do conjunto de avaliação
+4. Emite um warning com a contagem de instâncias removidas:
 
-```bash
-python src/main_huggingface.py --modo descobrir --dataset waashk/seu-dataset
+```
+WARNING: 42 instâncias do teste aparecem no treino e foram removidas (data leakage)
 ```
 
-### Método 2: Via Código
-
-```python
-from dataset_config import discover_dataset_structure
-
-discover_dataset_structure("waashk/seu-dataset", num_examples=5)
-```
-
-Isso mostra:
-```
-📋 Estrutura do dataset:
-   Colunas: ['text', 'label', 'id']
-   Features: {'text': Value(dtype='string'), 'label': ClassLabel(...)}
-
-📝 Primeiros 3 exemplos:
-   Exemplo 1:
-      text: Este é um texto exemplo...
-      label: positivo
-      id: 1
-```
+Isso garante que métricas de avaliação reflitam capacidade real de generalização.
 
 ---
 
-## 🏃 Executar
+## Instâncias Inválidas
 
-### Modo Básico
+Quando uma LLM retorna uma resposta fora das categorias configuradas, a instância recebe `label = -1`. Antes do fine-tuning, o sistema:
 
-```bash
-python src/main_huggingface.py --modo basico
-```
+1. **Loga** todas as instâncias com label=-1 para depuração
+2. **Remove** essas instâncias antes do treinamento
 
-Executa fluxo completo:
-1. Carrega dataset configurado
-2. Anota com múltiplas LLMs
-3. Calcula consenso
-4. Valida com ground truth (se disponível)
-5. Gera visualizações
-6. Salva resultados
-
-### Modo Descobrir
-
-```bash
-python src/main_huggingface.py --modo descobrir --dataset waashk/seu-dataset
-```
-
-Descobre estrutura do dataset.
-
-### Modo Customizado
-
-```bash
-python src/main_huggingface.py --modo customizado
-```
-
-Exemplo de carregamento sem pré-configurar.
-
-### Modo Múltiplos
-
-```bash
-python src/main_huggingface.py --modo multiplos
-```
-
-Processa vários datasets em batch.
+Monitore o log para identificar padrões de falha de extração (pode indicar problemas no prompt ou nas categorias).
 
 ---
 
-## 📁 Estrutura de Arquivos
+## Cache Local
+
+Datasets baixados do HuggingFace ficam em cache:
 
 ```
-src/
-├── config/
-│   └── dataset_config.py       ⭐ Configuração de datasets
-├── llm_annotation_system/
-│   ├── llm_annotator.py
-│   └── ...
-├── main.py                     Original (exemplo simples)
-└── main_huggingface.py         ⭐ Novo (com HuggingFace)
-
-data/
-└── .cache/
-    └── huggingface/            Cache local dos datasets
-
-results/
-├── dataset_anotado_final.csv   ⭐ Dataset anotado
-├── figures/
-└── ...
+data/.cache/huggingface/
 ```
 
----
+Na segunda execução, o dataset é carregado do cache local — sem re-download.
 
-## 🐛 Troubleshooting
-
-### Erro: "Column not found"
-
-```python
-# Verificar colunas disponíveis
-python src/main_huggingface.py --modo descobrir --dataset waashk/seu-dataset
-
-# Ajustar config
-"text_column": "nome_correto_da_coluna"
-```
-
-### Erro: "Dataset not found"
+Para limpar:
 
 ```bash
-# Verificar se dataset existe
-# Ir em: https://huggingface.co/waashk
-
-# Se for privado, fazer login
-huggingface-cli login
-```
-
-### Dataset muito grande
-
-```python
-# Usar amostragem
-"sample_size": 1000  # Apenas 1000 exemplos
-
-# Ou processar em batches
-for i in range(0, total, 1000):
-    texts = load_dataset(...).select(range(i, i+1000))
-```
-
-### Combinar splits não funciona
-
-```python
-# Verificar splits disponíveis primeiro
-discover_dataset_structure("waashk/seu-dataset")
-
-# Ajustar lista
-"combine_splits": ["train", "test"]  # Apenas os que existem
-```
-
----
-
-## 💡 Dicas
-
-### 1. Sempre Começar Pequeno
-
-```python
-"sample_size": 100  # ← Começar com 100 textos
-```
-
-Validar que funciona, depois aumentar!
-
-### 2. Cache Local
-
-Datasets são salvos em cache:
-
-```bash
-# Ver cache
-ls -lh data/.cache/huggingface/
-
-# Limpar se necessário
 rm -rf data/.cache/huggingface/
 ```
 
-### 3. Validação com Ground Truth
+---
 
-Se seu dataset tem labels:
+## Troubleshooting
+
+### "Column not found"
+
+Verifique as colunas disponíveis no dataset:
 
 ```python
-# Sistema automaticamente:
-# 1. Calcula accuracy
-# 2. Gera classification report
-# 3. Identifica categorias problemáticas
+from datasets import load_dataset
+ds = load_dataset("waashk/seu-dataset")
+print(ds["train"].column_names)
 ```
 
-### 4. Processar em Batches
+Ajuste `text_column` e `label_column` conforme o resultado.
 
-Para datasets grandes:
+### "Dataset not found"
+
+```bash
+# Verificar se dataset é privado
+huggingface-cli login
+# Ou verificar em: https://huggingface.co/waashk
+```
+
+### "combine_splits não funciona"
+
+Verifique quais splits existem no dataset:
 
 ```python
-# Dividir em partes
-batch_size = 500
-for i in range(0, len(texts), batch_size):
-    batch = texts[i:i+batch_size]
-    # Processar batch...
+from datasets import load_dataset
+ds = load_dataset("waashk/seu-dataset")
+print(list(ds.keys()))   # ['train', 'test', ...]
+```
+
+Use apenas splits que existem em `combine_splits`.
+
+### Desempenho lento
+
+Para datasets grandes, use `sample_size` para testes iniciais:
+
+```python
+"sample_size": 500   # processar apenas 500 instâncias
 ```
 
 ---
 
-## ✅ Checklist
+## Checklist
 
-Antes de começar:
+Antes de executar anotação:
 
-- [ ] `poetry install` executado
-- [ ] Datasets identificados em https://huggingface.co/waashk
-- [ ] Estrutura descoberta com `--modo descobrir`
-- [ ] Configuração adicionada em `dataset_config.py`
-- [ ] Testado com amostra pequena (`sample_size: 100`)
-- [ ] API keys configuradas no `.env`
-- [ ] Pronto para anotação completa! 🚀
+- [ ] Dataset identificado em https://huggingface.co/waashk
+- [ ] Configuração adicionada em `datasets_collected.py`
+- [ ] Colunas `text_column` e `label_column` verificadas
+- [ ] Testado com `sample_size: 100`
+- [ ] API keys / Ollama configurados no `.env`
 
 ---
 
-## 📊 Fluxo Completo
+## Recursos
 
-```
-1. DESCOBRIR           → python ... --modo descobrir
-   ↓
-2. CONFIGURAR          → Editar dataset_config.py
-   ↓
-3. TESTAR (amostra)    → sample_size: 100
-   ↓
-4. VALIDAR             → Verificar resultados
-   ↓
-5. ESCALAR             → sample_size: None (tudo)
-   ↓
-6. ANALISAR            → Ver dashboard e métricas
-```
-
----
-
-## 🎓 Recursos
-
-- **HuggingFace Datasets**: https://huggingface.co/docs/datasets/
+- **HuggingFace Datasets Docs**: https://huggingface.co/docs/datasets/
 - **Seus datasets**: https://huggingface.co/waashk
-- **Documentação do projeto**: README.md
-
----
-
-**Boa sorte com suas anotações!** 🤗🚀
+- [INSTRUCOES.md](INSTRUCOES.md) — Guia completo do sistema
+- [README.md](../README.md) — Visão geral e instalação
