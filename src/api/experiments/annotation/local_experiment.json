@@ -1,5 +1,5 @@
 {
-    "dataset_name": "sst1",
+    "dataset_name": "movie_review",
     "dataset_config": {
         "split": null,
         "combine_splits": null,

@@ -14,11 +14,7 @@ from src.llm_annotation_system.pipeline import AnnotationPipeline, AnnotationCon
 
 
 async def main():
-    # =========================================================================
-    # CONFIGURE AQUI
-    # =========================================================================
-    DEBUG_SINGLE = False  # True = anota apenas um texto; False = dataset completo
-
+    run_type = "single" # "single" para rodar um texto específico, "dataset" para rodar tudo
     experiment = "local_experiment"
     config_path = Path("src/api/experiments") / "annotation" / f"{experiment}.json"
     if not config_path.exists():
@@ -26,13 +22,11 @@ async def main():
         return
 
     config = AnnotationConfig(
-        dataset_name="dblp",
         experiment_config=str(config_path),
     )
 
     pipeline = AnnotationPipeline(config)
-    await pipeline.run(debug_single=DEBUG_SINGLE)
-
+    await pipeline.run(run_type=run_type, single_index=0)  # run_type="single" para debug de um texto específico
 
 if __name__ == "__main__":
     asyncio.run(main())

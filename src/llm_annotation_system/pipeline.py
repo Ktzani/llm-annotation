@@ -65,10 +65,8 @@ class AnnotationConfig:
 
     def __init__(
         self,
-        dataset_name: str,
         experiment_config: Optional[Union[str, ExperimentRequest]] = None,
     ):
-        self.dataset_name = dataset_name
         self.experiment_config_path = experiment_config if isinstance(experiment_config, str) else None
 
         if isinstance(experiment_config, ExperimentRequest):
@@ -86,6 +84,7 @@ class AnnotationConfig:
         logger.info(f"Configurações carregadas de: {config_path}")
 
     def _apply_experiment(self, exp: ExperimentRequest) -> None:
+        self.dataset_name = exp.dataset_name
         self.models = exp.models
         self.prompt_type = exp.prompt_type
         self.custom_prompt = exp.custom_prompt
@@ -236,7 +235,7 @@ class AnnotationPipeline:
 
         return output_dir
 
-    async def run(self, debug_single: bool = False, debug_index: int = 0) -> Optional[Path]:
+    async def run(self, run_type: str = "dataset", single_index: int = 0) -> Optional[Path]:
         """Executa pipeline completo"""
         logger.info("=" * 60)
         logger.info("Iniciando pipeline de anotação")
@@ -246,15 +245,20 @@ class AnnotationPipeline:
             remove_annotated=self.config.dataset_config.remove_texts or False
         )
 
-        if debug_single:
-            await self.run_single(texts, ground_truth, categories, index=debug_index)
+        if run_type == "single":
+            await self.run_single(texts, ground_truth, categories, index=single_index)
             return None
-
-        output_dir = await self.run_dataset(texts, ground_truth, categories)
+        
+        elif run_type == "dataset":
+            output_dir = await self.run_dataset(texts, ground_truth, categories)
+            
+        else:
+            logger.error(f"Run type desconhecido: {run_type}")
+            return None
 
         logger.info("=" * 60)
         logger.success("Pipeline de anotação finalizado!")
         logger.info(f"Arquivos em: {output_dir}")
         logger.info("=" * 60)
 
-        return output_dir
+        return output_dir, texts, categories, ground_truth

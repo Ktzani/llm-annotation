@@ -13,27 +13,21 @@ async def run_experiment_background(
     try:
         experiments[experiment_id].status = "running"
         experiments[experiment_id].started_at = datetime.now()
-        experiments[experiment_id].message = "Inicializando pipeline..."
+        experiments[experiment_id].message = "Inicializando pipeline de anotação..."
 
         pipeline_config = AnnotationConfig(
-            dataset_name=config.dataset_name,
             experiment_config=config,
         )
-        pipeline = AnnotationPipeline(pipeline_config)
-
+        
         experiments[experiment_id].progress = 0.1
-        experiments[experiment_id].message = "Carregando dataset..."
-
-        texts, categories, ground_truth = pipeline.load_texts(
-            remove_annotated=config.dataset_config.remove_texts or False
-        )
-
-        experiments[experiment_id].progress = 0.3
-        experiments[experiment_id].message = (
-            f"Dataset carregado: {len(texts)} textos. Executando anotações..."
-        )
-
-        output_dir = await pipeline.run_dataset(texts, ground_truth, categories)
+        experiments[experiment_id].message = "Configuração montada. Carregando dados..."
+        
+        pipeline = AnnotationPipeline(pipeline_config)
+        
+        experiments[experiment_id].progress = 0.2
+        experiments[experiment_id].message = f"Pipeline criado. Executando..."
+        
+        output_dir, texts, categories, ground_truth = await pipeline.run(run_type="dataset")
 
         experiments[experiment_id].status = "completed"
         experiments[experiment_id].completed_at = datetime.now()
