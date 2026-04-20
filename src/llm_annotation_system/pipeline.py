@@ -8,7 +8,7 @@ import asyncio
 import pandas as pd
 from pathlib import Path
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, Union
 
 from loguru import logger
 
@@ -32,18 +32,49 @@ from src.llm_annotation_system.core.evaluate_model_metrics import evaluate_model
 
 
 class AnnotationConfig:
-    """Configurações do pipeline de anotação"""
+    """
+    Configurações do pipeline de anotação.
+
+    O parâmetro `experiment_config` aceita duas formas de entrada, escolhidas
+    conforme o contexto de execução:
+
+    1) **Path para JSON** (`str`): usado em execuções via CLI/script, quando o
+       experimento está versionado em disco. O arquivo é lido e validado como
+       `ExperimentRequest`.
+
+       Exemplo:
+           config = AnnotationConfig(
+               dataset_name="meu_dataset",
+               experiment_config="experiments/experimento.json",
+           )
+
+    2) **Objeto `ExperimentRequest`**: usado quando o experimento já foi
+       construído em memória — tipicamente pela API (FastAPI) após validar o
+       payload do request. Evita round-trip desnecessário pelo disco.
+
+       Exemplo:
+           config = AnnotationConfig(
+               dataset_name=request.dataset_name,
+               experiment_config=request,  # instância de ExperimentRequest
+           )
+
+    Em ambos os casos o método interno `_apply_experiment` popula os mesmos
+    atributos (models, prompt_type, dataset_config, etc.), então o
+    `AnnotationPipeline` opera de forma idêntica independente da origem.
+    """
 
     def __init__(
         self,
         dataset_name: str,
-        experiment_config_path: str,
+        experiment_config: Optional[Union[str, ExperimentRequest]] = None,
     ):
         self.dataset_name = dataset_name
-        self.experiment_config_path = experiment_config_path
+        self.experiment_config_path = experiment_config if isinstance(experiment_config, str) else None
 
-        if experiment_config_path:
-            self._load_from_experiment(experiment_config_path)
+        if isinstance(experiment_config, ExperimentRequest):
+            self._apply_experiment(experiment_config)
+        elif isinstance(experiment_config, str):
+            self._load_from_experiment(experiment_config)
 
     def _load_from_experiment(self, config_path: str) -> None:
         """Sobrescreve configurações a partir de um arquivo de experimento JSON"""
@@ -51,7 +82,10 @@ class AnnotationConfig:
             config_dict = json.load(f)
 
         exp = ExperimentRequest(**config_dict)
+        self._apply_experiment(exp)
+        logger.info(f"Configurações carregadas de: {config_path}")
 
+    def _apply_experiment(self, exp: ExperimentRequest) -> None:
         self.models = exp.models
         self.prompt_type = exp.prompt_type
         self.custom_prompt = exp.custom_prompt
@@ -65,8 +99,8 @@ class AnnotationConfig:
         self.cache_dir = exp.cache.dir
         self.intermediate = exp.results.intermediate
         self.results_dir = exp.results.dir
-
-        logger.info(f"Configurações carregadas de: {config_path}")
+        
+        logger.info(f"Configurações aplicadas do experimento: {exp.dataset_name} | Modelos: {len(self.models)} | Prompt: {self.prompt_type}")
 
 
 class AnnotationPipeline:
@@ -172,9 +206,9 @@ class AnnotationPipeline:
             max_concurrent_texts=self.config.max_concurrent_texts,
         )
 
-        df_annotations = df_annotations.drop_duplicates(subset=["text"])
+        df_annotations = df_annotations.drop_duplicates(subset=["text_id"])
 
-        if ground_truth is not None:
+        if len(texts) == len(ground_truth):
             df_gt = pd.DataFrame({"text": texts, "ground_truth": ground_truth})
             df_gt["text_id"] = df_gt["text"].apply(get_text_id_from_text)
             df_annotations = df_annotations.merge(

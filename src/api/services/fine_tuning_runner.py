@@ -14,14 +14,12 @@ async def run_fine_tuning_background(
     config: FineTuningRequest,
 ) -> None:
     try:
-        # ── 1. Marcar como running ─────────────────────────────────────────
         fine_tuning_jobs[job_id].status = "running"
         fine_tuning_jobs[job_id].started_at = datetime.now()
         fine_tuning_jobs[job_id].message = "Inicializando pipeline de fine-tuning..."
 
         logger.info(f"[{job_id}] Iniciando fine-tuning — dataset={config.dataset.dataset_name}, model={config.model_name}")
 
-        # ── 2. Montar configuração ─────────────────────────────────────────
         ft_config = FineTuningConfig(
             dataset_name=config.dataset.dataset_name,
             cache_dir=config.dataset.cache_dir,
@@ -40,7 +38,6 @@ async def run_fine_tuning_background(
         fine_tuning_jobs[job_id].progress = 0.1
         fine_tuning_jobs[job_id].message = "Configuração montada. Carregando dados..."
 
-        # ── 3. Executar pipeline ───────────────────────────────────────────
         pipeline = FineTuningPipeline(ft_config)
 
         fine_tuning_jobs[job_id].progress = 0.2
@@ -49,7 +46,6 @@ async def run_fine_tuning_background(
         # pipeline.run() é síncrono — rodamos direto (já estamos numa background task)
         results: dict = pipeline.run(run_type=config.run_type, max_parallel_folds=config.max_parallel_folds)
 
-        # ── 4. Serializar resultados ───────────────────────────────────────
         fine_tuning_jobs[job_id].status = "completed"
         fine_tuning_jobs[job_id].completed_at = datetime.now()
         fine_tuning_jobs[job_id].progress = 1.0

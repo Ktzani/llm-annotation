@@ -19,14 +19,15 @@ async def main():
     # =========================================================================
     DEBUG_SINGLE = False  # True = anota apenas um texto; False = dataset completo
 
-    experiment = "large_experiment"
-    config_path = Path(
-        rf"C:\Users\gabri\Documents\GitHub\llm-annotation\src\experiments\{experiment}.json"
-    )
+    experiment = "local_experiment"
+    config_path = Path("src/api/experiments") / "annotation" / f"{experiment}.json"
+    if not config_path.exists():
+        logger.error(f"Configuração de experimento não encontrada: {config_path}")
+        return
 
     config = AnnotationConfig(
         dataset_name="dblp",
-        experiment_config_path=str(config_path),
+        experiment_config=str(config_path),
     )
 
     pipeline = AnnotationPipeline(config)
