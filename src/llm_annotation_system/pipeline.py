@@ -130,7 +130,7 @@ class AnnotationPipeline:
             logger.success(f"✓ Annotator inicializado com {len(self._annotator.models)} modelos")
         return self._annotator
 
-    def load_texts(self, remove_annotated: bool = False) -> tuple:
+    def load_texts(self, remove_annotated: bool = False, run_type: str = "dataset") -> tuple:
         """Carrega textos, categorias e ground truth do HF"""
         texts, categories, ground_truth = load_hf_dataset(
             dataset_name=self.config.dataset_name,
@@ -138,6 +138,10 @@ class AnnotationPipeline:
             dataset_global_config=self.config.dataset_config,
         )
 
+        if run_type == "single_text":
+            logger.warning(f"Modo: anotação única | Textos carregados: {len(texts)} | Categorias: {categories} | GT: {'Sim' if ground_truth else 'Não'}")
+            return texts, categories, ground_truth
+        
         if remove_annotated:
             annotated_path = (
                 Path(self.config.results_dir)
@@ -242,7 +246,8 @@ class AnnotationPipeline:
         logger.info("=" * 60)
 
         texts, categories, ground_truth = self.load_texts(
-            remove_annotated=self.config.dataset_config.remove_texts or False
+            remove_annotated=self.config.dataset_config.remove_texts or False,
+            run_type=run_type
         )
 
         if run_type == "single_text":

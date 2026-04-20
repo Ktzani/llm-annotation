@@ -14,7 +14,7 @@ from src.llm_annotation_system.pipeline import AnnotationPipeline, AnnotationCon
 
 
 async def main():
-    run_type = "dataset" # "single" para rodar um texto específico, "dataset" para rodar tudo
+    run_type = "single_text" # "single_text" para rodar um texto específico, "dataset" para rodar tudo
     experiment = "local_experiment"
     config_path = Path("src/api/experiments") / "annotation" / f"{experiment}.json"
     if not config_path.exists():
