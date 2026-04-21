@@ -27,6 +27,7 @@ logger.add(
 # Imports do projeto
 
 from src.utils.data_loader import load_hf_dataset_as_dataframe, add_label_description
+from src.utils.get_text_id_from_text import get_text_id_from_text
 from src.fine_tune_system.fine_tune.supervised_fine_tuner import SupervisedFineTuner
 from src.fine_tune_system.fine_tune.fine_tune_factory import FineTunerFactory
 
@@ -138,7 +139,10 @@ class FineTuningPipeline:
             self.results_dataset_path / "summary" / "dataset_anotado_completo.csv"
         )
         logger.info(f"Anotado: {len(df)} exemplos")
-        
+
+        df["text"] = df["text"].str.strip()
+        df["text_id"] = df["text"].apply(get_text_id_from_text)
+
         # Dataset anotado (consenso)
         df_annotations = (
             df[["text_id", "text", "resolved_annotation"]]
