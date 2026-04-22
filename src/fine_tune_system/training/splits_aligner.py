@@ -58,27 +58,34 @@ class CVSplitAligner:
             if not isinstance(hf_df, pd.DataFrame):
                 hf_df = hf_df.to_pandas()
 
-            split_ids = set(hf_df[self.id_column])
+            if split_name == "train":
+                # Treino: labels do consenso LLM (annotated_df)
+                split_ids = set(hf_df[self.id_column])
 
-            aligned_df = annotated_df[
-                annotated_df[self.id_column].isin(split_ids)
-            ].copy()
+                aligned_df = annotated_df[
+                    annotated_df[self.id_column].isin(split_ids)
+                ].copy()
 
-            # 🔍 cobertura
-            coverage = len(aligned_df) / len(hf_df)
+                coverage = len(aligned_df) / len(hf_df)
+                missing = split_ids - set(annotated_df[self.id_column])
 
-            missing = split_ids - set(annotated_df[self.id_column])
+                logger.warning(
+                    f"[train|consenso] HF: {len(hf_df)} | Annotated: {len(aligned_df)} "
+                    f"| Coverage: {coverage:.4f} | Missing: {len(missing)}"
+                )
+            else:
+                # Val/test: labels do GT original do HuggingFace (hf_df)
+                aligned_df = hf_df.copy()
 
-            logger.warning(
-                f"HF: {len(hf_df)} | Annotated: {len(aligned_df)} "
-                f"| Coverage: {coverage:.4f} | Missing: {len(missing)}"
-            )
+                logger.warning(
+                    f"[{split_name}|GT] usando {len(aligned_df)} exemplos com labels do HuggingFace (ground-truth)"
+                )
 
             aligned_ds = Dataset.from_pandas(aligned_df)
             aligned_splits[fold][split_name] = aligned_ds
 
             logger.info(
-                f"Fold {fold} | {split_name}: {len(aligned_df)} exemplos anotados"
+                f"Fold {fold} | {split_name}: {len(aligned_df)} exemplos"
             )
 
     # -------------------------
