@@ -129,6 +129,18 @@ class LLMAnnotator:
         for model in self.models:
             llms[model] = self.llm_provider.initialize_llm(model)
         return llms
+        
+    def get_cache_stats(self) -> Dict:
+        """Retorna estatísticas do cache"""
+        return self.cache_manager.stats()
+    
+    def get_langchain_cache_stats(self) -> Dict:
+        """Retorna estatísticas do cache do LangChain"""
+        return self.langchain_cache.stats()
+    
+    def get_models(self) -> List[str]:
+        """Retorna lista de modelos utilizados"""
+        return self.models
     
     async def annotate_single(
         self,
@@ -209,176 +221,217 @@ class LLMAnnotator:
         rep_strategy: ExecutionStrategy = ExecutionStrategy.SEQUENTIAL,
         max_concurrent_texts: int = 5
     ) -> pd.DataFrame:
-        
-        total_annotations = len(texts) * len(self.models) * num_repetitions
-        
-        logger.info(f"Textos: {len(texts)} | Modelos: {len(self.models)} | Repetições: {num_repetitions}")
-        logger.info(f"Total de anotações: {total_annotations}")
-        logger.info(f"Strategy - Modelos: {model_strategy.name} | Repetições: {rep_strategy.name}")
-        logger.info(f"Salvamento intermediário a cada {intermediate} textos")
-        logger.info(f"Máximo de textos processados simultaneamente: {max_concurrent_texts}")
-        
-        file_path = self.results_dir / "intermediate.csv"
-        if file_path.exists():
-            df_existing = pd.read_csv(file_path)
-            processed_ids = set(df_existing["text_id"].tolist())
-            file_exists = True
+        """
+        Anota um dataset completo de textos.
 
-            logger.info(f"Checkpoint encontrado: {len(processed_ids)} textos já processados")
-        else:
-            processed_ids = set()
-            file_exists = False
-    
+        Coordena a anotação de múltiplos textos em paralelo respeitando o
+        limite de concorrência, salva resultados em lote no checkpoint
+        intermediário e retorna o DataFrame final com todas as anotações.
+
+        Args:
+            texts: Lista de textos para anotar
+            num_repetitions: Número de repetições por modelo
+            intermediate: Salva a cada N textos processados
+            model_strategy: Sequencial ou paralelo entre modelos
+            rep_strategy: Sequencial ou paralelo entre repetições
+            max_concurrent_texts: Limite de textos processados simultaneamente
+
+        Returns:
+            DataFrame com todas as anotações (incluindo as já existentes
+            no checkpoint)
+        """
+        self._log_run_info(
+            texts, num_repetitions, model_strategy, rep_strategy,
+            intermediate, max_concurrent_texts
+        )
+
+        file_path = self.results_dir / "intermediate.csv"
+        processed_ids, file_exists = self._load_checkpoint(file_path)
+
         semaphore = asyncio.Semaphore(max_concurrent_texts)
-    
-        start_global = time.perf_counter()
-    
-        # métricas
+        metrics_lock = asyncio.Lock()
+        buffer_lock = asyncio.Lock()
+        buffer: list[dict] = []
+
         completed = 0
         total_time = 0.0
-    
-        lock = asyncio.Lock()
-    
-        # 🔥 buffer temporário (batch)
-        buffer = []
-        buffer_lock = asyncio.Lock()
-    
+        start_global = time.perf_counter()
+
         async def process_text(text):
+            """Anota um texto e adiciona ao buffer; faz flush se atingiu o lote."""
             nonlocal completed, total_time, file_exists
-    
+
             async with semaphore:
                 start = time.perf_counter()
-    
-                text_results = {
-                    "text_id": get_text_id_from_text(text),
-                    "text": text,
-                    "text_len": len(text)
-                }
-    
-                # ===============================
-                # 🔁 MODELOS SEQUENCIAL
-                # ===============================
-                if model_strategy == ExecutionStrategy.SEQUENTIAL:
-                    for model in self.models:
-                        result = await self._annotate_model(
-                            text=text,
-                            model=model,
-                            num_repetitions=num_repetitions,
-                            rep_strategy=rep_strategy
-                        )
-                        text_results.update(result)
-                        
-                # ===============================
-                # 🚀 MODELOS PARALELO
-                # ===============================
-                else:
-                    tasks = [
-                        self._annotate_model(
-                            text=text,
-                            model=model,
-                            num_repetitions=num_repetitions,
-                            rep_strategy=rep_strategy
-                        )
-                        for model in self.models
-                    ]
-    
-                    model_results = await asyncio.gather(*tasks)
-    
-                    for result in model_results:
-                        text_results.update(result)
-    
+                text_results = await self._annotate_text(
+                    text, num_repetitions, model_strategy, rep_strategy
+                )
                 elapsed = time.perf_counter() - start
-    
-                # ===============================
-                # Atualiza métricas
-                # ===============================
-                async with lock:
+
+                # Atualiza métricas agregadas (avg_time e throughput no tqdm)
+                async with metrics_lock:
                     completed += 1
                     total_time += elapsed
-    
-                # ===============================
-                # BUFFER + SAVE EM LOTE
-                # ===============================
+
+                # Buffer + flush em lote para evitar I/O por texto
                 async with buffer_lock:
                     buffer.append(text_results)
-    
                     if len(buffer) >= intermediate:
-                        df_chunk = pd.DataFrame(buffer.copy())
-                        buffer.clear()
-    
-                        await asyncio.to_thread(
-                            df_chunk.to_csv,
-                            file_path,
-                            mode="a",
-                            header=not file_exists,
-                            index=False,
-                            encoding="utf-8"
+                        file_exists = await self._flush_buffer(
+                            buffer, file_path, file_exists
                         )
-    
-                        # depois da primeira escrita
-                        file_exists = True
-    
-                return True 
-    
-        # cria tasks
+
+        # Filtra textos já presentes no checkpoint (retomada idempotente)
         tasks = [
             process_text(text)
             for text in texts
             if get_text_id_from_text(text) not in processed_ids
         ]
-    
         remaining = len(tasks)
-        
+
         pbar = tqdm(total=remaining, desc="Anotando", smoothing=0.05)
-    
         for coro in asyncio.as_completed(tasks):
             await coro
-    
-            # métricas
-            current_done = completed
-            avg_time = total_time / current_done
+
+            avg_time = total_time / completed
             total_elapsed = time.perf_counter() - start_global
-            throughput = current_done / total_elapsed
-    
+            throughput = completed / total_elapsed
+
             pbar.update(1)
             pbar.set_postfix({
                 "avg_s": f"{avg_time:.2f}",
                 "it/s": f"{throughput:.2f}"
             })
-    
         pbar.close()
-        
+
         total_elapsed = time.perf_counter() - start_global
-        
         logger.info("Finalizado ✅")
         logger.info(f"Tempo total: {total_elapsed:.2f}s")
         logger.info(f"Throughput médio: {remaining / total_elapsed:.2f} textos/s")
-    
-        # 🔥 salva resto do buffer (final)
+
+        # Flush do que sobrou (último lote menor que `intermediate`)
         if buffer:
-            df_chunk = pd.DataFrame(buffer)
-    
-            await asyncio.to_thread(
-                df_chunk.to_csv,
-                file_path,
-                mode="a",
-                header=not file_exists,
-                index=False,
-                encoding="utf-8"
-            )
-            
+            await self._flush_buffer(buffer, file_path, file_exists)
+
         self.cache_manager.save()
-    
+
         return pd.read_csv(file_path)
-    
-    def get_cache_stats(self) -> Dict:
-        """Retorna estatísticas do cache"""
-        return self.cache_manager.stats()
-    
-    def get_langchain_cache_stats(self) -> Dict:
-        """Retorna estatísticas do cache do LangChain"""
-        return self.langchain_cache.stats()
-    
-    def get_models(self) -> List[str]:
-        """Retorna lista de modelos utilizados"""
-        return self.models
+
+    def _log_run_info(
+        self,
+        texts: List[str],
+        num_repetitions: int,
+        model_strategy: ExecutionStrategy,
+        rep_strategy: ExecutionStrategy,
+        intermediate: int,
+        max_concurrent_texts: int
+    ) -> None:
+        """Loga os parâmetros da execução antes de começar a anotação."""
+        total_annotations = len(texts) * len(self.models) * num_repetitions
+        logger.info(f"Textos: {len(texts)} | Modelos: {len(self.models)} | Repetições: {num_repetitions}")
+        logger.info(f"Total de anotações: {total_annotations}")
+        logger.info(f"Strategy - Modelos: {model_strategy.name} | Repetições: {rep_strategy.name}")
+        logger.info(f"Salvamento intermediário a cada {intermediate} textos")
+        logger.info(f"Máximo de textos processados simultaneamente: {max_concurrent_texts}")
+
+    def _load_checkpoint(self, file_path: Path) -> tuple[set, bool]:
+        """
+        Carrega o checkpoint intermediário se existir.
+
+        Returns:
+            (text_ids já processados, flag indicando se o arquivo existe).
+            A flag controla se a próxima escrita deve incluir o header do CSV.
+        """
+        if not file_path.exists():
+            return set(), False
+
+        df_existing = pd.read_csv(file_path)
+        processed_ids = set(df_existing["text_id"].tolist())
+        logger.info(f"Checkpoint encontrado: {len(processed_ids)} textos já processados")
+        return processed_ids, True
+
+    async def _annotate_text(
+        self,
+        text: str,
+        num_repetitions: int,
+        model_strategy: ExecutionStrategy,
+        rep_strategy: ExecutionStrategy
+    ) -> dict:
+        """
+        Anota um único texto com todos os modelos configurados.
+
+        Aplica a `model_strategy` para decidir entre rodar os modelos em
+        sequência ou em paralelo (via `asyncio.gather`).
+
+        Returns:
+            Dict com metadados do texto (text_id, text, text_len) e os
+            resultados de cada modelo (labels, confiança, consenso, tempo).
+        """
+        text_results = {
+            "text_id": get_text_id_from_text(text),
+            "text": text,
+            "text_len": len(text)
+        }
+        
+        # ===============================
+        # 🔁 MODELOS SEQUENCIAL
+        # ===============================
+        if model_strategy == ExecutionStrategy.SEQUENTIAL:
+            for model in self.models:
+                result = await self._annotate_model(
+                    text=text,
+                    model=model,
+                    num_repetitions=num_repetitions,
+                    rep_strategy=rep_strategy
+                )
+                text_results.update(result)
+                
+        # ===============================
+        # 🚀 MODELOS PARALELO
+        # ===============================
+        else:
+            model_tasks = [
+                self._annotate_model(
+                    text=text,
+                    model=model,
+                    num_repetitions=num_repetitions,
+                    rep_strategy=rep_strategy
+                )
+                for model in self.models
+            ]
+            for result in await asyncio.gather(*model_tasks):
+                text_results.update(result)
+
+        return text_results
+
+    async def _flush_buffer(
+        self,
+        buffer: list,
+        file_path: Path,
+        file_exists: bool
+    ) -> bool:
+        """
+        Escreve o buffer no CSV em append e limpa o buffer.
+
+        A escrita acontece numa thread separada (`asyncio.to_thread`) para
+        não bloquear o event loop. O header só é incluído na primeira
+        escrita; chamadas seguintes anexam linhas sem header.
+
+        Returns:
+            True — usado pelo chamador para atualizar `file_exists` após
+            a primeira escrita.
+        """
+        # Copia + clear sob o lock do chamador para liberar o buffer
+        # enquanto o I/O acontece em background.
+        df_chunk = pd.DataFrame(buffer.copy())
+        buffer.clear()
+
+        await asyncio.to_thread(
+            df_chunk.to_csv,
+            file_path,
+            mode="a",
+            header=not file_exists,
+            index=False,
+            encoding="utf-8"
+        )
+        return True
