@@ -259,7 +259,7 @@ Antes de executar:
 
 ---
 
-
+# ANOTANDO
 OLLAMA_NUM_PARALLEL=5  OLLAMA_FLASH_ATTENTION=1 OLLAMA_KV_CACHE_TYPE=q8_0 OLLAMA_CONTEXT_LENGTH=4096 OLLAMA_KEEP_ALIVE=24h ollama serve
 
 curl http://localhost:11434/api/generate -d '{"model": "qwen3:8b"}'
@@ -267,9 +267,56 @@ curl http://localhost:11434/api/generate -d '{"model": "llama3.1:8b"}'
 curl http://localhost:11434/api/generate -d '{"model": "deepseek-r1:8b"}'
 
 
-brev copy -r ./data lbd-8a100-server:/home/nvidia/workspace/catizani/llm-annotation
+# FINE-TUNANDO
+# Copiar tudo
+brev copy -r ./data lbd-gpu-server:/home/nvidia/workspace/catizani/llm-annotation
 
-brev copy ./data/results/results.zip lbd-8a100-server:/home/nvidia/workspace/catizani/llm-annotation/data
+# Copiar arquivo por arquivo
+brev copy ./data/results/agnews.zip lbd-gpu-server:/data/catizani/llm-annotation/data/results
+brev copy ./data/results/books.zip lbd-gpu-server:/data/catizani/llm-annotation/data/results
+brev copy ./data/results/movie_review.zip lbd-gpu-server:/data/catizani/llm-annotation/data/results
+brev copy ./data/results/dblp.zip lbd-gpu-server:/data/catizani/llm-annotation/data/results
+
+## Dentro do brev:
+### Criando pastas para cada dataset dentro de data/results
+cd data/results
+
+mkdir agnews
+mkdir books
+mkdir movie_review
+mkdir dblp
+
+### Movendo o zip
+cd data/results
+
+mv agnews.zip agnews/
+mv books.zip books/
+mv movie_review.zip movie_review/
+mv dblp.zip dblp/
+
+### Dezipando
+cd data/results
+
+unzip agnews/agnews.zip -d agnews/
+unzip books/books.zip -d books/
+unzip movie_review/movie_review.zip -d movie_review/
+unzip dblp/dblp.zip -d dblp/
+
+## Deletando zips
+cd data/results
+
+rm -rf agnews/agnews.zip
+rm -rf books/books.zip
+rm -rf movie_review/movie_review.zip
+rm -rf dblp/dblp.zip
+
+
+# Abrindo portas 
+brev port-forward lbd-gpu-server -p 8000:8000
+brev port-forward lbd-gpu-server -p 8001:8001
+
+# Iniciando docker
+brev shell lbd-gpu-server
 
 docker build -f docker/Dockerfile -t llm-annotation:latest .
 
