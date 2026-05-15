@@ -20,14 +20,10 @@ logger.add(
 )
 
 from src.api.schemas.annotation_experiment.experiment import ExperimentRequest
-from src.api.schemas.annotation_experiment.dataset import DatasetConfig
-from src.api.schemas.annotation_experiment.annotation import AnnotationConfig as AnnotationSchemaConfig
-from src.api.schemas.annotation_experiment.prompt_enum import PromptType
 from src.api.services.prompt_factory import get_prompt_template
 from src.utils.data_loader import load_hf_dataset
 from src.utils.get_text_id_from_text import get_text_id_from_text
 from src.llm_annotation_system.annotation.llm_annotator import LLMAnnotator
-from src.llm_annotation_system.annotation.execution_estrategy import ExecutionStrategy
 from src.llm_annotation_system.core.evaluate_model_metrics import evaluate_model_metrics
 
 
@@ -95,10 +91,10 @@ class AnnotationConfig:
         self.rep_strategy = exp.annotation.rep_strategy
         self.max_concurrent_texts = exp.annotation.max_concurrent_texts
         self.keep_alive = exp.annotation.keep_alive
+        self.use_cache = exp.cache.enabled
         self.cache_dir = exp.cache.dir
         self.intermediate = exp.results.intermediate
         self.results_dir = exp.results.dir
-        
         logger.info(f"Configurações aplicadas do experimento: {exp.dataset_name} | Modelos: {len(self.models)} | Prompt: {self.prompt_type}")
 
 
@@ -123,7 +119,7 @@ class AnnotationPipeline:
                 cache_dir=self.config.cache_dir,
                 results_dir=self.config.results_dir,
                 prompt_template=self.prompt_template,
-                use_cache=True,
+                use_cache=self.config.use_cache,
                 use_alternative_params=self.config.use_alternative_params,
                 keep_alive=self.config.keep_alive,
             )
