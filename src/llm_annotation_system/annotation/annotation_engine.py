@@ -108,7 +108,7 @@ class AnnotationEngine:
             Lista de classificações
         """
         classifications = []
-        
+
         # Criar chain
         if isinstance(llm, dict) and llm.get("provider") == "ollama":
             chain = llm
@@ -212,9 +212,9 @@ class AnnotationEngine:
         """
         return chain.invoke({"text": text})
     
-    async def _ainvoke_chain(self, chain: any, text: str):
+    async def _ainvoke_chain(self, chain: any, text: str) -> dict:
         # -----------------------------
-        # OLLAMA VIA API
+        # OLLAMA VIA API (httpx direto)
         # -----------------------------
         if isinstance(chain, dict) and chain.get("provider") == "ollama":
 
@@ -223,33 +223,32 @@ class AnnotationEngine:
             payload = {
                 "model": chain["model_name"],
                 "prompt": prompt,
-                "options": { **chain.get("params", {}) },
-                "logprobs": chain.get("logprobs", True), 
+                "options": {**chain.get("params", {})},
+                "logprobs": chain.get("logprobs", True),
                 "stream": False,
                 "keep_alive": chain.get("keep_alive", None)
             }
 
             try:
-                
+
                 t0 = time.perf_counter()
-                
+
                 r = await self.llm_provider.client.post(
                     f"{chain['base_url']}/api/generate",
                     json=payload
                 )
-                
+
                 t1 = time.perf_counter()
-    
-                # levanta erro se status != 200
+
                 r.raise_for_status()
-    
+
                 data = r.json()
-                
+
                 print(
                     chain["model_name"],
                     "http:", round(t1 - t0, 2),
                 )
-    
+
                 return {
                     "content": data.get("response"),
                     "thinking": data.get("thinking"),
@@ -265,15 +264,17 @@ class AnnotationEngine:
                 logger.error(f"Request error while calling Ollama: {e}")
                 raise
 
-            except Exception as e:
+            except Exception:
                 logger.exception("Unexpected error calling Ollama")
                 raise
 
         # -----------------------------
         # LANGCHAIN (GROQ / HF / CHATOLLAMA)
         # -----------------------------
-        response = await chain.ainvoke(
-            {"text": text},
-        )
+        response = await chain.ainvoke({"text": text})
 
-        return response
+        return {
+            "content": response.content,
+            "thinking": response.response_metadata.get("thinking"),
+            "logprobs": response.response_metadata.get("logprobs"),
+        }

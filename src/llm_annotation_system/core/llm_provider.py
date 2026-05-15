@@ -39,10 +39,10 @@ class LLMProvider:
     """
 
     def __init__(self, keep_alive: int | str | None = None):
-        load_dotenv()               
+        load_dotenv()
         self._setup_api_keys()
         logger.debug("LLMProvider inicializado")
-        
+
         self.client = httpx.AsyncClient(timeout=180)
         self.keep_alive = keep_alive
 
@@ -108,32 +108,17 @@ class LLMProvider:
         if provider == "ollama":
 
             ollama_allowed = {"temperature", "num_predict", "top_p", "stop"}
-            
+
             ollama_params = self._filter_explicit_params(params, ollama_allowed)
-    
+
             return ChatOllama(
                 model=model_name,
                 base_url=PROVIDER_CONFIGS["ollama"]["base_url"],
                 keep_alive=self.keep_alive,
+                logprobs=True,
+                top_logprobs=5,
                 **ollama_params
             )
-            
-        elif provider == "ollama-api":
-            ollama_allowed = {"temperature", "num_predict", "top_p", "stop"}
-
-            ollama_params = self._filter_explicit_params(params, ollama_allowed)
-
-            return {
-                "provider": "ollama",
-                "model_name": model_name,
-                "base_url": PROVIDER_CONFIGS["ollama"]["base_url"],
-                "params": {
-                    **ollama_params,
-                },
-                "logprobs": True,
-                "top_logprobs": 5,
-                "keep_alive": self.keep_alive       
-            }
 
         # ------------------------------------------------------
         # HUGGINGFACE HUB (API inference)
