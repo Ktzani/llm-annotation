@@ -19,6 +19,9 @@ DERRUBALOS:
 docker compose -p gpu1 -f docker/docker-compose.yml down
 docker compose -p gpu2 -f docker/docker-compose.yml down
 
+REINICIAR PARA PARAR EXECUÇÃO:
+docker compose -p gpu1 -f docker/docker-compose.yml restart
+
 LOGS:
 docker logs -f gpu1-llm-annotation-1
 docker logs -f gpu2-llm-annotation-1
