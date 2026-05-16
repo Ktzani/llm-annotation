@@ -30,6 +30,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libffi-dev \
         # pciutils: necessário para o instalador do Ollama detectar a GPU
         pciutils \
+        # zstd: o instalador do Ollama usa para extrair o pacote
+        zstd \
         # necessários para compilar extensões Python
         python3-dev \
     && add-apt-repository ppa:deadsnakes/ppa \

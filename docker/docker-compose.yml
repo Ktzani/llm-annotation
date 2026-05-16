@@ -29,6 +29,9 @@ services:
     environment:
       GPU_ID: "${GPU_IDS:-0}"
       CUDA_VISIBLE_DEVICES: "${CUDA_DEVICE_IDS:-0}"
+      # ENABLE_ANNOTATION=1 → sobe Ollama + pull + preload (modo anotacao)
+      # ENABLE_ANNOTATION=0 → nao inicia Ollama (modo fine-tuning, GPU livre)
+      ENABLE_ANNOTATION: "${ENABLE_ANNOTATION:-0}"
       # Configuração do Ollama (lida pelo docker-entrypoint.sh)
       OLLAMA_NUM_PARALLEL: "5"
       OLLAMA_FLASH_ATTENTION: "1"
@@ -66,3 +69,9 @@ services:
 
 volumes:
   ollama_models:
+    # Nome fixo (sem prefixo do projeto) para que TODOS os containers
+    # — gpu1, gpu2, etc. — compartilhem o mesmo cache de modelos.
+    # Sem isso, cada `docker compose -p <projeto>` criaria um volume
+    # separado (gpu1_ollama_models, gpu2_ollama_models) e cada um
+    # baixaria os ~15 GB de modelos do zero.
+    name: ollama_models
