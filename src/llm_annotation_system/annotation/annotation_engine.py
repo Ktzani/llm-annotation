@@ -71,8 +71,11 @@ class AnnotationEngine:
                     self.cache_manager.set(cache_key, response)
                     logger.debug(f"{model} rep {rep+1}: cache miss")
             else:
+                t0 = time.perf_counter()
                 response = await self._ainvoke_chain(chain, text)
-     
+                t1 = time.perf_counter()
+                print(f"{model}: langchain: {round(t1 - t0, 2)}")
+
             result = self.response_processor.extract_label_and_confidence(response)
             return result 
 
@@ -230,24 +233,14 @@ class AnnotationEngine:
             }
 
             try:
-
-                t0 = time.perf_counter()
-
                 r = await self.llm_provider.client.post(
                     f"{chain['base_url']}/api/generate",
                     json=payload
                 )
 
-                t1 = time.perf_counter()
-
                 r.raise_for_status()
 
                 data = r.json()
-
-                print(
-                    chain["model_name"],
-                    "http:", round(t1 - t0, 2),
-                )
 
                 return {
                     "content": data.get("response"),
@@ -271,14 +264,7 @@ class AnnotationEngine:
         # -----------------------------
         # LANGCHAIN (GROQ / HF / CHATOLLAMA)
         # -----------------------------
-        t0 = time.perf_counter()
         response = await chain.ainvoke({"text": text})
-        t1 = time.perf_counter()
-        
-        print(
-            getattr(chain, "model_name", "LLM"),
-            "langchain:", round(t1 - t0, 2),
-        )
 
         return {
             "content": response.content,

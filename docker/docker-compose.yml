@@ -58,6 +58,10 @@ services:
 
     restart: unless-stopped
 
+    # Aloca um pseudo-TTY pro container. Sem isso, tqdm (e qualquer
+    # output baseado em \r) detecta non-TTY e fica mudo nos `docker logs`.
+    tty: true
+
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 120s
