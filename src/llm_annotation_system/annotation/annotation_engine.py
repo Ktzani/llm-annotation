@@ -271,7 +271,14 @@ class AnnotationEngine:
         # -----------------------------
         # LANGCHAIN (GROQ / HF / CHATOLLAMA)
         # -----------------------------
+        t0 = time.perf_counter()
         response = await chain.ainvoke({"text": text})
+        t1 = time.perf_counter()
+        
+        print(
+            getattr(chain, "model_name", "LLM"),
+            "langchain:", round(t1 - t0, 2),
+        )
 
         return {
             "content": response.content,

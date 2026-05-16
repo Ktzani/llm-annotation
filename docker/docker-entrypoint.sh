@@ -37,7 +37,11 @@ if [ "$ENABLE_ANNOTATION" = "1" ] || [ "$ENABLE_ANNOTATION" = "true" ]; then
     # Prefixa toda saida do ollama com "[ollama]" para nao misturar
     # com os logs do uvicorn no `docker logs`. Process substitution
     # garante que $! seja o PID do ollama, nao do sed.
-    ollama serve > >(sed -u 's/^/[ollama] /') 2> >(sed -u 's/^/[ollama] /' >&2) &
+    # O grep filtra os access logs "[GIN] ... POST ..." (uma linha
+    # por requisicao) mas preserva startup, load de modelos e erros.
+    ollama serve \
+        > >(grep --line-buffered -v '\[GIN\]' | sed -u 's/^/[ollama] /') \
+        2> >(grep --line-buffered -v '\[GIN\]' | sed -u 's/^/[ollama] /' >&2) &
     OLLAMA_PID=$!
 
     # Se a API morrer, derruba o ollama junto (evita orfao)
