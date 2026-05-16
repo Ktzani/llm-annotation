@@ -116,7 +116,8 @@ class LLMProvider:
                 base_url=PROVIDER_CONFIGS["ollama"]["base_url"],
                 keep_alive=self.keep_alive,
                 logprobs=True,
-                top_logprobs=5,
+                # top_logprobs removido: response_processor so usa o logprob
+                # do token do label, nunca os top-K alternativos.
                 **ollama_params
             )
 
