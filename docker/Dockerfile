@@ -28,6 +28,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential \
         libssl-dev \
         libffi-dev \
+        # pciutils: necessário para o instalador do Ollama detectar a GPU
+        pciutils \
+        # zstd: o instalador do Ollama usa para extrair o pacote
+        zstd \
         # necessários para compilar extensões Python
         python3-dev \
     && add-apt-repository ppa:deadsnakes/ppa \
@@ -39,6 +43,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && update-alternatives --install /usr/bin/python3 python3 /usr/bin/python${PYTHON_VERSION%.*} 1 \
     && update-alternatives --install /usr/bin/python  python  /usr/bin/python${PYTHON_VERSION%.*} 1 \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# --- Ollama ---
+# Instala o binário do ollama. Os modelos NÃO são baixados aqui — eles são
+# puxados no primeiro start pelo entrypoint e persistem no volume montado
+# em /root/.ollama (ver docker-compose.yml).
+RUN curl -fsSL https://ollama.com/install.sh | sh
 
 # --- Poetry ---
 RUN curl -sSL https://install.python-poetry.org | python3 - --version ${POETRY_VERSION}
