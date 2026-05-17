@@ -127,17 +127,24 @@ class AnnotationPipeline:
         return self._annotator
 
     def load_texts(self, remove_annotated: bool = False, run_type: str = "dataset") -> tuple:
-        """Carrega textos, categorias e ground truth do HF"""
+        """Carrega textos, categorias, ground truth e df_gt (mapa text_id → ground_truth completo) do HF"""
         texts, categories, ground_truth = load_hf_dataset(
             dataset_name=self.config.dataset_name,
             cache_dir=self.config.cache_dir,
             dataset_global_config=self.config.dataset_config,
         )
 
+        df_ground_truth = None
+        if ground_truth is not None and len(ground_truth) == len(texts):
+            df_ground_truth = pd.DataFrame({
+                "text_id": [get_text_id_from_text(t) for t in texts],
+                "ground_truth": ground_truth,
+            }).drop_duplicates(subset=["text_id"])
+
         if run_type == "single_text":
             logger.warning(f"Modo: anotação única | Textos carregados: {len(texts)} | Categorias: {categories} | GT: {'Sim' if ground_truth else 'Não'}")
-            return texts, categories, ground_truth
-        
+            return texts, categories, df_ground_truth
+
         if remove_annotated:
             annotated_path = (
                 Path(self.config.results_dir)
@@ -148,18 +155,13 @@ class AnnotationPipeline:
                 df_existing = pd.read_csv(annotated_path)
                 annotated_texts = set(df_existing["text"])
                 before = len(texts)
-                if ground_truth is not None and len(ground_truth) == len(texts):
-                    keep = [t not in annotated_texts for t in texts]
-                    texts = [t for t, k in zip(texts, keep) if k]
-                    ground_truth = [g for g, k in zip(ground_truth, keep) if k]
-                else:
-                    texts = [t for t in texts if t not in annotated_texts]
-                logger.info(f"Removidos {before - len(texts)} textos já anotados")
+                texts = [t for t in texts if t not in annotated_texts]
+                logger.info(f"Removidos {before - len(texts)} textos já anotados (df_ground_truth preserva {len(df_ground_truth) if df_ground_truth is not None else 0} entradas originais)")
             else:
                 logger.warning(f"Checkpoint não encontrado: {annotated_path}")
 
-        logger.info(f"Textos: {len(texts)} | Categorias: {categories} | GT: {'Sim' if ground_truth else 'Não'}")
-        return texts, categories, ground_truth
+        logger.info(f"Textos a anotar: {len(texts)} | Categorias: {categories} | GT: {'Sim' if df_ground_truth is not None else 'Não'}")
+        return texts, categories, df_ground_truth
 
     async def run_single_text(
         self,
@@ -195,8 +197,8 @@ class AnnotationPipeline:
     async def run_dataset(
         self,
         texts: list,
-        ground_truth: Optional[list],
         categories: list,
+        df_ground_truth: Optional[pd.DataFrame] = None,
     ) -> Path:
         """Anota dataset completo, salva CSV e calcula métricas"""
         annotator = self._get_annotator(categories)
@@ -212,12 +214,10 @@ class AnnotationPipeline:
 
         df_annotations = df_annotations.drop_duplicates(subset=["text_id"])
 
-        if len(texts) == len(ground_truth):
-            df_gt = pd.DataFrame({"text": texts, "ground_truth": ground_truth})
-            df_gt["text_id"] = df_gt["text"].apply(get_text_id_from_text)
-            df_annotations = df_annotations.merge(
-                df_gt[["text_id", "ground_truth"]], on="text_id", how="left"
-            )
+        if df_ground_truth is not None:
+            df_annotations = df_annotations.merge(df_ground_truth, on="text_id", how="left")
+        else:
+            logger.warning("df_ground_truth=None — merge de ground_truth pulado")
 
         date_path = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         output_dir = (
@@ -229,6 +229,10 @@ class AnnotationPipeline:
 
         df_annotations.to_csv(output_dir / "annotations.csv", index=False)
         logger.success(f"✓ Anotações salvas em: {output_dir}")
+
+        if "ground_truth" not in df_annotations.columns:
+            logger.warning("Coluna ground_truth ausente — pulando cálculo de métricas")
+            return output_dir
 
         evaluate_model_metrics(
             df_annotations,
@@ -246,18 +250,18 @@ class AnnotationPipeline:
         logger.info("Iniciando pipeline de anotação")
         logger.info("=" * 60)
 
-        texts, categories, ground_truth = self.load_texts(
+        texts, categories, df_ground_truth = self.load_texts(
             remove_annotated=self.config.dataset_config.remove_texts or False,
             run_type=run_type
         )
 
         if run_type == "single_text":
-            await self.run_single_text(texts, ground_truth, categories, index=single_index)
+            await self.run_single_text(texts, df_ground_truth, categories, index=single_index)
             return None
-        
+
         elif run_type == "dataset":
-            output_dir = await self.run_dataset(texts, ground_truth, categories)
-            
+            output_dir = await self.run_dataset(texts, categories, df_ground_truth=df_ground_truth)
+
         else:
             logger.error(f"Run type desconhecido: {run_type}")
             return None
@@ -267,4 +271,4 @@ class AnnotationPipeline:
         logger.info(f"Arquivos em: {output_dir}")
         logger.info("=" * 60)
 
-        return output_dir, texts, categories, ground_truth
+        return output_dir, texts, categories, df_ground_truth
