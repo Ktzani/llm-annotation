@@ -148,7 +148,12 @@ class AnnotationPipeline:
                 df_existing = pd.read_csv(annotated_path)
                 annotated_texts = set(df_existing["text"])
                 before = len(texts)
-                texts = [t for t in texts if t not in annotated_texts]
+                if ground_truth is not None and len(ground_truth) == len(texts):
+                    keep = [t not in annotated_texts for t in texts]
+                    texts = [t for t, k in zip(texts, keep) if k]
+                    ground_truth = [g for g, k in zip(ground_truth, keep) if k]
+                else:
+                    texts = [t for t in texts if t not in annotated_texts]
                 logger.info(f"Removidos {before - len(texts)} textos já anotados")
             else:
                 logger.warning(f"Checkpoint não encontrado: {annotated_path}")
