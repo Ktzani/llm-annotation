@@ -5,7 +5,7 @@ Espelha o ``get_selector`` do repositório bio-is. Novos métodos (CNN, ENN,
 DROP3, e2sc, ...) podem ser registrados aqui sem alterar o restante do pipeline.
 """
 from src.config.instance_selection import INSTANCE_SELECTION_STRATEGIES, RANDOM_STATE
-from src.is_system.selection.biois import BIOIS
+from src.instance_selection_system.selection.biois import BIOIS
 
 
 def get_selector(method: str, random_state: int = RANDOM_STATE, **overrides):

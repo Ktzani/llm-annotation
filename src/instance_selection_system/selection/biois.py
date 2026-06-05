@@ -51,7 +51,7 @@ from sklearn.utils.multiclass import unique_labels
 from sklearn.utils.validation import check_X_y
 from loguru import logger
 
-from src.is_system.core.base import InstanceSelectionMixin
+from src.instance_selection_system.core.base import InstanceSelectionMixin
 
 
 class BIOIS(InstanceSelectionMixin):

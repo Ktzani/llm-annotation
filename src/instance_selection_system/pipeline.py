@@ -17,7 +17,7 @@ import pandas as pd
 from loguru import logger
 
 from src.config.instance_selection import DEFAULT_IS_METHOD, RANDOM_STATE
-from src.is_system.filtering.annotation_filter import (
+from src.instance_selection_system.filtering.annotation_filter import (
     AnnotationFilter,
     FilterResult,
     save_filter_result,

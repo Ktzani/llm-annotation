@@ -23,7 +23,7 @@ logger.add(
     level="INFO",
 )
 
-from src.is_system.pipeline import InstanceSelectionConfig, InstanceSelectionPipeline
+from src.instance_selection_system.pipeline import InstanceSelectionConfig, InstanceSelectionPipeline
 
 
 def main() -> None:

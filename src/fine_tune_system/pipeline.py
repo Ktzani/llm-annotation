@@ -44,7 +44,7 @@ from src.fine_tune_system.training.cross_validator import CrossValidator
 from src.utils.get_latest_results_date import get_latest_results_date
 from src.api.schemas.annotation_experiment.dataset import DatasetConfig
 from src.api.schemas.fine_tuning.fine_tuning import FineTuningRequest
-from src.is_system.filtering.annotation_filter import AnnotationFilter, save_filter_result
+from src.instance_selection_system.filtering.annotation_filter import AnnotationFilter, save_filter_result
 
 
 
@@ -118,8 +118,6 @@ class FineTuningConfig:
         logger.info(
             f"Configurações aplicadas: {self.dataset_name} | model={self.model_name} | run_type={self.run_type} | IS={self.use_instance_selection} ({self.is_method})"
         )
-
-
 
 class FineTuningPipeline:
     """Pipeline principal para fine-tuning"""

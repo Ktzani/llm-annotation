@@ -26,8 +26,8 @@ from src.config.instance_selection import (
     RANDOM_STATE,
     TEXT_COLUMN,
 )
-from src.is_system.core.text_vectorizer import TextVectorizer
-from src.is_system.selection.selector_factory import get_selector
+from src.instance_selection_system.core.text_vectorizer import TextVectorizer
+from src.instance_selection_system.selection.selector_factory import get_selector
 
 
 @dataclass
