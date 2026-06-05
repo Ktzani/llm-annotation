@@ -3,7 +3,7 @@
         "dataset_name": "movie_review",
         "cache_dir": "C:\\Users\\gabri\\Documents\\GitHub\\llm-annotation\\data\\.cache",
         "results_dir": "C:\\Users\\gabri\\Documents\\GitHub\\llm-annotation\\data\\results",
-        "specific_date": "latest"
+        "specific_date": "2026-04-09_13-17-23"
     },
     "hyperparams": {
         "learning_rate": 0.00005,
@@ -15,7 +15,16 @@
         "seed": 42
     },
 
+    "instance_selection": {
+        "enabled": true,
+        "method": "bio-is",
+        "params": {
+            "beta": 0.25,
+            "theta": 0.5
+        }
+    },
+
     "model_name": "roberta-base",
-    "run_type": "cv",
+    "run_type": "single",
     "max_parallel_folds": 1
 }

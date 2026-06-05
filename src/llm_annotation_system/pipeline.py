@@ -166,7 +166,7 @@ class AnnotationPipeline:
     async def run_single_text(
         self,
         texts: list,
-        ground_truth: Optional[list],
+        ground_truth: pd.DataFrame,
         categories: list,
         index: int = 0,
     ) -> None:
@@ -191,8 +191,8 @@ class AnnotationPipeline:
 
         logger.success("✓ Anotação única completa")
         logger.info(f"Resultado: {annotations}")
-        if ground_truth:
-            logger.info(f"Ground truth: {ground_truth[index]}")
+        if ground_truth is not None:
+            logger.info(f"Ground truth: {ground_truth.iloc[index]['ground_truth']}")
 
     async def run_dataset(
         self,

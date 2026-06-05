@@ -7,7 +7,7 @@ entre ground truth e consenso de anotações LLM.
 
 import sys
 from pathlib import Path
-from typing import Optional, Dict
+from typing import Optional, Dict, Union
 import json
 
 import pandas as pd
@@ -43,39 +43,83 @@ from src.fine_tune_system.training.cross_validator import CrossValidator
 
 from src.utils.get_latest_results_date import get_latest_results_date
 from src.api.schemas.annotation_experiment.dataset import DatasetConfig
+from src.api.schemas.fine_tuning.fine_tuning import FineTuningRequest
+from src.is_system.filtering.annotation_filter import AnnotationFilter, save_filter_result
+
 
 
 class FineTuningConfig:
-    """Configurações do experimento de fine-tuning"""
-    
+    """
+    Configurações do experimento de fine-tuning.
+
+    O parâmetro `experiment_config` aceita duas formas de entrada, escolhidas
+    conforme o contexto de execução (mesmo padrão de `AnnotationConfig`):
+
+    1) **Path para JSON** (`str`): usado em execuções via CLI/script. O arquivo
+       é lido e validado como `FineTuningRequest`.
+
+       Exemplo:
+           config = FineTuningConfig(
+               experiment_config="src/api/experiments/fine_tuning/local_job.json",
+           )
+
+    2) **Objeto `FineTuningRequest`**: usado quando o request já foi construído
+       em memória — tipicamente pela API (FastAPI) após validar o payload.
+
+       Exemplo:
+           config = FineTuningConfig(experiment_config=request)
+
+    Em ambos os casos `_apply_experiment` popula os mesmos atributos, então o
+    `FineTuningPipeline` opera de forma idêntica independente da origem.
+    """
+
     def __init__(
         self,
-        dataset_name: str = "yelp_reviews",
-        cache_dir: str = "C:\\Users\\gabri\\Documents\\GitHub\\llm-annotation\\data\\.cache",
-        results_dir: str = "C:\\Users\\gabri\\Documents\\GitHub\\llm-annotation\\data\\results",
-        model_name: str = "roberta-base",
-        specific_date: str = "latest",
-        learning_rate: float = 5e-5,
-        num_epochs: int = 20,
-        train_batch_size: int = 32,
-        eval_batch_size: int = 64,
-        weight_decay: float = 0.01,
-        max_length: int = 256,
-        seed: int = 42
+        experiment_config: Optional[Union[str, FineTuningRequest]] = None,
     ):
-        self.dataset_name = dataset_name
-        self.cache_dir = cache_dir
-        self.results_dir = Path(results_dir)
-        self.model_name = model_name
-        self.specific_date = specific_date
-        self.learning_rate = learning_rate
-        self.num_epochs = num_epochs
-        self.train_batch_size = train_batch_size
-        self.eval_batch_size = eval_batch_size
-        self.weight_decay = weight_decay
-        self.max_length = max_length
-        self.seed = seed
-        
+        self.experiment_config_path = experiment_config if isinstance(experiment_config, str) else None
+
+        if isinstance(experiment_config, FineTuningRequest):
+            self._apply_experiment(experiment_config)
+        elif isinstance(experiment_config, str):
+            self._load_from_experiment(experiment_config)
+
+    def _load_from_experiment(self, config_path: str) -> None:
+        """Carrega as configurações a partir de um arquivo de experimento JSON."""
+        with open(config_path, "r", encoding="utf-8") as f:
+            config_dict = json.load(f)
+
+        req = FineTuningRequest(**config_dict)
+        self._apply_experiment(req)
+        logger.info(f"Configurações carregadas de: {config_path}")
+
+    def _apply_experiment(self, req: FineTuningRequest) -> None:
+        # Dataset
+        self.dataset_name = req.dataset.dataset_name
+        self.cache_dir = req.dataset.cache_dir
+        self.results_dir = Path(req.dataset.results_dir)
+        self.specific_date = req.dataset.specific_date
+        # Modelo / execução
+        self.model_name = req.model_name
+        self.run_type = req.run_type
+        self.max_parallel_folds = req.max_parallel_folds
+        # Hiperparâmetros
+        self.learning_rate = req.hyperparams.learning_rate
+        self.num_epochs = req.hyperparams.num_epochs
+        self.train_batch_size = req.hyperparams.train_batch_size
+        self.eval_batch_size = req.hyperparams.eval_batch_size
+        self.weight_decay = req.hyperparams.weight_decay
+        self.max_length = req.hyperparams.max_length
+        self.seed = req.hyperparams.seed
+        # Seleção de instâncias (biO-IS)
+        self.use_instance_selection = req.instance_selection.enabled
+        self.is_method = req.instance_selection.method
+        self.is_params = req.instance_selection.params
+        logger.info(
+            f"Configurações aplicadas: {self.dataset_name} | model={self.model_name} | run_type={self.run_type} | IS={self.use_instance_selection} ({self.is_method})"
+        )
+
+
 
 class FineTuningPipeline:
     """Pipeline principal para fine-tuning"""
@@ -128,9 +172,88 @@ class FineTuningPipeline:
         ].reset_index(drop=True)
         
         logger.info(f"Removidas {len(df_invalid)} instâncias inválidas")
-        
+
         return df_annotations
-    
+
+    def apply_instance_selection(self, df_annotations: pd.DataFrame) -> pd.DataFrame:
+        """
+        Mantém apenas as instâncias selecionadas pela filtragem biO-IS.
+
+        Prefere o resultado pré-computado em
+        `instance_selection/dataset_filtrado.csv` (gerado por
+        `src/run_instance_selection.py`). Se ausente, executa a seleção e SALVA
+        os artefatos com TODAS as colunas originais (para análises futuras), no
+        mesmo formato do pipeline dedicado.
+
+        Para não re-filtrar um conjunto diferente, a seleção roda sobre as
+        colunas completas do CSV anotado RESTRITAS exatamente às mesmas linhas
+        de `df_annotations` (alinhadas pela chave canônica). Filtra uma única
+        vez e deriva o conjunto de treino da mesma seleção.
+
+        O join (caminho pré-computado) usa a chave canônica `md5(text.strip())`
+        — a mesma do alinhamento com os splits do HuggingFace —, pois o
+        `text_id` salvo no CSV difere do recalculado pelo fine-tuning.
+        """
+        if not self.config.use_instance_selection:
+            logger.info("Seleção de instâncias desativada (use_instance_selection=False).")
+            return df_annotations
+
+        filtered_path = (
+            self.results_dataset_path / "instance_selection" / "dataset_filtrado.csv"
+        )
+        before = len(df_annotations)
+
+        if filtered_path.exists():
+            df_filtered = pd.read_csv(filtered_path)
+            selected_ids = set(df_filtered["text"].apply(get_text_id_from_text))
+
+            df_annotations = df_annotations[
+                df_annotations["text_id"].isin(selected_ids)
+            ].reset_index(drop=True)
+
+            logger.info(
+                f"Seleção de instâncias (biO-IS, pré-computado): "
+                f"{before} → {len(df_annotations)} (removidas {before - len(df_annotations)})"
+            )
+            return df_annotations
+
+        # Sem filtragem salva: executa e salva os artefatos com TODAS as colunas
+        # originais (para análises futuras), restringindo o CSV anotado completo
+        # exatamente às mesmas linhas já carregadas em df_annotations.
+        logger.warning(
+            f"'{filtered_path.name}' não encontrado — executando e salvando a filtragem..."
+        )
+
+        full_df = pd.read_csv(
+            self.results_dataset_path / "summary" / "dataset_anotado_completo.csv"
+        )
+        canon_key = full_df["text"].apply(get_text_id_from_text)
+        full_aligned = full_df[
+            canon_key.isin(set(df_annotations["text_id"]))
+        ].reset_index(drop=True)
+
+        is_overrides = self.config.is_params or {}
+        annotation_filter = AnnotationFilter(
+            method=self.config.is_method,
+            label_column="resolved_annotation",
+            random_state=self.config.seed,
+            **is_overrides,
+        )
+        result = annotation_filter.filter(full_aligned)
+        save_filter_result(result, self.results_dataset_path / "instance_selection")
+
+        # Conjunto de treino: deriva da MESMA seleção (mantém as 4 colunas).
+        selected_ids = set(result.filtered_df["text"].apply(get_text_id_from_text))
+        df_annotations = df_annotations[
+            df_annotations["text_id"].isin(selected_ids)
+        ].reset_index(drop=True)
+
+        logger.info(
+            f"Seleção de instâncias ({self.config.is_method}, computado e salvo): "
+            f"{before} → {len(df_annotations)} (removidas {before - len(df_annotations)})"
+        )
+        return df_annotations
+
     def load_annotated_data(self) -> tuple[pd.DataFrame, pd.DataFrame]:
         """Carrega dados anotados"""
         logger.info("Carregando dados anotados...")
@@ -155,7 +278,8 @@ class FineTuningPipeline:
         
         df_annotations = self.remove_invalid_instances(df_annotations)
         df_annotations = self.remove_problematic_instances(df_annotations)
-        
+        df_annotations = self.apply_instance_selection(df_annotations)
+
         return df_annotations
     
     def load_hf_splits_data(self) -> tuple[pd.DataFrame, pd.DataFrame]:

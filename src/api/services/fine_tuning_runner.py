@@ -18,22 +18,14 @@ async def run_fine_tuning_background(
         fine_tuning_jobs[job_id].started_at = datetime.now()
         fine_tuning_jobs[job_id].message = "Inicializando pipeline de fine-tuning..."
 
-        logger.info(f"[{job_id}] Iniciando fine-tuning — dataset={config.dataset.dataset_name}, model={config.model_name}")
-
-        ft_config = FineTuningConfig(
-            dataset_name=config.dataset.dataset_name,
-            cache_dir=config.dataset.cache_dir,
-            results_dir=config.dataset.results_dir,
-            specific_date=config.dataset.specific_date,
-            model_name=config.model_name,
-            learning_rate=config.hyperparams.learning_rate,
-            num_epochs=config.hyperparams.num_epochs,
-            train_batch_size=config.hyperparams.train_batch_size,
-            eval_batch_size=config.hyperparams.eval_batch_size,
-            weight_decay=config.hyperparams.weight_decay,
-            max_length=config.hyperparams.max_length,
-            seed=config.hyperparams.seed,
+        logger.info(
+            f"[{job_id}] Iniciando fine-tuning — dataset={config.dataset.dataset_name}, "
+            f"model={config.model_name}, instance_selection={config.instance_selection.enabled} "
+            f"({config.instance_selection.method})"
         )
+
+        # A API passa o request já validado (forma em memória do FineTuningConfig).
+        ft_config = FineTuningConfig(experiment_config=config)
 
         fine_tuning_jobs[job_id].progress = 0.1
         fine_tuning_jobs[job_id].message = "Configuração montada. Carregando dados..."
@@ -55,6 +47,7 @@ async def run_fine_tuning_background(
             "model_name": config.model_name,
             "run_type": config.run_type,
             "max_parallel_folds": config.max_parallel_folds,
+            "instance_selection": config.instance_selection.model_dump(),
             "metrics": results,
         }
 

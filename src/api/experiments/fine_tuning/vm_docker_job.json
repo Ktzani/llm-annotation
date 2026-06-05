@@ -15,6 +15,15 @@
         "seed": 42
     },
 
+    "instance_selection": {
+        "enabled": true,
+        "method": "bio-is",
+        "params": {
+            "beta": 0.25,
+            "theta": 0.5
+        }
+    },
+
     "model_name": "roberta-base",
     "run_type": "cross-validation",
     "max_parallel_folds": 9

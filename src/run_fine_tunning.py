@@ -2,12 +2,13 @@
 Fine-tuning controlado de RoBERTa (GT vs Consenso LLM)
 
 Este script realiza fine-tuning de modelos RoBERTa comparando resultados
-entre ground truth e consenso de anotações LLM.
+entre ground truth e consenso de anotações LLM. As configurações (incluindo o
+bloco `instance_selection`) são carregadas de um JSON de experimento.
 """
 
 import sys
+from pathlib import Path
 from loguru import logger
-
 
 # Configuração do logger
 logger.remove()
@@ -19,27 +20,23 @@ logger.add(
 
 from src.fine_tune_system.pipeline import FineTuningPipeline, FineTuningConfig
 
+
 def main():
     """Função principal"""
-    dataset_name = "agnews"
-    model_name = "roberta-base"
-    run_type = "single"  # "single" ou "cross-validation"
-    
-    # Configuração
-    config = FineTuningConfig(
-        dataset_name=dataset_name,
-        model_name=model_name,
-        num_epochs=20,
-        learning_rate=5e-5,
-        train_batch_size=32,
-        eval_batch_size=64,
-        max_length=256
-    )
-    
-    # Executar pipeline
+    job = "local_job"
+    config_path = Path("src/api/experiments") / "fine_tuning" / f"{job}.json"
+    if not config_path.exists():
+        logger.error(f"Configuração de fine-tuning não encontrada: {config_path}")
+        return
+
+    config = FineTuningConfig(experiment_config=str(config_path))
+
     pipeline = FineTuningPipeline(config)
-    results = pipeline.run(run_type=run_type, max_parallel_folds=1)  # max_parallel_folds=1 para evitar paralelismo em teste local
-    
+    results = pipeline.run(
+        run_type=config.run_type,
+        max_parallel_folds=config.max_parallel_folds,
+    )
+
     return results
 
 
