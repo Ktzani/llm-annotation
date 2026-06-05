@@ -20,7 +20,7 @@
         "use_alternative_params": false,
         "model_strategy": "parallel",
         "rep_strategy": "parallel",
-        "max_concurrent_texts": 4,
+        "max_concurrent_texts": 5,
         "keep_alive": "24h"
     },
     "cache": {
@@ -28,7 +28,7 @@
         "dir": "/app/data/.cache" 
     },
     "results": {
-        "intermediate": 500,
+        "intermediate": 100,
         "dir": "/app/data/results"
     }
 }
