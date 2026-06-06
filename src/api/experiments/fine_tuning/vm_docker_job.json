@@ -8,8 +8,8 @@
     "hyperparams": {
         "learning_rate": 0.00005,
         "num_epochs": 20,
-        "train_batch_size": 32,
-        "eval_batch_size": 64,
+        "train_batch_size": 64,
+        "eval_batch_size": 128,
         "weight_decay": 0.01,
         "max_length": 256,
         "seed": 42
