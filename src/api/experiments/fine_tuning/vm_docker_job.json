@@ -26,5 +26,5 @@
 
     "model_name": "roberta-base",
     "run_type": "cross-validation",
-    "max_parallel_folds": 9
+    "max_parallel_folds": 5
 }
