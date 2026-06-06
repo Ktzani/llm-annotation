@@ -1,6 +1,6 @@
 from typing import Any, Dict
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from src.config.instance_selection import DEFAULT_IS_METHOD, INSTANCE_SELECTION_STRATEGIES
 
@@ -24,6 +24,18 @@ class FineTuningInstanceSelectionConfig(BaseModel):
     `src/config/instance_selection.py`.
     """
 
+    # Exemplo exibido no Swagger/OpenAPI (evita o placeholder genérico
+    # `additionalProp1` que o Swagger mostra para Dict[str, Any]).
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "enabled": True,
+                "method": "bio-is",
+                "params": {"beta": 0.25, "theta": 0.5},
+            }
+        }
+    )
+
     enabled: bool = Field(
         default=True,
         description="Se True, filtra instâncias redundantes/ruidosas antes do fine-tuning",
@@ -34,6 +46,7 @@ class FineTuningInstanceSelectionConfig(BaseModel):
     )
     params: Dict[str, Any] = Field(
         default_factory=_default_is_params,
+        examples=[{"beta": 0.25, "theta": 0.5}],
         description=(
             "Parâmetros específicos do método selecionado "
             "(biO-IS: {'beta': 0.25, 'theta': 0.5})."
