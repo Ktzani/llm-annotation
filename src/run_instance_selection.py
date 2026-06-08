@@ -28,8 +28,8 @@ from src.instance_selection_system.pipeline import InstanceSelectionConfig, Inst
 
 def main() -> None:
     # Configuração estática
-    dataset_name = "movie_review"
-    specific_date = "2026-04-09_13-17-23"
+    dataset_name = "dblp"
+    specific_date = "2026-04-09_14-05-21"
     method = "bio-is"
     params = {"beta": 0.25, "theta": 0.5}
 
