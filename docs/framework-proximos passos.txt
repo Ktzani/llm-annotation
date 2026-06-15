@@ -1,0 +1,10 @@
+Implementações - Framework Annotation
+- Criar uma parse regex na propria chain para adquirir minha resposta especficia ao inves de uma função separado apenas para obter a resposta✔ 
+Link: https://chatgpt.com/share/6940b9dc-1934-800e-a4c7-64ced46ef244
+
+- Implementar o langchain graph para observabilidade e adicionar human-in-the-loop em casa de voto da maioria darem errado 
+Link: https://chatgpt.com/share/6940bb35-8094-800e-9485-72390e360130
+
+- Utilizar do Prompt proprio do langchain para construir o prompt ideal
+Link: https://chatgpt.com/share/69418cf4-52f4-800e-b74b-38dea88ae37a
+
