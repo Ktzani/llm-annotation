@@ -57,6 +57,8 @@ evaluate = "^0.4.6"
 accelerate = "^1.12.0"
 torch = {version = "^2.5.1", source = "pytorch"}
 hf-transfer = "^0.1.9"
+statsmodels = "^0.14.6"
+openpyxl = "^3.1.5"
 
 [[tool.poetry.source]]
 name = "pytorch"
