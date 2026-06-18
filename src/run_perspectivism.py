@@ -2,7 +2,7 @@
 Entry point: geração do dataset de PERSPECTIVISMO.
 
 Gera o dataset de perspectivismo (uma linha por anotação de LLM, em vez do voto
-majoritário agregado) a partir do `dataset_consenso.csv` de um
+majoritário agregado) a partir do `annotations.csv` de um
 experimento, salvando em `<results>/<dataset>/<date>/perspectivismo/`.
 
 Materializar o dataset aqui permite que o fine-tuning (com

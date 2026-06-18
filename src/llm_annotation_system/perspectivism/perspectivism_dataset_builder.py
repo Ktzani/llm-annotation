@@ -7,10 +7,10 @@ Para um mesmo texto são geradas N linhas (uma por LLM), podendo ter rótulos
 diferentes entre si — preservando o desacordo entre anotadores em vez de
 colapsá-lo em um único rótulo de consenso.
 
-A entrada é o `dataset_consenso.csv` (mesmo arquivo usado pelo modo
-agregado), que além do consenso agregado também carrega os votos desagregados
-de cada LLM nas colunas `<modelo>_consensus`. Esta classe explode essas colunas
-em formato longo e salva o resultado em uma pasta `perspectivismo/`.
+A entrada é o `annotations.csv` (anotações brutas), que carrega os votos
+desagregados de cada LLM nas colunas `<modelo>_consensus` — independente do
+consenso agregado. Esta classe explode essas colunas em formato longo e salva o
+resultado em uma pasta `perspectivismo/`.
 """
 
 from pathlib import Path

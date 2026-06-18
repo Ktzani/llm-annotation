@@ -2,7 +2,8 @@
 Pipeline de geração do dataset de PERSPECTIVISMO.
 
 Gera o dataset de perspectivismo (uma linha por anotação de LLM) a partir do
-`dataset_consenso.csv` de um experimento, de forma independente do
+`annotations.csv` de um experimento (anotações brutas com os votos por LLM nas
+colunas `<modelo>_consensus`), de forma independente do consenso agregado e do
 fine-tuning. Assim o dataset pode ser materializado uma única vez e reutilizado
 pelo fine-tuning (que pula a geração caso o arquivo já exista).
 
@@ -57,9 +58,9 @@ class PerspectivismPipeline:
         return Path(self.config.results_dir) / self.config.dataset_name / date
 
     def load_annotated_data(self) -> pd.DataFrame:
-        path = self.results_dataset_path / "consensus" / "dataset_consenso.csv"
+        path = self.results_dataset_path / "annotations.csv"
         if not path.exists():
-            raise FileNotFoundError(f"Dataset de consenso não encontrado: {path}")
+            raise FileNotFoundError(f"Anotações não encontradas: {path}")
 
         df = pd.read_csv(path)
         logger.info(f"Carregado: {len(df)} instâncias de {path}")

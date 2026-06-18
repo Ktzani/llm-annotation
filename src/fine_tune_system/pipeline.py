@@ -30,7 +30,7 @@ from src.utils.data_loader import load_hf_dataset_as_dataframe, add_label_descri
 from src.utils.get_text_id_from_text import get_text_id_from_text
 from src.fine_tune_system.fine_tune.supervised_fine_tuner import SupervisedFineTuner
 from src.fine_tune_system.fine_tune.fine_tune_factory import FineTunerFactory
-from src.llm_annotation_system.perspectivism.perspectivism_dataset_builder import PerspectivismDatasetBuilder
+from src.llm_annotation_system.perspectivism.pipeline import PerspectivismConfig, PerspectivismPipeline
 from src.llm_annotation_system.consensus.pipeline import ConsensusConfig, ConsensusPipeline
 
 from src.fine_tune_system.core.hf_tokenizer import HFTokenizer
@@ -305,37 +305,27 @@ class FineTuningPipeline:
 
     def load_perspectivism_data(self) -> pd.DataFrame:
         """
-        Carrega dados anotados no modo PERSPECTIVISMO.
+        Carrega dados no modo PERSPECTIVISMO via `PerspectivismPipeline`.
 
-        Em vez de usar o rótulo agregado (`resolved_annotation`), explode os
-        votos desagregados de cada LLM em formato longo: para um mesmo texto há
-        uma linha por LLM, podendo ter rótulos diferentes. O dataset resultante é
-        salvo em `<resultados>/perspectivismo/dataset_perspectivismo.csv`.
+        Simétrico ao modo agregado (que usa `ConsensusPipeline`): o pipeline gera
+        ou reutiliza o dataset de perspectivismo
+        (`perspectivismo/dataset_perspectivismo.csv`) a partir do `annotations.csv`
+        — uma linha por LLM (colunas `<modelo>_consensus`), sem depender do
+        consenso agregado.
 
-        Reaproveita as mesmas etapas de limpeza por `text_id` do modo agregado
-        (`remove_problematic_instances` / `apply_instance_selection`), que operam
-        via `isin` e portanto funcionam com `text_id` repetido. A remoção de
-        rótulos inválidos (-1) é feita linha a linha pelo próprio builder, sem
-        descartar as demais perspectivas do mesmo texto.
-
-        Se o dataset de perspectivismo já existir (ex.: gerado previamente por
-        `src/run_perspectivism.py`), ele é reutilizado e a geração é pulada.
+        Em seguida aplica as mesmas etapas de limpeza por `text_id` do modo
+        agregado (`remove_problematic_instances` / `apply_instance_selection`),
+        que operam via `isin` e portanto funcionam com `text_id` repetido.
         """
         logger.info("Carregando dados anotados (modo PERSPECTIVISMO)...")
 
-        perspectivism_dir = self.results_dataset_path / "perspectivismo"
-        builder = PerspectivismDatasetBuilder(dataset_name=self.config.dataset_name)
-        output_path = builder.output_path(perspectivism_dir)
-
-        if output_path.exists():
-            # Reutiliza o dataset materializado (sem ler o CSV completo).
-            df_annotations = builder.load_or_build(None, perspectivism_dir)
-        else:
-            df_full = pd.read_csv(
-                ConsensusPipeline.dataset_path(self.results_dataset_path)
-            )
-            logger.info(f"Anotado (consenso agregado): {len(df_full)} exemplos")
-            df_annotations = builder.build_and_save(df_full, perspectivism_dir)
+        perspectivism_config = PerspectivismConfig(
+            dataset_name=self.config.dataset_name,
+            results_dir=str(self.config.results_dir),
+            specific_date=self.results_dataset_path.name,
+        )
+        perspectivism_pipeline = PerspectivismPipeline(perspectivism_config)
+        df_annotations = perspectivism_pipeline.run()
 
         df_annotations = self.remove_problematic_instances(df_annotations)
         df_annotations = self.apply_instance_selection(df_annotations)

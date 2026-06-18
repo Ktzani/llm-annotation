@@ -26,5 +26,6 @@
 
     "model_name": "roberta-base",
     "run_type": "single",
+    "training_mode": "aggregated",
     "max_parallel_folds": 1
 }
