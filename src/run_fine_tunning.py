@@ -22,8 +22,13 @@ from src.fine_tune_system.pipeline import FineTuningPipeline, FineTuningConfig
 
 
 def main():
-    """Função principal"""
-    job = "local_job"
+    """Função principal
+
+    O nome do job pode ser informado como argumento de linha de comando
+    (ex.: `python -m src.run_fine_tunning local_job_perspectivism`). Sem
+    argumento, usa `local_job` (modo agregado padrão).
+    """
+    job = "local_job_perspectivism"
     config_path = Path("src/api/experiments") / "fine_tuning" / f"{job}.json"
     if not config_path.exists():
         logger.error(f"Configuração de fine-tuning não encontrada: {config_path}")

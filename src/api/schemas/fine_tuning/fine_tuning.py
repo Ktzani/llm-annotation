@@ -34,6 +34,15 @@ class FineTuningRequest(BaseModel):
         description="Tipo de execução: 'cross-validation' ou 'single' (teste rápido)",
     )
 
+    training_mode: str = Field(
+        default="aggregated",
+        description=(
+            "Estratégia de rotulagem do treino: 'aggregated' (voto majoritário/"
+            "consenso agregado em `resolved_annotation`) ou 'perspectivism' (uma "
+            "linha por anotação de LLM — preserva o desacordo entre anotadores)."
+        ),
+    )
+
     max_parallel_folds: int = Field(default=4, description="Número máximo de folds a serem processados em paralelo (apenas para 'cross-validation')")
 
 class FineTuningStatus(BaseModel):
