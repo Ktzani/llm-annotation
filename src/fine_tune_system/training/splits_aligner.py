@@ -12,14 +12,19 @@ class CVSplitAligner:
         self,
         dataset: Dict[int, Dict[str, pd.DataFrame]],
         id_column: str = "text_id",
+        allow_duplicate_ids: bool = False,
     ):
         """
         dataset: dataset carregado do HF -> {fold: {"train": df, "val": df}}
         id_column: coluna única que identifica cada texto
+        allow_duplicate_ids: se True, permite `id_column` repetido no conjunto
+            anotado (modo perspectivismo: uma linha por LLM por texto). Quando
+            False (default), mantém a checagem de unicidade do modo agregado.
         """
         self.dataset = dataset
         self.id_column = id_column
-        
+        self.allow_duplicate_ids = allow_duplicate_ids
+
         self._add_ids()
         
 
@@ -97,9 +102,18 @@ class CVSplitAligner:
     ) -> Dict[int, Dict[str, Dataset]]:
         """Alinha splits usando apenas dados anotados (HF só define os IDs)"""
 
-        # 🔴 sanity check crítico
-        assert annotated_df[self.id_column].is_unique, \
-            "❌ IDs duplicados no dataset anotado!"
+        # 🔴 sanity check crítico (relaxado no modo perspectivismo, onde o mesmo
+        # texto aparece uma vez por LLM)
+        if not self.allow_duplicate_ids:
+            assert annotated_df[self.id_column].is_unique, \
+                "❌ IDs duplicados no dataset anotado!"
+        elif not annotated_df[self.id_column].is_unique:
+            n_rows = len(annotated_df)
+            n_texts = annotated_df[self.id_column].nunique()
+            logger.info(
+                f"[perspectivismo] IDs repetidos permitidos: "
+                f"{n_rows} linhas para {n_texts} textos únicos."
+            )
 
         aligned_splits = {}
 

@@ -30,6 +30,8 @@ from src.utils.data_loader import load_hf_dataset_as_dataframe, add_label_descri
 from src.utils.get_text_id_from_text import get_text_id_from_text
 from src.fine_tune_system.fine_tune.supervised_fine_tuner import SupervisedFineTuner
 from src.fine_tune_system.fine_tune.fine_tune_factory import FineTunerFactory
+from src.llm_annotation_system.perspectivism.perspectivism_dataset_builder import PerspectivismDatasetBuilder
+from src.llm_annotation_system.consensus.pipeline import ConsensusConfig, ConsensusPipeline
 
 from src.fine_tune_system.core.hf_tokenizer import HFTokenizer
 from src.fine_tune_system.core.model_factory import ModelFactory
@@ -102,6 +104,7 @@ class FineTuningConfig:
         # Modelo / execução
         self.model_name = req.model_name
         self.run_type = req.run_type
+        self.training_mode = req.training_mode
         self.max_parallel_folds = req.max_parallel_folds
         # Hiperparâmetros
         self.learning_rate = req.hyperparams.learning_rate
@@ -116,7 +119,7 @@ class FineTuningConfig:
         self.is_method = req.instance_selection.method
         self.is_params = req.instance_selection.params
         logger.info(
-            f"Configurações aplicadas: {self.dataset_name} | model={self.model_name} | run_type={self.run_type} | IS={self.use_instance_selection} ({self.is_method})"
+            f"Configurações aplicadas: {self.dataset_name} | model={self.model_name} | run_type={self.run_type} | training_mode={self.training_mode} | IS={self.use_instance_selection} ({self.is_method})"
         )
 
 class FineTuningPipeline:
@@ -223,7 +226,7 @@ class FineTuningPipeline:
         )
 
         full_df = pd.read_csv(
-            self.results_dataset_path / "summary" / "dataset_anotado_completo.csv"
+            ConsensusPipeline.dataset_path(self.results_dataset_path)
         )
         canon_key = full_df["text"].apply(get_text_id_from_text)
         full_aligned = full_df[
@@ -252,13 +255,33 @@ class FineTuningPipeline:
         )
         return df_annotations
 
-    def load_annotated_data(self) -> tuple[pd.DataFrame, pd.DataFrame]:
-        """Carrega dados anotados"""
-        logger.info("Carregando dados anotados...")
-        
-        df = pd.read_csv(
-            self.results_dataset_path / "summary" / "dataset_anotado_completo.csv"
-        )
+    def load_aggregated_data(self) -> tuple[pd.DataFrame, pd.DataFrame]:
+        """
+        Carrega dados anotados no modo AGREGADO (consenso / voto majoritário).
+
+        Espelha o perspectivismo: reutiliza o dataset de consenso já calculado
+        (`consensus/dataset_consenso.csv`, gerado por `src/run_consensus.py`) ou,
+        se ainda não existir, calcula o consenso na hora via `ConsensusPipeline`.
+        """
+        logger.info("Carregando dados anotados (modo AGREGADO)...")
+
+        consensus_path = ConsensusPipeline.dataset_path(self.results_dataset_path)
+
+        if consensus_path.exists():
+            logger.info(f"Consenso existente reutilizado: {consensus_path}")
+            df = pd.read_csv(consensus_path)
+        else:
+            logger.warning(f"'{consensus_path.name}' não encontrado — calculando consenso...")
+            consensus_config = ConsensusConfig(
+                dataset_name=self.config.dataset_name,
+                results_dir=str(self.config.results_dir),
+                specific_date=self.results_dataset_path.name,
+            )
+            consensus_pipeline = ConsensusPipeline(consensus_config)
+            result_consensus = consensus_pipeline.run()
+            df = result_consensus["df_with_consensus"]
+            
+
         logger.info(f"Anotado: {len(df)} exemplos")
 
         df["text"] = df["text"].str.strip()
@@ -279,7 +302,46 @@ class FineTuningPipeline:
         df_annotations = self.apply_instance_selection(df_annotations)
 
         return df_annotations
-    
+
+    def load_perspectivism_data(self) -> pd.DataFrame:
+        """
+        Carrega dados anotados no modo PERSPECTIVISMO.
+
+        Em vez de usar o rótulo agregado (`resolved_annotation`), explode os
+        votos desagregados de cada LLM em formato longo: para um mesmo texto há
+        uma linha por LLM, podendo ter rótulos diferentes. O dataset resultante é
+        salvo em `<resultados>/perspectivismo/dataset_perspectivismo.csv`.
+
+        Reaproveita as mesmas etapas de limpeza por `text_id` do modo agregado
+        (`remove_problematic_instances` / `apply_instance_selection`), que operam
+        via `isin` e portanto funcionam com `text_id` repetido. A remoção de
+        rótulos inválidos (-1) é feita linha a linha pelo próprio builder, sem
+        descartar as demais perspectivas do mesmo texto.
+
+        Se o dataset de perspectivismo já existir (ex.: gerado previamente por
+        `src/run_perspectivism.py`), ele é reutilizado e a geração é pulada.
+        """
+        logger.info("Carregando dados anotados (modo PERSPECTIVISMO)...")
+
+        perspectivism_dir = self.results_dataset_path / "perspectivismo"
+        builder = PerspectivismDatasetBuilder(dataset_name=self.config.dataset_name)
+        output_path = builder.output_path(perspectivism_dir)
+
+        if output_path.exists():
+            # Reutiliza o dataset materializado (sem ler o CSV completo).
+            df_annotations = builder.load_or_build(None, perspectivism_dir)
+        else:
+            df_full = pd.read_csv(
+                ConsensusPipeline.dataset_path(self.results_dataset_path)
+            )
+            logger.info(f"Anotado (consenso agregado): {len(df_full)} exemplos")
+            df_annotations = builder.build_and_save(df_full, perspectivism_dir)
+
+        df_annotations = self.remove_problematic_instances(df_annotations)
+        df_annotations = self.apply_instance_selection(df_annotations)
+
+        return df_annotations
+
     def load_hf_splits_data(self) -> tuple[pd.DataFrame, pd.DataFrame]:
         """Carrega dados de validação e teste"""
         logger.info("Carregando dados de avaliação (folds)...")
@@ -332,12 +394,22 @@ class FineTuningPipeline:
     def align_datasets_splits(
         self,
         splits: dict,
-        annotated_df: pd.DataFrame
+        annotated_df: pd.DataFrame,
+        allow_duplicate_ids: bool = False,
     ) -> Dict[int, Dict[str, Dataset]]:
-        """Alinha splits do HF com dados anotados"""
-        aligner = CVSplitAligner(splits, id_column="text_id")
+        """Alinha splits do HF com dados anotados.
+
+        `allow_duplicate_ids=True` (modo perspectivismo) permite que o mesmo
+        `text_id` apareça mais de uma vez no conjunto de treino (uma linha por
+        LLM), desabilitando a checagem de unicidade que vale para o agregado.
+        """
+        aligner = CVSplitAligner(
+            splits,
+            id_column="text_id",
+            allow_duplicate_ids=allow_duplicate_ids,
+        )
         aligned_splits = aligner.align_datasets_splits(annotated_df)
-        
+
         return aligned_splits
     
     def create_training_args(self) -> TrainingArguments:
@@ -441,43 +513,63 @@ class FineTuningPipeline:
         logger.info("Iniciando pipeline de fine-tuning")
         logger.info("=" * 60)
         
+        # Modo de rotulagem do treino: agregado (consenso) ou perspectivismo
+        training_mode = getattr(self.config, "training_mode", "aggregated")
+        is_perspectivism = training_mode == "perspectivism"
+        label_tag = "perspectivism" if is_perspectivism else "consensus_llm"
+
         # Carregar dados
-        df_annotations = self.load_annotated_data()
-        
+        if is_perspectivism:
+            df_annotations = self.load_perspectivism_data()
+        else:
+            df_annotations = self.load_aggregated_data()
+
         # Criar label schema
         label_schema = LabelSchema.from_dataframe(df_annotations)
         logger.info(f"Labels: {label_schema.id2label}")
-        
+
         cv_splits_hf = self.load_hf_splits_data()
-        cv_aligned_annotaded_splits = self.align_datasets_splits(cv_splits_hf, df_annotations)
-        
-        # Executar fine-tuning com consenso
+        cv_aligned_annotaded_splits = self.align_datasets_splits(
+            cv_splits_hf,
+            df_annotations,
+            allow_duplicate_ids=is_perspectivism,
+        )
+
+        # Executar fine-tuning
         logger.info("\n" + "=" * 60)
-        logger.info("Fine-tuning com CONSENSO LLM")
+        logger.info(
+            "Fine-tuning com PERSPECTIVISMO (uma linha por LLM)"
+            if is_perspectivism
+            else "Fine-tuning com CONSENSO LLM"
+        )
         logger.info("=" * 60)
-        
+
         if run_type == "single":
             logger.warning("⚠️ Modo 'single' é apenas para teste rápido. Use 'cross-validation' para avaliação robusta.")
             results = self.run_fine_tuning(
                 train_ds=cv_aligned_annotaded_splits[0]["train"],
                 eval_ds=cv_aligned_annotaded_splits[0]["val"],
                 label_schema=label_schema,
-                experiment_name="consensus_llm_single"
+                experiment_name=f"{label_tag}_single"
             )
-            
+
         elif run_type == "cross-validation":
             results = self.run_cross_validation(
                 cv_splits=cv_aligned_annotaded_splits,
                 label_schema=label_schema,
-                experiment_name="consensus_llm_cv",
+                experiment_name=f"{label_tag}_cv",
                 max_parallel_folds=max_parallel_folds
             )
-        
+
         else:
             raise ValueError(f"Tipo de execução desconhecido: {run_type}")
         
-        # Salvar resultados
-        output_path = self.fine_tune_output_dir / f"{self.config.model_name}_fine_tuning_results.json"
+        # Salvar resultados (sufixo por modo para não sobrescrever o agregado)
+        results_suffix = "_perspectivism" if is_perspectivism else ""
+        output_path = (
+            self.fine_tune_output_dir
+            / f"{self.config.model_name}{results_suffix}_fine_tuning_results.json"
+        )
 
         with open(output_path, "w", encoding="utf-8") as f:
             json.dump(results, f, indent=4, ensure_ascii=False)
