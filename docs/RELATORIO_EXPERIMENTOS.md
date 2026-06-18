@@ -46,26 +46,24 @@ Estruturas de saída por experimento: `summary/`, `consensus/`, `instance_select
 
 ## 3. Etapas 1–2 — Anotação zero-shot e métricas individuais por modelo
 
-Acurácia e F1-macro de cada LLM contra o *ground truth* (calculados de `summary/dataset_anotado_completo.csv`).
+Acurácia e F1-macro de cada LLM contra o *ground truth*, conforme o arquivo oficial `model_metrics.csv` (métricas calculadas sobre as predições válidas; ver `coverage`/`invalid_predictions_rate`). **Melhor por dataset/métrica em negrito.**
 
 | Dataset | Modelo | Acurácia | F1-macro |
 |---|---|---:|---:|
-| movie_review | deepseek-r1-8b | 90,36% | 60,33%* |
-| movie_review | qwen3-8b | **91,51%** | **91,51%** |
-| movie_review | llama3.1-8b | 89,49% | 89,49% |
-| agnews | deepseek-r1-8b | 85,32% | 84,90% |
-| agnews | qwen3-8b | 86,56% | 86,34% |
-| agnews | llama3.1-8b | **86,61%** | **86,45%** |
-| books | deepseek-r1-8b | 68,37% | 62,32% |
-| books | qwen3-8b | **72,46%** | 65,68% |
-| books | llama3.1-8b | 72,06% | **73,07%** |
-| dblp | deepseek-r1-8b | 62,58% | 54,80% |
-| dblp | qwen3-8b | **63,40%** | 54,56% |
-| dblp | llama3.1-8b | 59,95% | **59,39%** |
+| movie_review | qwen3-8b | **91,50%** | **91,50%** |
+| movie_review | deepseek-r1-8b | 90,64% | 90,64% |
+| movie_review | llama3.1-8b | 89,44% | 89,44% |
+| agnews | qwen3-8b | **86,48%** | 86,28% |
+| agnews | llama3.1-8b | 86,47% | **86,33%** |
+| agnews | deepseek-r1-8b | 85,17% | 84,75% |
+| books | qwen3-8b | **71,89%** | **73,25%** |
+| books | llama3.1-8b | 71,45% | 72,42% |
+| books | deepseek-r1-8b | 67,45% | 69,20% |
+| dblp | qwen3-8b | **63,39%** | 60,01% |
+| dblp | deepseek-r1-8b | 62,59% | **60,28%** |
+| dblp | llama3.1-8b | 59,95% | 59,39% |
 
-\* *Em movie_review o F1-macro do deepseek-r1-8b destoa da acurácia (90,4% acc / 60,3% F1), indício de que o modelo emitiu rótulos inválidos/fora do conjunto de classes em parte das amostras, penalizando o macro. Vale revisar o parsing das saídas desse modelo nesse dataset.*
-
-**Leitura:** nenhum modelo domina em todos os datasets — `qwen3-8b` e `llama3.1-8b` se alternam como melhor individual. É exatamente esse cenário que justifica o ensemble: o voto majoritário combina os acertos complementares dos três.
+**Leitura:** nenhum modelo domina folgadamente — `qwen3-8b` é o mais consistente (melhor acurácia nos 4 datasets), mas a diferença para os demais é pequena e em F1-macro há revezamento (llama em agnews, deepseek em dblp). Esse cenário de modelos próximos e complementares é o que justifica o ensemble: o voto majoritário combina os acertos dos três sem depender de escolher a melhor LLM por dataset. A taxa de predições inválidas é baixíssima em todos os casos (≤ 0,4%).
 
 ---
 
@@ -76,21 +74,23 @@ Qualidade do rótulo consolidado por voto majoritário, validado contra o *groun
 | Dataset | Nº textos | Nº classes | **Acurácia (ensemble)** | **F1-macro (ensemble)** | Fleiss κ | Interpret. | Alto (3×0) | Médio (2×1) | Baixo (1×1×1) |
 |---|---:|---:|---:|---:|---:|---|---:|---:|---:|
 | movie_review | 10.653 | 2 | **91,35%** | 91,35% | 0,865 | Excelente | 9.577 | 1.076 | 0 |
-| agnews | 127.600 | 4 | **86,76%** | 86,53% | 0,917 | Excelente | 115.551 | 11.758 | 0 |
-| books | 33.594 | 8 | **72,35%** | 72,64% | 0,806 | Excelente | 24.810 | 8.195 | 0 |
-| dblp | 38.128 | 10 | **63,56%** | 61,12% | 0,766 | Bom | 27.060 | 10.178 | 810 |
+| agnews | 127.600 | 4 | **86,76%** | 86,52% | 0,917 | Excelente | 115.551 | 11.758 | 0 |
+| books | 33.594 | 8 | **72,35%** | 73,72% | 0,806 | Excelente | 24.810 | 8.195 | 0 |
+| dblp | 38.128 | 10 | **63,56%** | 61,31% | 0,766 | Bom | 27.060 | 10.178 | 810 |
+
+> F1-macro do ensemble = `macro avg` do `classification_report` (métrica principal); acurácia = `accuracy`.
 
 **Ensemble vs melhor modelo individual (acurácia):**
 
 | Dataset | Melhor individual | Voto majoritário | Δ |
 |---|---:|---:|---:|
-| movie_review | 91,51% (qwen) | 91,35% | −0,16 |
-| agnews | 86,61% (llama) | 86,76% | **+0,15** |
-| books | 72,46% (qwen) | 72,35% | −0,11 |
-| dblp | 63,40% (qwen) | 63,56% | **+0,16** |
+| movie_review | 91,50% (qwen) | 91,35% | −0,15 |
+| agnews | 86,48% (qwen) | 86,76% | **+0,28** |
+| books | 71,89% (qwen) | 72,35% | **+0,46** |
+| dblp | 63,39% (qwen) | 63,56% | **+0,17** |
 
 **Leitura:**
-- O voto majoritário fica **no nível do melhor modelo individual** (diferenças ≤ 0,16 pp), porém com **mais robustez**: não depende de saber de antemão qual LLM é a melhor para cada dataset, e suaviza erros idiossincráticos de cada modelo.
+- O voto majoritário **iguala ou supera o melhor modelo individual** — superando-o em **3 dos 4 datasets** (agnews +0,28, books +0,46, dblp +0,17) e ficando a apenas −0,15 pp em movie_review. Além do ganho de acurácia, ele traz **mais robustez**: não depende de saber de antemão qual LLM é a melhor para cada dataset e suaviza erros idiossincráticos de cada modelo.
 - A concordância é **de boa a excelente** (Fleiss κ 0,77–0,92), caindo conforme cresce o número de classes/dificuldade (movie_review 2 classes → dblp 10 classes).
 - Só `dblp` teve casos 1×1×1 (810), removidos como problemáticos antes do fine-tuning.
 
@@ -227,7 +227,7 @@ Confirma o critério do BiO-IS: o que ele marca como **ruído** tem taxa de erro
 - **agnews (4 classes):** ~4 pp abaixo — próximo.
 - **books (8) e dblp (10):** gaps de −14 e −20 pp — P1 **não se sustenta** nessas tarefas.
 
-Internamente o ensemble é sólido: o voto majoritário fica no nível do melhor modelo individual (Δ ≤ 0,16 pp) com mais robustez e concordância boa-a-excelente (Fleiss κ 0,77–0,92). A limitação é a **qualidade da anotação vs ground truth** nas tarefas multiclasse difíceis (72% em books, 64% em dblp), que se propaga ao classificador. **Conclusão de P1:** ensembles de LLMs compactas são uma alternativa viável e de baixo custo à anotação humana em tarefas com poucas classes; para muitas classes, ainda há gap relevante.
+Internamente o ensemble é sólido: o voto majoritário **iguala ou supera o melhor modelo individual** (supera em 3 dos 4 datasets, até +0,46 pp) com mais robustez e concordância boa-a-excelente (Fleiss κ 0,77–0,92). A limitação é a **qualidade da anotação vs ground truth** nas tarefas multiclasse difíceis (72% em books, 64% em dblp), que se propaga ao classificador. **Conclusão de P1:** ensembles de LLMs compactas são uma alternativa viável e de baixo custo à anotação humana em tarefas com poucas classes; para muitas classes, ainda há gap relevante.
 
 ### P2 — Confiança e consenso como critérios de filtragem
 

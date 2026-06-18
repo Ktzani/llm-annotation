@@ -34,14 +34,23 @@ if [ "$ENABLE_ANNOTATION" = "1" ] || [ "$ENABLE_ANNOTATION" = "true" ]; then
     export OLLAMA_KEEP_ALIVE="${OLLAMA_KEEP_ALIVE:-24h}"
 
     echo "[entrypoint] Iniciando ollama serve em background..."
-    # Prefixa toda saida do ollama com "[ollama]" para nao misturar
-    # com os logs do uvicorn no `docker logs`. Process substitution
-    # garante que $! seja o PID do ollama, nao do sed.
-    # O grep filtra os access logs "[GIN] ... POST ..." (uma linha
-    # por requisicao) mas preserva startup, load de modelos e erros.
-    ollama serve \
-        > >(grep --line-buffered -v '\[GIN\]' | sed -u 's/^/[ollama] /') \
-        2> >(grep --line-buffered -v '\[GIN\]' | sed -u 's/^/[ollama] /' >&2) &
+    # Toda a saida do ollama (startup, load de modelos, access logs
+    # [GIN] e os logs verbosos do runner: slot/srv print_timing, prompt
+    # cache, etc.) é mantida FORA do `docker logs` — que assim mostra so
+    # o uvicorn (a API).
+    #
+    # Por padrao a saida é DESCARTADA (/dev/null) para nao acumular em
+    # disco num run longo (o runner cospe varias linhas por requisicao).
+    # Para depurar, suba com OLLAMA_LOG=/root/.ollama/ollama.log que ele
+    # grava em arquivo (no volume persistente). Inspecionar com:
+    #   docker exec <container> tail -f /root/.ollama/ollama.log
+    OLLAMA_LOG="${OLLAMA_LOG:-/dev/null}"
+    if [ "$OLLAMA_LOG" = "/dev/null" ]; then
+        echo "[entrypoint] Saida do ollama descartada (defina OLLAMA_LOG=<arquivo> para depurar)"
+    else
+        echo "[entrypoint] Logs do ollama em $OLLAMA_LOG (fora do docker logs)"
+    fi
+    ollama serve > "$OLLAMA_LOG" 2>&1 &
     OLLAMA_PID=$!
 
     # Se a API morrer, derruba o ollama junto (evita orfao)
