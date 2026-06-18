@@ -20,7 +20,7 @@ def md5(s: str) -> str:
 
 def main():
     date = get_latest_results_date(str(RESULTS_DIR), DATASET_NAME)
-    csv_path = RESULTS_DIR / DATASET_NAME / date / "summary" / "dataset_anotado_completo.csv"
+    csv_path = RESULTS_DIR / DATASET_NAME / date / "consensus" / "dataset_consenso.csv"
     df_csv = pd.read_csv(csv_path)
 
     hf_path = hf_hub_download(

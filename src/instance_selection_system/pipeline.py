@@ -65,9 +65,9 @@ class InstanceSelectionPipeline:
         return Path(self.config.results_dir) / self.config.dataset_name / date
 
     def load_annotated_data(self) -> pd.DataFrame:
-        path = self.results_dataset_path / "summary" / "dataset_anotado_completo.csv"
+        path = self.results_dataset_path / "consensus" / "dataset_consenso.csv"
         if not path.exists():
-            raise FileNotFoundError(f"Dataset anotado não encontrado: {path}")
+            raise FileNotFoundError(f"Dataset de consenso não encontrado: {path}")
 
         df = pd.read_csv(path)
         logger.info(f"Carregado: {len(df)} instâncias de {path}")
