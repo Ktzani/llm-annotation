@@ -6,17 +6,22 @@ de forma independente dos notebooks de análise. Reúne o que antes estava
 disperso no notebook de análise de consenso:
 
     1. Calcula o consenso (`ConsensusCalculator` / `ConsensusEvaluator`).
-    2. Remove instâncias inválidas (`resolved_annotation == -1`) e problemáticas.
-    3. Gera o relatório de concordância (pairwise / Cohen / Fleiss) e os casos
+    2. Gera o relatório de concordância (pairwise / Cohen / Fleiss) e os casos
        problemáticos em `<results>/<dataset>/<date>/consensus/`.
-    4. (Opcional) Valida o consenso final contra o ground truth.
-    5. Exporta o dataset de consenso em
+    3. (Opcional) Valida o consenso final contra o ground truth.
+    4. Exporta o dataset de consenso em
        `<results>/<dataset>/<date>/consensus/dataset_consenso.csv` e os demais
        artefatos consolidados em `<results>/<dataset>/<date>/summary/`:
            consensus/dataset_consenso.csv   Dataset com consenso (resolved_annotation)
            summary/alta_confianca.csv       Subconjunto com score >= threshold
            summary/necessita_revisao.csv    Subconjunto com score < threshold
            summary/sumario_experimento.json Métricas resumidas
+
+IMPORTANTE: o consenso é calculado e exportado SEM filtragem — o summary e o
+relatório refletem o dataset completo (inclusive instâncias inválidas/`-1` e
+problemáticas/baixo consenso, que precisam ser identificadas e validadas). A
+filtragem é responsabilidade dos consumidores downstream (ex.: o fine-tuning,
+via `remove_invalid_instances` / `remove_problematic_instances` / IS).
 
 A parte de gráficos (calibração, ECE/BBS, heatmaps) permanece em notebook para
 análise posterior — este pipeline materializa apenas os artefatos de dados.
@@ -118,27 +123,6 @@ class ConsensusPipeline:
         return categories
 
     # -------------------------------------------------------------------------
-    # LIMPEZA
-    # -------------------------------------------------------------------------
-    def _remove_invalid(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Remove instâncias com consenso inválido (`resolved_annotation == -1`)."""
-        invalid = df.loc[df["resolved_annotation"] == -1]
-        if len(invalid):
-            df = df[~df["text_id"].isin(invalid["text_id"])].reset_index(drop=True)
-            logger.info(f"Removidas {len(invalid)} instâncias inválidas (resolved_annotation == -1).")
-        return df
-
-    def _remove_problematic(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Remove casos problemáticos previamente salvos em consensus/problematic_cases.csv."""
-        problematic_path = self.results_dataset_path / "consensus" / "problematic_cases.csv"
-        if problematic_path.exists():
-            df_problematic = pd.read_csv(problematic_path)
-            before = len(df)
-            df = df[~df["text_id"].isin(df_problematic["text_id"])].reset_index(drop=True)
-            logger.info(f"Removidas {before - len(df)} instâncias problemáticas.")
-        return df
-
-    # -------------------------------------------------------------------------
     # EXPORTAÇÃO
     # -------------------------------------------------------------------------
     def _export(
@@ -221,23 +205,28 @@ class ConsensusPipeline:
             output_dir=self.results_dataset_path,
         )
 
-        # 1. Consenso
-        df = evaluator.compute_consensus(df_annotations)
+        # 1. Consenso sobre TODAS as anotações — SEM filtragem. O summary e o
+        #    relatório precisam refletir o dataset completo (inclusive os casos
+        #    inválidos/problemáticos). A filtragem (-1, problemáticos, IS) é feita
+        #    downstream, no fine-tuning. Índice resetado p/ o cálculo posicional
+        #    do Fleiss' Kappa.
+        df = evaluator.compute_consensus(df_annotations).reset_index(drop=True)
 
-        # 2. Limpeza (índice resetado p/ o cálculo posicional do Fleiss' Kappa)
-        df = self._remove_invalid(df)
-        df = self._remove_problematic(df)
-        df = df.reset_index(drop=True)
-
-        # 3. Relatório de concordância (salva pairwise / kappa / problematic_cases)
+        # 2. Relatório de concordância sobre o df completo → identifica e salva
+        #    os casos problemáticos (consensus/problematic_cases.csv).
         report = evaluator.generate_consensus_report(df=df)
 
-        # 4. Validação com ground truth (opcional)
+        # 3. Validação com ground truth (opcional). Aqui SIM filtramos os
+        #    inválidos (resolved_annotation == -1): eles não são uma classe real
+        #    e poluiriam as métricas (accuracy / classification_report). A
+        #    filtragem é aplicada APENAS na validação — o relatório e o export
+        #    permanecem sobre o df completo.
         cls_report = None
         if "ground_truth" in df.columns and df["ground_truth"].notna().any():
-            _, cls_report, _ = evaluator.evaluate_ground_truth(df)
+            df_valid = df[df["resolved_annotation"] != -1]
+            _, cls_report, _ = evaluator.evaluate_ground_truth(df_valid)
 
-        # 5. Exportação
+        # 4. Exportação do dataset de consenso completo.
         self._export(df, report, categories, models, cls_report)
 
         return {

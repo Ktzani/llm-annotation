@@ -73,10 +73,10 @@ Qualidade do rótulo consolidado por voto majoritário, validado contra o *groun
 
 | Dataset | Nº textos | Nº classes | **Acurácia (ensemble)** | **F1-macro (ensemble)** | Fleiss κ | Interpret. | Alto (3×0) | Médio (2×1) | Baixo (1×1×1) |
 |---|---:|---:|---:|---:|---:|---|---:|---:|---:|
-| movie_review | 10.653 | 2 | **91,35%** | 91,35% | 0,865 | Excelente | 9.577 | 1.076 | 0 |
-| agnews | 127.600 | 4 | **86,76%** | 86,52% | 0,917 | Excelente | 115.551 | 11.758 | 0 |
-| books | 33.594 | 8 | **72,35%** | 73,72% | 0,806 | Excelente | 24.810 | 8.195 | 0 |
-| dblp | 38.128 | 10 | **63,56%** | 61,31% | 0,766 | Bom | 27.060 | 10.178 | 810 |
+| movie_review | 10.662 | 2 | **91,35%** | 91,35% | 0,863 | Excelente | 9.577 | 1.077 | 8 |
+| agnews | 127.600 | 4 | **86,61%** | 86,36% | 0,914 | Excelente | 115.551 | 11.758 | 291 |
+| books | 33.594 | 8 | **71,35%** | 72,72% | 0,789 | Bom | 24.810 | 8.196 | 588 |
+| dblp | 38.053 | 10 | **63,56%** | 61,31% | 0,766 | Bom | 27.060 | 10.178 | 815 |
 
 > F1-macro do ensemble = `macro avg` do `classification_report` (métrica principal); acurácia = `accuracy`.
 
@@ -85,14 +85,14 @@ Qualidade do rótulo consolidado por voto majoritário, validado contra o *groun
 | Dataset | Melhor individual | Voto majoritário | Δ |
 |---|---:|---:|---:|
 | movie_review | 91,50% (qwen) | 91,35% | −0,15 |
-| agnews | 86,48% (qwen) | 86,76% | **+0,28** |
-| books | 71,89% (qwen) | 72,35% | **+0,46** |
+| agnews | 86,48% (qwen) | 86,61% | **+0,13** |
+| books | 71,89% (qwen) | 71,35% | −0,54 |
 | dblp | 63,39% (qwen) | 63,56% | **+0,17** |
 
 **Leitura:**
-- O voto majoritário **iguala ou supera o melhor modelo individual** — superando-o em **3 dos 4 datasets** (agnews +0,28, books +0,46, dblp +0,17) e ficando a apenas −0,15 pp em movie_review. Além do ganho de acurácia, ele traz **mais robustez**: não depende de saber de antemão qual LLM é a melhor para cada dataset e suaviza erros idiossincráticos de cada modelo.
-- A concordância é **de boa a excelente** (Fleiss κ 0,77–0,92), caindo conforme cresce o número de classes/dificuldade (movie_review 2 classes → dblp 10 classes).
-- Só `dblp` teve casos 1×1×1 (810), removidos como problemáticos antes do fine-tuning.
+- O voto majoritário fica **no nível do melhor modelo individual** (entre −0,54 e +0,17 pp), superando-o em agnews e dblp. Mais do que o pequeno ganho/perda de acurácia, o valor do ensemble é a **robustez**: não depende de saber de antemão qual LLM é a melhor para cada dataset e suaviza erros idiossincráticos de cada modelo.
+- A concordância é **de boa a excelente** (Fleiss κ 0,77–0,91), caindo conforme cresce o número de classes/dificuldade (movie_review 2 classes → dblp 10 classes).
+- **Todos** os datasets têm uma pequena fração de casos 1×1×1 (discordância total): movie_review 8, agnews 291, books 588, dblp 815 — removidos como problemáticos antes do fine-tuning.
 
 ---
 
@@ -173,7 +173,7 @@ Valores em F1-macro como `média (IC 95%)`, com o intervalo de confiança calcul
 **Leitura — o achado central de P1:** a proximidade com a anotação humana **depende fortemente da dificuldade da tarefa**:
 - **movie_review (2 classes):** o pipeline assistido por LLMs **iguala** o benchmark humano (gap ≈ 0,2–0,3 pp, dentro do desvio). Qualidade comparável **confirmada**.
 - **agnews (4 classes):** fica ~4 pp abaixo — próximo, mas com folga ainda perceptível.
-- **books (8 classes) e dblp (10 classes):** gaps grandes (−14 e −20 pp). Aqui a anotação automática **não** alcança a humana; o sinal ruidoso dos LLMs nas tarefas multiclasse difíceis (já visível na acurácia vs ground truth de 72% e 64%) se propaga ao classificador.
+- **books (8 classes) e dblp (10 classes):** gaps grandes (−14 e −20 pp). Aqui a anotação automática **não** alcança a humana; o sinal ruidoso dos LLMs nas tarefas multiclasse difíceis (já visível na acurácia vs ground truth de 71% e 64%) se propaga ao classificador.
 
 O filtro BiO-IS não fecha esse gap (ele preserva, não recupera, performance) — mas também quase não custa: mantém o nível treinando com bem menos dados.
 
@@ -227,7 +227,7 @@ Confirma o critério do BiO-IS: o que ele marca como **ruído** tem taxa de erro
 - **agnews (4 classes):** ~4 pp abaixo — próximo.
 - **books (8) e dblp (10):** gaps de −14 e −20 pp — P1 **não se sustenta** nessas tarefas.
 
-Internamente o ensemble é sólido: o voto majoritário **iguala ou supera o melhor modelo individual** (supera em 3 dos 4 datasets, até +0,46 pp) com mais robustez e concordância boa-a-excelente (Fleiss κ 0,77–0,92). A limitação é a **qualidade da anotação vs ground truth** nas tarefas multiclasse difíceis (72% em books, 64% em dblp), que se propaga ao classificador. **Conclusão de P1:** ensembles de LLMs compactas são uma alternativa viável e de baixo custo à anotação humana em tarefas com poucas classes; para muitas classes, ainda há gap relevante.
+Internamente o ensemble é sólido: o voto majoritário **fica no nível do melhor modelo individual** (entre −0,54 e +0,17 pp, superando-o em agnews e dblp) com mais robustez e concordância boa-a-excelente (Fleiss κ 0,77–0,91). A limitação é a **qualidade da anotação vs ground truth** nas tarefas multiclasse difíceis (71% em books, 64% em dblp), que se propaga ao classificador. **Conclusão de P1:** ensembles de LLMs compactas são uma alternativa viável e de baixo custo à anotação humana em tarefas com poucas classes; para muitas classes, ainda há gap relevante.
 
 ### P2 — Confiança e consenso como critérios de filtragem
 
