@@ -277,7 +277,10 @@ class FineTuningPipeline:
                 results_dir=str(self.config.results_dir),
                 specific_date=self.results_dataset_path.name,
             )
-            df = ConsensusPipeline(consensus_config).run()["df_with_consensus"]
+            consensus_pipeline = ConsensusPipeline(consensus_config)
+            result_consensus = consensus_pipeline.run()
+            df = result_consensus["df_with_consensus"]
+            
 
         logger.info(f"Anotado: {len(df)} exemplos")
 

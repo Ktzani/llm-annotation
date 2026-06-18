@@ -44,7 +44,8 @@ def main() -> None:
         consensus_strategy=consensus_strategy,
     )
 
-    result = ConsensusPipeline(config).run()
+    consensus_pipeline = ConsensusPipeline(config)
+    result = consensus_pipeline.run()
 
     df = result["df_with_consensus"]
     report = result["report"]
