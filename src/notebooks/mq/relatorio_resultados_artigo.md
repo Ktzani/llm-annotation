@@ -97,42 +97,66 @@ observações**). Fatores:
 
 **Matriz de contrastes (sinais −1/+1)** com os valores `y` das 5 réplicas,
 Média(y) e o cálculo dos coeficientes: a última linha é **q = Total/8** (q₀ = média
-geral; demais q = metade do efeito, pois **efeito = 2q**).
+geral). **Os valores `y` estão na escala logit** — a mesma usada em toda a análise
+(as premissas só são atendidas após a transformação, §2.1). Por isso os `q` aqui
+coincidem com os efeitos da §2.2.
 
-**F1-macro:**
-
-| I | B | C | D | BC | BD | CD | BCD | y — 5 réplicas (r1…r5) | Média(y) |
-|---|---|---|---|---|---|---|---|---|---|
-| +1 | −1 | −1 | −1 | +1 | +1 | +1 | −1 | (0,634; 0,638; 0,641; 0,662; 0,641) | 0,643 |
-| +1 | +1 | −1 | −1 | −1 | −1 | +1 | +1 | (0,490; 0,475; 0,501; 0,478; 0,478) | 0,485 |
-| +1 | −1 | +1 | −1 | −1 | +1 | −1 | +1 | (0,948; 0,947; 0,947; 0,945; 0,945) | 0,946 |
-| +1 | −1 | −1 | +1 | +1 | −1 | −1 | +1 | (0,625; 0,606; 0,601; 0,638; 0,593) | 0,613 |
-| +1 | +1 | +1 | −1 | +1 | −1 | −1 | −1 | (0,768; 0,772; 0,770; 0,774; 0,772) | 0,771 |
-| +1 | +1 | −1 | +1 | −1 | +1 | −1 | −1 | (0,552; 0,554; 0,536; 0,536; 0,558) | 0,547 |
-| +1 | −1 | +1 | +1 | −1 | −1 | +1 | −1 | (0,943; 0,941; 0,943; 0,940; 0,943) | 0,942 |
-| +1 | +1 | +1 | +1 | +1 | +1 | +1 | +1 | (0,816; 0,817; 0,820; 0,820; 0,816) | 0,818 |
-| **Total** | −0,524 | +1,190 | +0,074 | −0,075 | +0,144 | +0,010 | −0,042 | (Σ sinal·Média) | +5,764 |
-| **q = Total/8** | **−0,066** | **+0,149** | +0,009 | −0,009 | +0,018 | +0,001 | −0,005 | q₀ = | **0,721** |
-
-**Acurácia:**
+**F1-macro (logit):**
 
 | I | B | C | D | BC | BD | CD | BCD | y — 5 réplicas (r1…r5) | Média(y) |
 |---|---|---|---|---|---|---|---|---|---|
-| +1 | −1 | −1 | −1 | +1 | +1 | +1 | −1 | (0,635; 0,639; 0,643; 0,662; 0,643) | 0,644 |
-| +1 | +1 | −1 | −1 | −1 | −1 | +1 | +1 | (0,517; 0,502; 0,525; 0,506; 0,510) | 0,512 |
-| +1 | −1 | +1 | −1 | −1 | +1 | −1 | +1 | (0,948; 0,947; 0,947; 0,945; 0,945) | 0,946 |
-| +1 | −1 | −1 | +1 | +1 | −1 | −1 | +1 | (0,625; 0,608; 0,602; 0,639; 0,593) | 0,614 |
-| +1 | +1 | +1 | −1 | +1 | −1 | −1 | −1 | (0,789; 0,794; 0,792; 0,795; 0,795) | 0,793 |
-| +1 | +1 | −1 | +1 | −1 | +1 | −1 | −1 | (0,526; 0,529; 0,513; 0,512; 0,526) | 0,521 |
-| +1 | −1 | +1 | +1 | −1 | −1 | +1 | −1 | (0,943; 0,941; 0,943; 0,940; 0,943) | 0,942 |
-| +1 | +1 | +1 | +1 | +1 | +1 | +1 | +1 | (0,791; 0,791; 0,794; 0,793; 0,791) | 0,792 |
-| **Total** | −0,528 | +1,182 | −0,027 | −0,079 | +0,044 | +0,016 | −0,037 | (Σ sinal·Média) | +5,765 |
-| **q = Total/8** | **−0,066** | **+0,148** | −0,003 | −0,010 | +0,005 | +0,002 | −0,005 | q₀ = | **0,721** |
+| +1 | −1 | −1 | −1 | +1 | +1 | +1 | −1 | (0,550; 0,567; 0,579; 0,672; 0,580) | 0,590 |
+| +1 | +1 | −1 | −1 | −1 | −1 | +1 | +1 | (−0,038; −0,099; 0,002; −0,088; −0,087) | −0,062 |
+| +1 | −1 | +1 | −1 | −1 | +1 | −1 | +1 | (2,896; 2,885; 2,885; 2,838; 2,850) | 2,871 |
+| +1 | −1 | −1 | +1 | +1 | −1 | −1 | +1 | (0,511; 0,431; 0,411; 0,565; 0,377) | 0,459 |
+| +1 | +1 | +1 | −1 | +1 | −1 | −1 | −1 | (1,196; 1,220; 1,207; 1,229; 1,222) | 1,215 |
+| +1 | +1 | −1 | +1 | −1 | +1 | −1 | −1 | (0,207; 0,216; 0,143; 0,143; 0,233) | 0,188 |
+| +1 | −1 | +1 | +1 | −1 | −1 | +1 | −1 | (2,807; 2,769; 2,802; 2,755; 2,810) | 2,789 |
+| +1 | +1 | +1 | +1 | +1 | +1 | +1 | +1 | (1,491; 1,494; 1,513; 1,513; 1,489) | 1,500 |
+| **Total** | −3,867 | +7,199 | +0,323 | −2,022 | +0,748 | +0,084 | −0,013 | (Σ sinal·Média) | +9,549 |
+| **q = Total/8** | **−0,483** | **+0,900** | +0,040 | −0,253 | +0,094 | +0,010 | −0,002 | q₀ = | **1,194** |
 
-*(Linhas dos tratamentos na ordem (1), b, c, d, bc, bd, cd, bcd. **O efeito é o
-coeficiente q** (convenção de Jain); q₀ na coluna I = média geral. A diferença entre
-níveis alto/baixo equivale a 2q (convenção de Box), mas a inferência — IC e
-contrastes — é feita sobre **q**. % de variação e significância na §2.2.)*
+**Acurácia (logit):**
+
+| I | B | C | D | BC | BD | CD | BCD | y — 5 réplicas (r1…r5) | Média(y) |
+|---|---|---|---|---|---|---|---|---|---|
+| +1 | −1 | −1 | −1 | +1 | +1 | +1 | −1 | (0,554; 0,570; 0,588; 0,672; 0,587) | 0,594 |
+| +1 | +1 | −1 | −1 | −1 | −1 | +1 | +1 | (0,069; 0,008; 0,098; 0,026; 0,038) | 0,048 |
+| +1 | −1 | +1 | −1 | −1 | +1 | −1 | +1 | (2,897; 2,886; 2,886; 2,839; 2,851) | 2,872 |
+| +1 | −1 | −1 | +1 | +1 | −1 | −1 | +1 | (0,513; 0,438; 0,413; 0,573; 0,378) | 0,463 |
+| +1 | +1 | +1 | −1 | +1 | −1 | −1 | −1 | (1,320; 1,350; 1,335; 1,356; 1,357) | 1,344 |
+| +1 | +1 | −1 | +1 | −1 | +1 | −1 | −1 | (0,105; 0,117; 0,051; 0,050; 0,106) | 0,086 |
+| +1 | −1 | +1 | +1 | −1 | −1 | +1 | −1 | (2,807; 2,769; 2,802; 2,755; 2,810) | 2,789 |
+| +1 | +1 | +1 | +1 | +1 | +1 | +1 | +1 | (1,332; 1,333; 1,352; 1,341; 1,333) | 1,338 |
+| **Total** | −3,902 | +7,151 | −0,182 | −2,055 | +0,246 | +0,005 | −0,091 | (Σ sinal·Média) | +9,533 |
+| **q = Total/8** | **−0,488** | **+0,894** | −0,023 | −0,257 | +0,031 | +0,001 | −0,011 | q₀ = | **1,192** |
+
+*(Linhas dos tratamentos na ordem (1), b, c, d, bc, bd, cd, bcd. Valores `y` em
+**logit**. **O efeito é o coeficiente q** (convenção de Jain); q₀ na coluna I = média
+geral (em logit). A inferência — IC e contrastes — é feita sobre **q**. % de variação
+e significância na §2.2.)*
+
+**Erros experimentais por réplica (cálculo do SSE).** O valor previsto de cada
+tratamento é a **média das suas réplicas** ($\hat{y}$); o erro de cada réplica é
+$e_{ij}=y_{ij}-\hat{y}$. Por construção, **os erros somam 0 em cada tratamento**, e
+$SSE=\sum e_{ij}^2$ (escala logit, F1):
+
+| Trat. | ŷ (média) | erros e_ij das 5 réplicas | Σ e_ij | Σ e_ij² |
+|---|---|---|---|---|
+| (1) | 0,590 | (−0,039; −0,023; −0,011; +0,083; −0,010) | ≈0 | 0,0091 |
+| b | −0,062 | (+0,024; −0,037; +0,064; −0,026; −0,025) | ≈0 | 0,0074 |
+| c | 2,871 | (+0,025; +0,014; +0,014; −0,033; −0,021) | ≈0 | 0,0025 |
+| d | 0,459 | (+0,052; −0,028; −0,048; +0,106; −0,082) | ≈0 | 0,0239 |
+| bc | 1,215 | (−0,019; +0,005; −0,008; +0,014; +0,007) | ≈0 | 0,0007 |
+| bd | 0,188 | (+0,019; +0,028; −0,045; −0,046; +0,045) | ≈0 | 0,0073 |
+| cd | 2,789 | (+0,019; −0,019; +0,013; −0,034; +0,022) | ≈0 | 0,0025 |
+| bcd | 1,500 | (−0,009; −0,006; +0,013; +0,013; −0,011) | ≈0 | 0,0006 |
+| **SSE** | | | | **0,0541** |
+
+Logo $s_e^2 = SSE/[2^k(r-1)] = 0{,}0541/32 = 1{,}69\times10^{-3}$ (g.l. = 32) — é a
+base do IC dos efeitos (§2.2) e dos contrastes (§2.4). *(Acurácia logit: mesmo
+procedimento, SSE = 0,0490 → $s_e^2 = 1{,}53\times10^{-3}$.)* O erro é minúsculo
+(réplicas quase idênticas), o que torna os ICs estreitos.
 
 > Apenas **MovieReview e Books** possuem 5 réplicas; por isso o fatorial usa esses
 > dois domínios. As respostas por célula são F1-macro e Acurácia do consenso.
@@ -195,6 +219,37 @@ Erro experimental ≈ **0,1–0,3%** (réplicas quase determinísticas).
 >
 > 📷 **[FIGURA: `variacao_acclogit.png` — % de variação por efeito (Acurácia logit)
 > *(opcional)*]**
+
+**Modelo de regressão a partir dos q (F1 logit).** Com as variáveis codificadas em
+−1/+1, o modelo do fatorial é:
+
+$$\hat{y} = q_0 + q_B x_B + q_C x_C + q_D x_D + q_{BC}x_Bx_C + q_{BD}x_Bx_D + q_{CD}x_Cx_D + q_{BCD}x_Bx_Cx_D$$
+
+$$\hat{y}_{\text{logit(F1)}} = 1{,}194 - 0{,}483\,x_B + 0{,}900\,x_C + 0{,}040\,x_D - 0{,}253\,x_Bx_C + 0{,}094\,x_Bx_D + 0{,}010\,x_Cx_D - 0{,}002\,x_Bx_Cx_D$$
+
+*(Acurácia logit: $\hat{y} = 1{,}192 - 0{,}488\,x_B + 0{,}894\,x_C - 0{,}023\,x_D - 0{,}257\,x_Bx_C + 0{,}031\,x_Bx_D + 0{,}001\,x_Cx_D - 0{,}011\,x_Bx_Cx_D$.)*
+O valor previsto de qualquer tratamento sai trocando $x_\bullet$ por seus sinais ±1
+(ex.: C unânime no MovieReview, texto curto → $x_B{=}{-}1, x_C{=}{+}1, x_D{=}{-}1$).
+
+**Decomposição da variação (SS), F1 logit.** $SS_i = N\,q_i^2$ (N = 40); o erro é
+$SSE=\sum e_{ij}^2$; e $SST = \sum_i SS_i + SSE = \sum(y-\bar{y})^2$:
+
+| Componente | SS | g.l. | % da variação |
+|---|---|---|---|
+| C — Consenso | 32,3928 | 1 | 72,36 |
+| B — Domínio | 9,3442 | 1 | 20,87 |
+| BC | 2,5547 | 1 | 5,71 |
+| BD | 0,3500 | 1 | 0,78 |
+| D — Tamanho | 0,0651 | 1 | 0,15 |
+| CD | 0,0044 | 1 | 0,01 |
+| BCD | 0,0001 | 1 | 0,00 |
+| **Erro (SSE)** | **0,0541** | **32** | **0,12** |
+| **Total (SST)** | **44,7654** | **39** | **100,00** |
+
+*(Acurácia logit, análogo: SST = 44,2271; SSE = 0,0490 (g.l. 32); C = 31,9611
+(72,27%); B = 9,5149 (21,51%); BC = 2,6381 (5,97%); demais < 0,1%.)* A soma dos SS
+dos 7 efeitos mais o SSE reconstitui o SST — toda a variação fica alocada, e o
+**Erro responde por só 0,12%**.
 
 ### 2.3 Comparação original × logit (% de variação, F1)
 
@@ -428,6 +483,35 @@ Acurácia) do **consenso por voto majoritário** por réplica.
 
 **Réplicas (pastas com *timestamp*):** MovieReview = 5, Books = 5, **AGNews = 2,
 DBLP = 4** → **N = 16**, a = 4, g.l. do erro = 12.
+
+**Tabela de dados (layout Jain — réplicas, soma, média e efeito).** Para cada nível
+(dataset) listam-se as réplicas, a soma da linha, a **média da linha** ($\bar{y}_{.j}$)
+e o **efeito** $\alpha_j = \bar{y}_{.j}-\mu$ (desvio frente à média geral $\mu$).
+
+**F1-macro** (média geral $\mu = 0{,}779$):
+
+| Nível (domínio) | rⱼ | Réplicas (F1) | Soma | Média ȳ.j | Efeito αⱼ |
+|---|---|---|---|---|---|
+| MovieReview (geral) | 5 | (0,914; 0,913; 0,912; 0,914; 0,913) | 4,566 | 0,913 | **+0,134** |
+| AGNews (geral) | 2 | (0,865; 0,867) | 1,732 | 0,866 | +0,087 |
+| Books (técnico) | 5 | (0,737; 0,737; 0,738; 0,738; 0,737) | 3,687 | 0,737 | −0,042 |
+| DBLP (técnico) | 4 | (0,620; 0,620; 0,619; 0,620) | 2,479 | 0,620 | **−0,159** |
+| **Total** | **16** | — | **12,464** | **μ = 0,779** | (Σαⱼ ponderado = 0) |
+
+**Acurácia** (média geral $\mu = 0{,}782$):
+
+| Nível (domínio) | rⱼ | Réplicas (Acur.) | Soma | Média ȳ.j | Efeito αⱼ |
+|---|---|---|---|---|---|
+| MovieReview (geral) | 5 | (0,914; 0,913; 0,912; 0,914; 0,913) | 4,566 | 0,913 | **+0,131** |
+| AGNews (geral) | 2 | (0,868; 0,869) | 1,737 | 0,868 | +0,087 |
+| Books (técnico) | 5 | (0,724; 0,723; 0,724; 0,724; 0,724) | 3,618 | 0,724 | −0,058 |
+| DBLP (técnico) | 4 | (0,646; 0,648; 0,648; 0,647) | 2,589 | 0,647 | **−0,135** |
+| **Total** | **16** | — | **12,509** | **μ = 0,782** | (Σαⱼ ponderado = 0) |
+
+> Leitura (igual ao exemplo de Jain): *em média, o consenso no MovieReview tem F1
+> 0,134 acima da média geral; no DBLP, 0,159 abaixo.* A ordem dos efeitos —
+> **MovieReview > AGNews > Books > DBLP** — é a mesma em F1 e Acurácia. (Réplicas
+> quase idênticas dentro de cada dataset ⇒ erro experimental ínfimo, ver §5.2.)
 
 ### 5.1 Premissas (verificadas antes)
 
