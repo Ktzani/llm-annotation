@@ -1,0 +1,23 @@
+from transformers import AutoModelForSequenceClassification
+
+from src.systems.fine_tune_system.training.label_schema import LabelSchema
+
+class ModelFactory:
+    def __init__(self, model_name: str, label_schema: LabelSchema):
+        self.model_name = model_name
+        self.label_schema = label_schema
+
+    def create(self):
+        model  = AutoModelForSequenceClassification.from_pretrained(
+            self.model_name,
+            num_labels=self.label_schema.num_labels(),
+            id2label=self.label_schema.id2label,
+            label2id={v: k for k, v in self.label_schema.id2label.items()},
+            dtype="auto", 
+            device_map="auto"
+        )
+        
+        if 'roberta' in self.model_name:
+            model.add_prefix_space = True
+            
+        return model 

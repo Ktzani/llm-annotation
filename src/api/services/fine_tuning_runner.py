@@ -6,7 +6,7 @@ from loguru import logger
 
 from src.api.core.state import fine_tuning_jobs
 from src.api.schemas.fine_tuning.fine_tuning import FineTuningRequest
-from src.fine_tune_system.pipeline import FineTuningConfig, FineTuningPipeline
+from src.systems.fine_tune_system.pipeline import FineTuningConfig, FineTuningPipeline
 
 
 async def run_fine_tuning_background(

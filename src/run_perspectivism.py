@@ -26,7 +26,7 @@ logger.add(
     level="INFO",
 )
 
-from src.llm_annotation_system.perspectivism.pipeline import (
+from src.systems.llm_annotation_system.perspectivism.pipeline import (
     PerspectivismConfig,
     PerspectivismPipeline,
 )

@@ -18,7 +18,7 @@ logger.add(
     level="INFO"
 )
 
-from src.fine_tune_system.pipeline import FineTuningPipeline, FineTuningConfig
+from src.systems.fine_tune_system.pipeline import FineTuningPipeline, FineTuningConfig
 
 
 def main():

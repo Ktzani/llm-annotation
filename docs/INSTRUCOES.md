@@ -18,7 +18,7 @@ Um **sistema completo** para anotação automática com LLMs open-source e fine-
 | `conflict_resolution.py` | Estratégias de resolução de conflitos |
 | `evaluation_metrics.py` | Nomes das métricas de avaliação |
 
-### Pipeline de Anotação (`src/llm_annotation_system/`)
+### Pipeline de Anotação (`src/systems/llm_annotation_system/`)
 
 | Módulo | Função |
 |--------|--------|
@@ -30,7 +30,7 @@ Um **sistema completo** para anotação automática com LLMs open-source e fine-
 | `consensus/consensus_calculator.py` | Calcula consenso e aplica estratégia de resolução |
 | `consensus/consensus_metrics.py` | Cohen's Kappa, Fleiss' Kappa, Krippendorff's Alpha |
 
-### Pipeline de Fine-Tuning (`src/fine_tune_system/`)
+### Pipeline de Fine-Tuning (`src/systems/fine_tune_system/`)
 
 | Módulo | Função |
 |--------|--------|

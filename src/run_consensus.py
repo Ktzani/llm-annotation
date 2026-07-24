@@ -27,7 +27,7 @@ logger.add(
     level="INFO",
 )
 
-from src.llm_annotation_system.consensus.pipeline import ConsensusConfig, ConsensusPipeline
+from src.systems.llm_annotation_system.consensus.pipeline import ConsensusConfig, ConsensusPipeline
 
 
 def main() -> None:
