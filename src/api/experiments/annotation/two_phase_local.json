@@ -1,7 +1,7 @@
 {
-    "dataset_name": "agnews",
+    "dataset_name": "books",
     "dataset_config": {
-        "sample_size": 200,
+        "sample_size": 100,
         "random_state": 42
     },
     "models": [

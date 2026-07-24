@@ -26,6 +26,7 @@ from src.api.schemas.annotation_experiment.dataset import DatasetConfig
 from src.api.services.prompt_factory import get_prompt_template
 from src.utils.data_loader import load_hf_dataset_as_dataframe
 from src.utils.get_text_id_from_text import get_text_id_from_text
+from src.systems.llm_annotation_system.pipeline import AnnotationConfig
 from src.systems.llm_annotation_system.annotation.llm_annotator import LLMAnnotator
 from src.systems.llm_annotation_system.core.evaluate_model_metrics import evaluate_model_metrics
 
@@ -37,7 +38,7 @@ from src.systems.class_filter_system.validation.recall_at_k import recall_at_k_s
 class TwoPhaseAnnotationPipeline:
     """Orquestra a anotação em 2 fases por fold, respeitando a divisão existente."""
 
-    def __init__(self, config):
+    def __init__(self, config: AnnotationConfig):
         """
         Args:
             config: objeto AnnotationConfig (o mesmo construído por run_annotation),
@@ -52,9 +53,18 @@ class TwoPhaseAnnotationPipeline:
     # Descoberta de folds (mesma convenção do fine-tuning)
     # ------------------------------------------------------------------
     def _load_train_fold(self, fold: int) -> Optional[pd.DataFrame]:
-        """Carrega train_fold_{fold}.parquet como DataFrame (text, label). None se não existir."""
+        """Carrega train_fold_{fold}.parquet como DataFrame (text, label). None se não existir.
+
+        Respeita `sample_size`/`random_state` do `dataset_config` do experimento —
+        útil para limitar o tamanho do fold em smoke tests (o held-out é uma fração
+        desse total).
+        """
         hf_file = self.cf.train_fold_pattern.format(fold=fold)
-        fold_config = DatasetConfig(hf_file=hf_file, random_state=self.cf.random_state)
+        fold_config = DatasetConfig(
+            hf_file=hf_file,
+            sample_size=self.config.dataset_config.sample_size,
+            random_state=self.config.dataset_config.random_state,
+        )
         try:
             df, _categories = load_hf_dataset_as_dataframe(
                 dataset_name=self.config.dataset_name,
