@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from src.llm_annotation_system.annotation.execution_estrategy import ExecutionStrategy
+from src.systems.llm_annotation_system.annotation.execution_estrategy import ExecutionStrategy
 
 
 class AnnotationConfig(BaseModel):

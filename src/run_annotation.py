@@ -11,7 +11,7 @@ logger.add(
     level="INFO"
 )
 
-from src.llm_annotation_system.pipeline import AnnotationPipeline, AnnotationConfig
+from src.systems.llm_annotation_system.pipeline import AnnotationPipeline, AnnotationConfig
 
 
 async def main():

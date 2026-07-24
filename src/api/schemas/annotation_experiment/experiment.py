@@ -7,6 +7,7 @@ from src.api.schemas.annotation_experiment.dataset import DatasetConfig
 from src.api.schemas.annotation_experiment.cache import CacheConfig
 from src.api.schemas.annotation_experiment.annotation import AnnotationConfig
 from src.api.schemas.annotation_experiment.results import ResultsConfig
+from src.api.schemas.annotation_experiment.class_filter import ClassFilterConfig
 
 class ExperimentRequest(BaseModel):
     """
@@ -89,6 +90,15 @@ class ExperimentRequest(BaseModel):
             "Configurações de persistência dos resultados do experimento, "
             "incluindo salvamento intermediário, diretório de saída "
             "e organização dos artefatos gerados."
+        )
+    )
+
+    class_filter: ClassFilterConfig = Field(
+        default_factory=ClassFilterConfig,
+        description=(
+            "Configuração OPCIONAL da anotação em 2 fases (filtro de classes + "
+            "LLM zero-shot com espaço reduzido). Desligada por padrão "
+            "(enabled=False): o pipeline roda como o baseline."
         )
     )
 

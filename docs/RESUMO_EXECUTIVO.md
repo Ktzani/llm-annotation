@@ -56,7 +56,7 @@ Pipeline supervisionado com os rótulos de consenso:
 
 ### Módulos Principais
 
-#### Pipeline de Anotação (`src/llm_annotation_system/`)
+#### Pipeline de Anotação (`src/systems/llm_annotation_system/`)
 
 1. **annotation/llm_annotator.py**
    - Orquestração de múltiplas LLMs
@@ -72,7 +72,7 @@ Pipeline supervisionado com os rótulos de consenso:
    - Cálculo de todas as métricas de concordância
    - Identificação de instâncias problemáticas
 
-#### Pipeline de Fine-Tuning (`src/fine_tune_system/`)
+#### Pipeline de Fine-Tuning (`src/systems/fine_tune_system/`)
 
 4. **training/splits_aligner.py**
    - Alinhamento de splits HuggingFace com dados anotados
