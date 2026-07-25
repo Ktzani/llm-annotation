@@ -106,7 +106,10 @@ class AnnotationEngine:
                 f"Erro em {model} rep {rep+1}: {str(e)}",
                 exc_info=True
             )
-            return "ERROR"
+            # Degrada para rótulo inválido (-1) em vez de quebrar o run inteiro.
+            # Os chamadores esperam um dict {"label", "confidence"}; retornar a
+            # string "ERROR" fazia `a["label"]` estourar e derrubava o experimento.
+            return {"label": -1, "confidence": None}
     
     async def annotate(
         self,
