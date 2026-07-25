@@ -85,15 +85,21 @@ class TwoPhaseAnnotationPipeline:
         categories: list,
         candidates_by_text_id: Optional[dict],
         out_dir: Path,
+        checkpoint_dir: Path,
     ) -> None:
         out_dir.mkdir(parents=True, exist_ok=True)
+        checkpoint_dir.mkdir(parents=True, exist_ok=True)
 
+        # O checkpoint (intermediate.csv) vive num caminho ESTÁVEL (fora do run
+        # timestampado), keyed por k/fold/variante — assim um re-run retoma de
+        # onde parou, pulando os text_ids já anotados. Os artefatos finais
+        # (annotations.csv, model_metrics.csv) vão para `out_dir` (o run atual).
         annotator = LLMAnnotator(
             dataset_name=self.config.dataset_name,
             models=self.config.models,
             categories=categories,
             cache_dir=self.config.cache_dir,
-            results_dir=str(out_dir),
+            results_dir=str(checkpoint_dir),
             prompt_template=self.prompt_template,
             use_cache=self.config.use_cache,
             use_alternative_params=self.config.use_alternative_params,
@@ -111,6 +117,11 @@ class TwoPhaseAnnotationPipeline:
             max_concurrent_texts=self.config.max_concurrent_texts,
         )
         df_ann = df_ann.drop_duplicates(subset=["text_id"])
+
+        # Mantém só o held-out atual: se o checkpoint estável acumulou text_ids de
+        # um held-out anterior (ex.: random_state diferente), eles são descartados.
+        holdout_ids = set(df_holdout["text_id"])
+        df_ann = df_ann[df_ann["text_id"].isin(holdout_ids)]
 
         df_gt = df_holdout[["text_id", "label"]].rename(columns={"label": "ground_truth"})
         df_ann = df_ann.merge(df_gt, on="text_id", how="left")
@@ -135,13 +146,16 @@ class TwoPhaseAnnotationPipeline:
             run_baseline: se True, também anota o MESMO held-out de cada fold com
                 todas as classes (baseline comparável, mesmos textos).
         """
-        base_dir = (
-            Path(self.config.results_dir)
-            / self.config.dataset_name
-            / "two_phase"
-            / datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        two_phase_root = (
+            Path(self.config.results_dir) / self.config.dataset_name / "two_phase"
         )
+        base_dir = two_phase_root / datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         base_dir.mkdir(parents=True, exist_ok=True)
+
+        # Raiz ESTÁVEL dos checkpoints (fora do run timestampado), keyed por k —
+        # permite retomar de onde parou entre runs. Trocar k → checkpoint novo,
+        # evitando reusar anotações do k anterior.
+        checkpoint_root = two_phase_root / "_checkpoints" / f"k{self.cf.k}"
 
         recall_frames = []
         fold = 0
@@ -214,13 +228,21 @@ class TwoPhaseAnnotationPipeline:
 
             # Fase 2: LLM anota o held-out com espaço reduzido
             await self._annotate_holdout(
-                df_holdout, categories, candidates_by_text_id, fold_dir / "filtered"
+                df_holdout,
+                categories,
+                candidates_by_text_id,
+                out_dir=fold_dir / "filtered",
+                checkpoint_dir=checkpoint_root / f"fold_{fold}" / "filtered",
             )
 
             # Baseline comparável (mesmos textos, todas as classes)
             if run_baseline:
                 await self._annotate_holdout(
-                    df_holdout, categories, None, fold_dir / "baseline"
+                    df_holdout,
+                    categories,
+                    None,
+                    out_dir=fold_dir / "baseline",
+                    checkpoint_dir=checkpoint_root / f"fold_{fold}" / "baseline",
                 )
 
             fold += 1

@@ -1,5 +1,5 @@
 {
-    "dataset_name": "agnews",
+    "dataset_name": "books",
     "dataset_config": {
         "sample_size": null,
         "random_state": 42
@@ -31,7 +31,7 @@
         "enabled": true,
         "method": "logistic_regression",
         "k": 3,
-        "k_sweep": [2, 3],
+        "k_sweep": [2, 3, 4],
         "n_inner_folds": 5,
         "holdout_fold_index": 0,
         "run_baseline": false,
