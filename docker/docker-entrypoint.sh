@@ -30,7 +30,7 @@ if [ "$ENABLE_ANNOTATION" = "1" ] || [ "$ENABLE_ANNOTATION" = "true" ]; then
     export OLLAMA_NUM_PARALLEL="${OLLAMA_NUM_PARALLEL:-5}"
     export OLLAMA_FLASH_ATTENTION="${OLLAMA_FLASH_ATTENTION:-1}"
     export OLLAMA_KV_CACHE_TYPE="${OLLAMA_KV_CACHE_TYPE:-q8_0}"
-    export OLLAMA_CONTEXT_LENGTH="${OLLAMA_CONTEXT_LENGTH:-6144}"
+    export OLLAMA_CONTEXT_LENGTH="${OLLAMA_CONTEXT_LENGTH:-12288}"
     export OLLAMA_KEEP_ALIVE="${OLLAMA_KEEP_ALIVE:-24h}"
 
     echo "[entrypoint] Iniciando ollama serve em background..."

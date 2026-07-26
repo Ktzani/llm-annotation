@@ -38,7 +38,7 @@ services:
       OLLAMA_KV_CACHE_TYPE: "q8_0"
       # Contexto maior para acomodar o reasoning (deepseek-r1/qwen3 "thinking").
       # Overridável na subida: OLLAMA_CONTEXT_LENGTH=16384 docker compose ... up -d
-      OLLAMA_CONTEXT_LENGTH: "${OLLAMA_CONTEXT_LENGTH:-6144}"
+      OLLAMA_CONTEXT_LENGTH: "${OLLAMA_CONTEXT_LENGTH:-12288}"
       OLLAMA_KEEP_ALIVE: "24h"
     
     deploy:
