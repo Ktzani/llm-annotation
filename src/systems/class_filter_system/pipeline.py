@@ -171,6 +171,20 @@ class TwoPhaseAnnotationPipeline:
             df_train["text"] = df_train["text"].astype(str)
             df_train["text_id"] = df_train["text"].apply(get_text_id_from_text)
 
+            # Alguns datasets (ex.: dblp) têm textos DUPLICADOS. Dedup por text_id
+            # ANTES do split interno resolve dois problemas:
+            #   (1) held-out com text_id repetido colapsaria `candidates_by_text_id`
+            #       (dict keyed por text_id), quebrando o assert de cobertura; e
+            #   (2) vazamento — a mesma instância cair em fit E held-out faria o LR
+            #       treinar no texto que depois prevê.
+            before = len(df_train)
+            df_train = df_train.drop_duplicates(subset="text_id").reset_index(drop=True)
+            if before != len(df_train):
+                logger.warning(
+                    f"FOLD {fold}: removidas {before - len(df_train)} duplicatas de "
+                    f"text_id antes do split (evita colapso de candidatas e vazamento)"
+                )
+
             categories = sorted(df_train["label"].unique().tolist())
 
             # Split interno: fit part x held-out
