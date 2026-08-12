@@ -102,14 +102,34 @@ def _acc_f1(y_true, y_pred) -> tuple[float, float]:
 
 
 def load_recall_ceiling(run_dir: Path) -> pd.DataFrame | None:
+    """
+    Teto do filtro por k. Devolve `recall@k` MACRO (teto do f1-macro, primário) e
+    MICRO (teto da accuracy). Lida com o formato novo (colunas achatadas) e o
+    antigo (só micro, colunas mean/std/count).
+    """
     p = run_dir / "recall_at_k_aggregated.csv"
     if p.exists():
-        return pd.read_csv(p)
-    p2 = run_dir / "recall_at_k_all_folds.csv"
-    if p2.exists():
+        agg = pd.read_csv(p)
+    else:
+        p2 = run_dir / "recall_at_k_all_folds.csv"
+        if not p2.exists():
+            return None
         df = pd.read_csv(p2)
-        return df.groupby("k")["recall_at_k"].agg(["mean", "std", "count"]).reset_index()
-    return None
+        cols = [c for c in ("recall_at_k", "recall_at_k_macro") if c in df.columns]
+        agg = df.groupby("k")[cols].mean().reset_index()
+
+    out = pd.DataFrame({"k": agg["k"].astype(int)})
+    if "recall_at_k_macro_mean" in agg.columns:          # novo formato agregado
+        out["recall_macro (f1)"] = agg["recall_at_k_macro_mean"]
+        out["recall_micro (acc)"] = agg["recall_at_k_mean"]
+    elif "recall_at_k_macro" in agg.columns:             # média do all_folds
+        out["recall_macro (f1)"] = agg["recall_at_k_macro"]
+        out["recall_micro (acc)"] = agg["recall_at_k"]
+    elif "mean" in agg.columns:                          # formato antigo (micro só)
+        out["recall_micro (acc)"] = agg["mean"]
+    elif "recall_at_k" in agg.columns:
+        out["recall_micro (acc)"] = agg["recall_at_k"]
+    return out
 
 
 # ----------------------------------------------------------------------
@@ -252,7 +272,9 @@ def aggregate_by_mean(per_fold: pd.DataFrame) -> pd.DataFrame:
         delta_acc_mean=("delta_acc", "mean"),
         delta_acc_std=("delta_acc", "std"),
         filtered_f1_mean=("filtered_f1", "mean"),
+        filtered_f1_std=("filtered_f1", "std"),
         baseline_f1_mean=("baseline_f1", "mean"),
+        baseline_f1_std=("baseline_f1", "std"),
         delta_f1_mean=("delta_f1", "mean"),
         delta_f1_std=("delta_f1", "std"),
         filtered_invalid_rate_mean=("filtered_invalid_rate", "mean"),
@@ -334,19 +356,19 @@ def build_report(dataset, run_dir, baseline_dir, models, per_fold, agg, ceiling)
 
     if ceiling is not None:
         L.append("## Teto da Fase 2 — recall@k (média entre folds)\n")
-        ce = ceiling.copy()
-        if "mean" in ce.columns:
-            ce = ce.rename(columns={"mean": "recall_mean", "std": "recall_std"})
-        L.append(ce.round(4).pipe(_md_table))
+        L.append("> **macro** = teto do f1-macro (métrica primária, cada classe pesa igual); "
+                 "**micro** = teto da accuracy (ponderado por instância, favorece majoritárias).\n")
+        L.append(ceiling.round(4).pipe(_md_table))
         L.append("")
 
-    L.append("## Agregado (média entre folds)\n")
-    show = agg.copy()
+    L.append("## Agregado (média entre folds) — métrica primária: f1-macro\n")
+    L.append("> Datasets desbalanceados → **f1-macro** é a métrica de referência; accuracy vem como apoio.\n")
+    show = agg.sort_values("delta_f1_mean", ascending=False).copy()
     for c in show.columns:
         if show[c].dtype.kind == "f":
             show[c] = show[c].round(4)
-    cols = ["model", "folds", "filtered_acc_mean", "baseline_acc_mean", "delta_acc_mean",
-            "delta_acc_std", "filtered_f1_mean", "baseline_f1_mean", "delta_f1_mean",
+    cols = ["model", "folds", "filtered_f1_mean", "baseline_f1_mean", "delta_f1_mean",
+            "delta_f1_std", "filtered_acc_mean", "baseline_acc_mean", "delta_acc_mean",
             "filtered_invalid_rate_mean", "baseline_invalid_rate_mean"]
     L.append(show[cols].pipe(_md_table))
     L.append("")
@@ -355,12 +377,12 @@ def build_report(dataset, run_dir, baseline_dir, models, per_fold, agg, ceiling)
     # Matrizes de confusão (filtered) — onde o erro se concentra.
     L.append(build_confusion_section(run_dir, dataset, models))
 
-    L.append("## Por fold\n")
+    L.append("## Por fold (f1-macro primeiro)\n")
     for m in models:
         L.append(f"### {m}\n")
         sub = per_fold[per_fold["model"] == m].sort_values("fold")
-        cols = ["fold", "n_paired", "filtered_acc", "baseline_acc", "delta_acc",
-                "filtered_f1", "baseline_f1", "delta_f1"]
+        cols = ["fold", "n_paired", "filtered_f1", "baseline_f1", "delta_f1",
+                "filtered_acc", "baseline_acc", "delta_acc"]
         L.append(sub[cols].round(4).pipe(_md_table))
         L.append("")
 
@@ -436,13 +458,13 @@ def main():
         report = build_report(ds_dir.name, run_dir, baseline_dir, models, per_fold, agg, ceiling)
         (run_dir / "comparison_report.md").write_text(report, encoding="utf-8")
 
-        # eco no terminal (agregado)
-        show = agg.copy()
+        # eco no terminal (agregado, f1-macro primeiro — datasets desbalanceados)
+        show = agg.sort_values("delta_f1_mean", ascending=False).copy()
         for c in show.columns:
             if show[c].dtype.kind == "f":
                 show[c] = show[c].round(4)
-        print(show[["model", "folds", "filtered_acc_mean", "baseline_acc_mean",
-                    "delta_acc_mean", "filtered_f1_mean", "baseline_f1_mean", "delta_f1_mean"]].to_string(index=False))
+        print(show[["model", "folds", "filtered_f1_mean", "baseline_f1_mean", "delta_f1_mean",
+                    "filtered_acc_mean", "baseline_acc_mean", "delta_acc_mean"]].to_string(index=False))
         print(f"  -> {run_dir / 'comparison_report.md'}")
         print(f"  -> {run_dir / 'comparison_per_fold.csv'}")
         print(f"  -> {run_dir / 'comparison_aggregated.csv'}")

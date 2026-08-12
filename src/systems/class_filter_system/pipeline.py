@@ -268,14 +268,17 @@ class TwoPhaseAnnotationPipeline:
             )
             return base_dir
 
-        # Agregação do recall@k entre folds
+        # Agregação do recall@k entre folds (micro = teto accuracy; macro = teto f1-macro)
         df_all = pd.concat(recall_frames, ignore_index=True)
         df_all.to_csv(base_dir / "recall_at_k_all_folds.csv", index=False)
+        metric_cols = [c for c in ("recall_at_k", "recall_at_k_macro") if c in df_all.columns]
         df_agg = (
-            df_all.groupby("k")["recall_at_k"]
+            df_all.groupby("k")[metric_cols]
             .agg(["mean", "std", "count"])
             .reset_index()
         )
+        # achata o MultiIndex de colunas: recall_at_k_mean, recall_at_k_macro_mean, ...
+        df_agg.columns = ["k" if c[0] == "k" else f"{c[0]}_{c[1]}" for c in df_agg.columns]
         df_agg.to_csv(base_dir / "recall_at_k_aggregated.csv", index=False)
         logger.success(f"✓ Pipeline 2 fases finalizado em {fold} folds. Artefatos: {base_dir}")
         logger.info(f"recall@k agregado:\n{df_agg.to_string(index=False)}")
