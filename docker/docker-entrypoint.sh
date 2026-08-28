@@ -16,11 +16,17 @@ set -e
 ENABLE_ANNOTATION="${ENABLE_ANNOTATION:-0}"
 
 # ---- Modelos puxados na primeira subida ---------------------
-OLLAMA_MODELS_TO_PULL=(
-    "qwen3:8b"
-    "llama3.1:8b"
-    "deepseek-r1:8b"
-)
+# Overridavel na subida: OLLAMA_MODELS="qwen3:8b llama3.1:8b deepseek-r1:8b"
+if [ -n "$OLLAMA_MODELS" ]; then
+    # shellcheck disable=SC2206
+    OLLAMA_MODELS_TO_PULL=($OLLAMA_MODELS)
+else
+    OLLAMA_MODELS_TO_PULL=(
+        "qwen3.5:9b"
+        "gemma4:12b"
+        "granite4.1:8b"
+    )
+fi
 
 if [ "$ENABLE_ANNOTATION" = "1" ] || [ "$ENABLE_ANNOTATION" = "true" ]; then
     echo "[entrypoint] ENABLE_ANNOTATION=1 → subindo Ollama (modo anotacao)"

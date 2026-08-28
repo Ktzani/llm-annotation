@@ -107,7 +107,14 @@ class LLMProvider:
         # ------------------------------------------------------
         if provider == "ollama":
 
-            ollama_allowed = {"temperature", "num_predict", "top_p", "stop"}
+            ollama_allowed = {
+                "temperature",
+                "num_predict",
+                "top_p",
+                "top_k",
+                "stop",
+                "reasoning",
+            }
 
             ollama_params = self._filter_explicit_params(params, ollama_allowed)
 
@@ -116,8 +123,6 @@ class LLMProvider:
                 base_url=PROVIDER_CONFIGS["ollama"]["base_url"],
                 keep_alive=self.keep_alive,
                 logprobs=False,
-                # top_logprobs removido: response_processor so usa o logprob
-                # do token do label, nunca os top-K alternativos.
                 **ollama_params
             )
 

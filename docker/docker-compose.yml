@@ -36,10 +36,12 @@ services:
       OLLAMA_NUM_PARALLEL: "5"
       OLLAMA_FLASH_ATTENTION: "1"
       OLLAMA_KV_CACHE_TYPE: "q8_0"
-      # Contexto maior para acomodar o reasoning (deepseek-r1/qwen3 "thinking").
+      # Contexto maior para acomodar o reasoning.
       # Overridável na subida: OLLAMA_CONTEXT_LENGTH=16384 docker compose ... up -d
       OLLAMA_CONTEXT_LENGTH: "${OLLAMA_CONTEXT_LENGTH:-12288}"
       OLLAMA_KEEP_ALIVE: "24h"
+      # Vazio = trinca default do docker-entrypoint.sh
+      OLLAMA_MODELS: "${OLLAMA_MODELS:-}"
     
     deploy:
       resources:

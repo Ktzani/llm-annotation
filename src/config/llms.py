@@ -187,6 +187,35 @@ LLM_CONFIGS = {
         "download": "ollama pull gemma3:4b"
     },
 
+    "gemma4-12b": {
+        "provider": "ollama",
+        "model_name": "gemma4:12b",
+        "description": "Gemma 4 12B - Raciocínio explícito, família distinta das outras duas",
+        "params": {"reasoning": True},
+        "alternative_params": [
+            {"temperature": 0.2, "num_predict": 4096, "reasoning": True},
+            {"temperature": 0.4, "num_predict": 4096, "reasoning": True},
+            {"temperature": 0.7, "num_predict": 4096, "reasoning": True},
+        ],
+        "requirements": "~12GB RAM",
+        "download": "ollama pull gemma4:12b"
+    },
+
+    # -------- IBM Granite --------
+    "granite4.1-8b": {
+        "provider": "ollama",
+        "model_name": "granite4.1:8b",
+        "description": "IBM Granite 4.1 8B - Denso, Apache 2.0, sem modo de raciocínio",
+        "params": {},
+        "alternative_params": [
+            {"temperature": 0, "num_predict": 10},
+            {"temperature": 0.4, "num_predict": 150},
+            {"temperature": 0.7, "num_predict": 150},
+        ],
+        "requirements": "~8GB RAM",
+        "download": "ollama pull granite4.1:8b"
+    },
+
     # -------- Phi-3 Mini --------
     "phi3-mini": {
         "provider": "ollama",
@@ -350,6 +379,19 @@ LLM_CONFIGS = {
         "requirements": "~8GB RAM",
         "download": "ollama pull qwen3:8b"
     
+    },
+    "qwen3.5-9b": {
+        "provider": "ollama",
+        "model_name": "qwen3.5:9b",
+        "description": "Qwen 3.5 9B - Sucessor direto do Qwen 3 8B",
+        "params": {"reasoning": True},
+        "alternative_params": [
+            {"temperature": 0.2, "num_predict": 4096, "reasoning": True},
+            {"temperature": 0.4, "num_predict": 4096, "reasoning": True},
+            {"temperature": 0.7, "num_predict": 4096, "reasoning": True},
+        ],
+        "requirements": "~10GB RAM",
+        "download": "ollama pull qwen3.5:9b"
     },
     "bloomz": {
         "provider": "huggingface",
