@@ -384,7 +384,7 @@ LLM_CONFIGS = {
         "provider": "ollama",
         "model_name": "qwen3.5:9b",
         "description": "Qwen 3.5 9B - Sucessor direto do Qwen 3 8B",
-        "params": {"reasoning": "low"},
+        "params": {},
         "alternative_params": [
             {"temperature": 0.2, "num_predict": 4096, "reasoning": True},
             {"temperature": 0.4, "num_predict": 4096, "reasoning": True},
