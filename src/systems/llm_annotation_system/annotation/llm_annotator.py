@@ -257,6 +257,9 @@ class LLMAnnotator:
         buffer_lock = asyncio.Lock()
         buffer: list[dict] = []
 
+        # Descarta uma chamada por modelo ANTES de iniciar o cronômetro.
+        await self._warmup(model_strategy)
+
         completed = 0
         total_time = 0.0
         start_global = time.perf_counter()
@@ -353,6 +356,34 @@ class LLMAnnotator:
         processed_ids = set(df_existing["text_id"].tolist())
         logger.info(f"Checkpoint encontrado: {len(processed_ids)} textos já processados")
         return processed_ids, True
+
+    async def _warmup(self, model_strategy: ExecutionStrategy) -> None:
+        """
+        Faz uma anotação descartada para carregar os modelos na VRAM.
+
+        A primeira requisição a um modelo ainda não residente inclui o tempo de
+        carregar os pesos, que contaminaria o `annotation_time_sec` do primeiro
+        texto e, por consequência, o `avg_s` e o throughput da execução inteira.
+        O resultado é descartado e o tempo gasto fica fora do cronômetro.
+
+        Falha aqui não interrompe a execução: se o warm-up não funcionar, a
+        anotação segue e apenas o primeiro texto sai com o tempo inflado.
+        """
+        logger.info(f"Warm-up: carregando {len(self.models)} modelo(s) na VRAM...")
+        start = time.perf_counter()
+
+        try:
+            await self._annotate_text(
+                text="warmup",
+                num_repetitions=1,
+                model_strategy=model_strategy,
+                rep_strategy=ExecutionStrategy.SEQUENTIAL,
+            )
+        except Exception as e:
+            logger.warning(f"Warm-up falhou ({e}); seguindo com a anotação")
+            return
+
+        logger.info(f"Warm-up concluído em {time.perf_counter() - start:.2f}s")
 
     async def _annotate_text(
         self,
