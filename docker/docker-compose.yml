@@ -33,15 +33,17 @@ services:
       # ENABLE_ANNOTATION=0 → nao inicia Ollama (modo fine-tuning, GPU livre)
       ENABLE_ANNOTATION: "${ENABLE_ANNOTATION:-0}"
       # Configuração do Ollama (lida pelo docker-entrypoint.sh)
-      OLLAMA_NUM_PARALLEL: "5"
-      OLLAMA_FLASH_ATTENTION: "1"
-      OLLAMA_KV_CACHE_TYPE: "q8_0"
+      OLLAMA_NUM_PARALLEL: "${OLLAMA_NUM_PARALLEL:-16}"
+      OLLAMA_FLASH_ATTENTION: "${OLLAMA_FLASH_ATTENTION:-1}"
+      OLLAMA_KV_CACHE_TYPE: "${OLLAMA_KV_CACHE_TYPE:-q8_0}"
       # Contexto maior para acomodar o reasoning.
       # Overridável na subida: OLLAMA_CONTEXT_LENGTH=16384 docker compose ... up -d
       OLLAMA_CONTEXT_LENGTH: "${OLLAMA_CONTEXT_LENGTH:-12288}"
-      OLLAMA_KEEP_ALIVE: "24h"
+      OLLAMA_KEEP_ALIVE: "${OLLAMA_KEEP_ALIVE:-24h}"
       # Vazio = trinca default do docker-entrypoint.sh
-      OLLAMA_MODELS: "${OLLAMA_MODELS:-}"
+      ANNOTATION_MODELS: "${ANNOTATION_MODELS:-}"
+      # Saida do ollama; defina um arquivo para depurar
+      OLLAMA_LOG: "${OLLAMA_LOG:-/dev/null}"
     
     deploy:
       resources:

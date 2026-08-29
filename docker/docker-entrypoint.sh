@@ -16,10 +16,12 @@ set -e
 ENABLE_ANNOTATION="${ENABLE_ANNOTATION:-0}"
 
 # ---- Modelos puxados na primeira subida ---------------------
-# Overridavel na subida: OLLAMA_MODELS="qwen3:8b llama3.1:8b deepseek-r1:8b"
-if [ -n "$OLLAMA_MODELS" ]; then
+# Overridavel na subida: ANNOTATION_MODELS="qwen3:8b llama3.1:8b deepseek-r1:8b"
+# (nao usar OLLAMA_MODELS: e a variavel nativa do Ollama para o diretorio
+# onde os pesos sao armazenados)
+if [ -n "$ANNOTATION_MODELS" ]; then
     # shellcheck disable=SC2206
-    OLLAMA_MODELS_TO_PULL=($OLLAMA_MODELS)
+    OLLAMA_MODELS_TO_PULL=($ANNOTATION_MODELS)
 else
     OLLAMA_MODELS_TO_PULL=(
         "qwen3.5:9b"
@@ -33,7 +35,7 @@ if [ "$ENABLE_ANNOTATION" = "1" ] || [ "$ENABLE_ANNOTATION" = "true" ]; then
 
     # ---- Sobe o Ollama em background ------------------------
     export OLLAMA_HOST="0.0.0.0:11434"
-    export OLLAMA_NUM_PARALLEL="${OLLAMA_NUM_PARALLEL:-5}"
+    export OLLAMA_NUM_PARALLEL="${OLLAMA_NUM_PARALLEL:-16}"
     export OLLAMA_FLASH_ATTENTION="${OLLAMA_FLASH_ATTENTION:-1}"
     export OLLAMA_KV_CACHE_TYPE="${OLLAMA_KV_CACHE_TYPE:-q8_0}"
     export OLLAMA_CONTEXT_LENGTH="${OLLAMA_CONTEXT_LENGTH:-12288}"

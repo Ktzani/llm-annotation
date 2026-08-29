@@ -191,7 +191,7 @@ LLM_CONFIGS = {
         "provider": "ollama",
         "model_name": "gemma4:12b",
         "description": "Gemma 4 12B - Raciocínio explícito, família distinta das outras duas",
-        "params": {"reasoning": True},
+        "params": {},
         "alternative_params": [
             {"temperature": 0.2, "num_predict": 4096, "reasoning": True},
             {"temperature": 0.4, "num_predict": 4096, "reasoning": True},
@@ -384,7 +384,7 @@ LLM_CONFIGS = {
         "provider": "ollama",
         "model_name": "qwen3.5:9b",
         "description": "Qwen 3.5 9B - Sucessor direto do Qwen 3 8B",
-        "params": {"reasoning": True},
+        "params": {"reasoning": "low"},
         "alternative_params": [
             {"temperature": 0.2, "num_predict": 4096, "reasoning": True},
             {"temperature": 0.4, "num_predict": 4096, "reasoning": True},
