@@ -16,12 +16,12 @@ set -e
 ENABLE_ANNOTATION="${ENABLE_ANNOTATION:-0}"
 
 # ---- Modelos puxados na primeira subida ---------------------
-# Overridavel na subida: ANNOTATION_MODELS="qwen3:8b llama3.1:8b deepseek-r1:8b"
+# Overridavel na subida: OLLAMA_ANNOTATION_MODELS="qwen3:8b llama3.1:8b deepseek-r1:8b"
 # (nao usar OLLAMA_MODELS: e a variavel nativa do Ollama para o diretorio
 # onde os pesos sao armazenados)
-if [ -n "$ANNOTATION_MODELS" ]; then
+if [ -n "$OLLAMA_ANNOTATION_MODELS" ]; then
     # shellcheck disable=SC2206
-    OLLAMA_MODELS_TO_PULL=($ANNOTATION_MODELS)
+    OLLAMA_MODELS_TO_PULL=($OLLAMA_ANNOTATION_MODELS)
 else
     OLLAMA_MODELS_TO_PULL=(
         "qwen3.5:9b"

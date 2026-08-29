@@ -41,7 +41,7 @@ services:
       OLLAMA_CONTEXT_LENGTH: "${OLLAMA_CONTEXT_LENGTH:-12288}"
       OLLAMA_KEEP_ALIVE: "${OLLAMA_KEEP_ALIVE:-24h}"
       # Vazio = trinca default do docker-entrypoint.sh
-      ANNOTATION_MODELS: "${ANNOTATION_MODELS:-}"
+      OLLAMA_ANNOTATION_MODELS: "${OLLAMA_ANNOTATION_MODELS:-}"
       # Saida do ollama; defina um arquivo para depurar
       OLLAMA_LOG: "${OLLAMA_LOG:-/dev/null}"
     
