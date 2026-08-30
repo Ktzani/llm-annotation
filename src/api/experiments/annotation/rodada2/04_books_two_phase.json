@@ -1,0 +1,44 @@
+{
+    "dataset_name": "books",
+    "dataset_config": {
+        "sample_size": null,
+        "random_state": 42
+    },
+    "models": [
+        "qwen3-8b",
+        "gemma4-12b",
+        "granite4.1-8b"
+    ],
+    "prompt_type": "simpler",
+    "custom_prompt": "",
+    "annotation": {
+        "num_repetitions_per_llm": 1,
+        "use_alternative_params": false,
+        "model_strategy": "parallel",
+        "rep_strategy": "parallel",
+        "max_concurrent_texts": 5,
+        "keep_alive": "24h"
+    },
+    "cache": {
+        "enabled": false,
+        "dir": "/app/data/.cache"
+    },
+    "results": {
+        "intermediate": 100,
+        "dir": "/app/data/results"
+    },
+    "class_filter": {
+        "enabled": true,
+        "method": "logistic_regression",
+        "k": 3,
+        "k_sweep": [
+            2,
+            3,
+            4
+        ],
+        "n_inner_folds": 5,
+        "holdout_fold_index": 0,
+        "run_baseline": false,
+        "random_state": 42
+    }
+}

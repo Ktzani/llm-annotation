@@ -1,0 +1,34 @@
+{
+    "dataset_name": "dblp",
+    "dataset_config": {
+        "split": null,
+        "combine_splits": null,
+        "hf_file": "data.parquet",
+        "sample_size": null,
+        "random_state": 42,
+        "remove_texts": true
+    },
+    "models": [
+        "qwen3-8b",
+        "gemma4-12b",
+        "granite4.1-8b"
+    ],
+    "prompt_type": "simpler",
+    "custom_prompt": "",
+    "annotation": {
+        "num_repetitions_per_llm": 1,
+        "use_alternative_params": false,
+        "model_strategy": "parallel",
+        "rep_strategy": "parallel",
+        "max_concurrent_texts": 5,
+        "keep_alive": "24h"
+    },
+    "cache": {
+        "enabled": false,
+        "dir": "/app/data/.cache"
+    },
+    "results": {
+        "intermediate": 100,
+        "dir": "/app/data/results"
+    }
+}
