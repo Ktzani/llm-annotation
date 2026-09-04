@@ -24,7 +24,7 @@ if [ -n "$OLLAMA_ANNOTATION_MODELS" ]; then
     OLLAMA_MODELS_TO_PULL=($OLLAMA_ANNOTATION_MODELS)
 else
     OLLAMA_MODELS_TO_PULL=(
-        "qwen3.5:8b"
+        "qwen3.5:9b"
     )
 fi
 
