@@ -421,7 +421,20 @@ LLM_CONFIGS = {
         ],
         "requirements": "API HuggingFace (sem GPU local)",
         "download": "https://huggingface.co/bigscience/bloomz"
-    }
+    },
+    "ornith-1.5-9b": {
+        "provider": "ollama",
+        "model_name": "ornith-1.5:9b",
+        "description": "Ornith 1.5 9B - Fine-tune do Qwen 3.5 9B via self-improvement (arch qwen35)",
+        "params": {},
+        "alternative_params": [
+            {"temperature": 0.2, "num_predict": 4096, "reasoning": True},
+            {"temperature": 0.4, "num_predict": 4096, "reasoning": True},
+            {"temperature": 0.7, "num_predict": 4096, "reasoning": True},
+        ],
+        "requirements": "~10GB RAM",
+        "download": "ollama pull ornith-1.5:9b"
+    },
 }
 
 

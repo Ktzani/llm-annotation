@@ -1,0 +1,8 @@
+PONTOS DE ATENÇÃO DO FRAMEWORK:
+
+1) Quando for utilizar um modelo do HF, nao posso utilizar da API deles pois acabar os token! Preciso de utilizar do Transformers
+
+2) DATASET generalista e nao necessariamente do HF quando for um dataser proproietario por exemplo
+
+3) Preciso ter um forma de interromper a chamada HTTP que está rodando os modelos no docker. Hoje eu tenho que parar a aplicação para roda-la de novo
+
