@@ -215,6 +215,19 @@ LLM_CONFIGS = {
         "requirements": "~8GB RAM",
         "download": "ollama pull granite4.1:8b"
     },
+    "granite4.2-8b": {
+        "provider": "ollama",
+        "model_name": "granite4.2:8b",
+        "description": "Granite 4.2 8B - IBM, dense, sucessor do 4.1 (thinking desligado)",
+        "params": {"reasoning": False},
+        "alternative_params": [
+            {"temperature": 0.2, "num_predict": 4096, "reasoning": False},
+            {"temperature": 0.4, "num_predict": 4096, "reasoning": False},
+            {"temperature": 0.7, "num_predict": 4096, "reasoning": False},
+        ],
+        "requirements": "~8GB RAM",
+        "download": "ollama pull granite4.2:8b"
+    },
 
     # -------- Phi-3 Mini --------
     "phi3-mini": {
@@ -393,6 +406,7 @@ LLM_CONFIGS = {
         "requirements": "~10GB RAM",
         "download": "ollama pull qwen3.5:9b"
     },
+    
     "bloomz": {
         "provider": "huggingface",
         "model_name": "bigscience/bloomz",
