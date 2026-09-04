@@ -24,7 +24,7 @@ if [ -n "$OLLAMA_ANNOTATION_MODELS" ]; then
     OLLAMA_MODELS_TO_PULL=($OLLAMA_ANNOTATION_MODELS)
 else
     OLLAMA_MODELS_TO_PULL=(
-        granite4.2:8b
+        "granite4.2:8b"
     )
 fi
 
