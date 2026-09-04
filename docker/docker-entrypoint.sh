@@ -24,9 +24,7 @@ if [ -n "$OLLAMA_ANNOTATION_MODELS" ]; then
     OLLAMA_MODELS_TO_PULL=($OLLAMA_ANNOTATION_MODELS)
 else
     OLLAMA_MODELS_TO_PULL=(
-        "qwen3:8b"
-        "gemma4:12b"
-        "granite4.1:8b"
+        "qwen3.5:8b"
     )
 fi
 
@@ -35,7 +33,7 @@ if [ "$ENABLE_ANNOTATION" = "1" ] || [ "$ENABLE_ANNOTATION" = "true" ]; then
 
     # ---- Sobe o Ollama em background ------------------------
     export OLLAMA_HOST="0.0.0.0:11434"
-    export OLLAMA_NUM_PARALLEL="${OLLAMA_NUM_PARALLEL:-5}"
+    export OLLAMA_NUM_PARALLEL="${OLLAMA_NUM_PARALLEL:-15}"
     export OLLAMA_FLASH_ATTENTION="${OLLAMA_FLASH_ATTENTION:-1}"
     export OLLAMA_KV_CACHE_TYPE="${OLLAMA_KV_CACHE_TYPE:-q8_0}"
     export OLLAMA_CONTEXT_LENGTH="${OLLAMA_CONTEXT_LENGTH:-12288}"

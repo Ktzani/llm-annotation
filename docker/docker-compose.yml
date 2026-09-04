@@ -33,7 +33,7 @@ services:
       # ENABLE_ANNOTATION=0 → nao inicia Ollama (modo fine-tuning, GPU livre)
       ENABLE_ANNOTATION: "${ENABLE_ANNOTATION:-0}"
       # Configuração do Ollama (lida pelo docker-entrypoint.sh)
-      OLLAMA_NUM_PARALLEL: "${OLLAMA_NUM_PARALLEL:-5}"
+      OLLAMA_NUM_PARALLEL: "${OLLAMA_NUM_PARALLEL:-15}"
       OLLAMA_FLASH_ATTENTION: "${OLLAMA_FLASH_ATTENTION:-1}"
       OLLAMA_KV_CACHE_TYPE: "${OLLAMA_KV_CACHE_TYPE:-q8_0}"
       # Contexto maior para acomodar o reasoning.
