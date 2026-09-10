@@ -1,3 +1,14 @@
+PONTOS DE ATENÇÃO DO FRAMEWORK:
+
+1) Quando for utilizar um modelo do HF, nao posso utilizar da API deles pois acabar os token! Preciso de utilizar do Transformers
+
+2) DATASET generalista e nao necessariamente do HF quando for um dataser proproietario por exemplo
+
+3) Preciso ter um forma de interromper a chamada HTTP que está rodando os modelos no docker. Hoje eu tenho que parar a aplicação para roda-la de novo
+
+4) Criar rota para rodar consensus na API -> PRIORIDADE
+
+EXTRA:
 Implementações - Framework Annotation
 - Criar uma parse regex na propria chain para adquirir minha resposta especficia ao inves de uma função separado apenas para obter a resposta✔ 
 Link: https://chatgpt.com/share/6940b9dc-1934-800e-a4c7-64ced46ef244

@@ -9,9 +9,9 @@
         "remove_texts": true
     },
     "models": [
+        "deepseek-r1-8b",
         "qwen3-8b",
-        "gemma4-12b",
-        "granite4.1-8b"
+        "llama3.1-8b"
     ],
     "prompt_type": "simpler",
     "custom_prompt": "",
