@@ -6,6 +6,7 @@ from src.api.routes.experiments import router as experiments_router
 from src.api.routes.datasets import router as datasets_router
 from src.api.routes.health import router as health_router
 from src.api.routes.fine_tuning import router as fine_tuning_router
+from src.api.routes.consensus import router as consensus_router
 
 setup_logger()
 
@@ -19,6 +20,7 @@ setup_cors(app)
 
 app.include_router(experiments_router)
 app.include_router(fine_tuning_router)
+app.include_router(consensus_router)
 app.include_router(datasets_router)
 app.include_router(health_router)
 
@@ -35,6 +37,9 @@ async def root():
             "POST /fine-tuning": "Iniciar job de fine-tuning",
             "GET /fine-tuning/{job_id}": "Obter status do job de fine-tuning",
             "GET /fine-tuning": "Listar todos os jobs de fine-tuning",
+            "POST /consensus": "Aplicar consenso sobre as anotações de um experimento",
+            "GET /consensus/{job_id}": "Obter status do job de consenso",
+            "GET /consensus": "Listar todos os jobs de consenso",
             "GET /datasets": "Listar datasets disponíveis",
             "GET /health": "Health check"
         }

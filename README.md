@@ -226,6 +226,8 @@ poetry run uvicorn src.api.server:app --reload
 | GET | `/experiments/{id}` | Status do experimento |
 | POST | `/fine-tuning` | Iniciar job de fine-tuning |
 | GET | `/fine-tuning/{id}` | Status do fine-tuning |
+| POST | `/consensus` | Aplicar consenso sobre as anotações de um experimento |
+| GET | `/consensus/{id}` | Status do job de consenso |
 | GET | `/datasets` | Listar datasets disponíveis |
 | GET | `/health` | Health check |
 

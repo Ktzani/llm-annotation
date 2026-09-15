@@ -4,9 +4,9 @@ PONTOS DE ATENÇÃO DO FRAMEWORK:
 
 2) DATASET generalista e nao necessariamente do HF quando for um dataser proproietario por exemplo
 
-3) Preciso ter um forma de interromper a chamada HTTP que está rodando os modelos no docker. Hoje eu tenho que parar a aplicação para roda-la de novo
+3) Preciso ter um forma de interromper a chamada HTTP que está rodando os modelos no docker e inclusive os proprios modelos. Hoje eu tenho que parar a aplicação para roda-la de novo
 
-4) Criar rota para rodar consensus na API -> PRIORIDADE
+4) Criar rota para rodar consensus na API -> PRIORIDADE ✔✔
 
 EXTRA:
 Implementações - Framework Annotation
