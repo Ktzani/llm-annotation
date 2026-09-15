@@ -32,8 +32,8 @@ from src.systems.llm_annotation_system.consensus.pipeline import ConsensusConfig
 
 def main() -> None:
     # Configuração estática
-    dataset_name = "movie_review"
-    specific_date = "2026-04-09_13-17-23"
+    dataset_name = "books"
+    specific_date = "latest" 
     consensus_threshold = 0.8
     consensus_strategy = "majority_vote"
 

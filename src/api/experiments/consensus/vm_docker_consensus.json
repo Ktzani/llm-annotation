@@ -1,0 +1,8 @@
+{
+    "dataset_name": "movie_review",
+    "results_dir": "/app/data/results",
+    "specific_date": "latest",
+    "consensus_threshold": 0.8,
+    "consensus_strategy": "majority_vote",
+    "categories": null
+}
