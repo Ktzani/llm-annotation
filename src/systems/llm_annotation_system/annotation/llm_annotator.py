@@ -250,7 +250,7 @@ class LLMAnnotator:
         )
 
         file_path = self.results_dir / "intermediate.csv"
-        processed_ids, file_exists = self._load_checkpoint(file_path)
+        processed_ids = self._load_checkpoint(file_path)
 
         semaphore = asyncio.Semaphore(max_concurrent_texts)
         metrics_lock = asyncio.Lock()
@@ -266,7 +266,7 @@ class LLMAnnotator:
 
         async def process_text(text):
             """Anota um texto e adiciona ao buffer; faz flush se atingiu o lote."""
-            nonlocal completed, total_time, file_exists
+            nonlocal completed, total_time
 
             async with semaphore:
                 start = time.perf_counter()
@@ -284,9 +284,7 @@ class LLMAnnotator:
                 async with buffer_lock:
                     buffer.append(text_results)
                     if len(buffer) >= intermediate:
-                        file_exists = await self._flush_buffer(
-                            buffer, file_path, file_exists
-                        )
+                        await self._flush_buffer(buffer, file_path)
 
         # Filtra textos já presentes no checkpoint (retomada idempotente)
         tasks = [
@@ -318,7 +316,7 @@ class LLMAnnotator:
 
         # Flush do que sobrou (último lote menor que `intermediate`)
         if buffer:
-            await self._flush_buffer(buffer, file_path, file_exists)
+            await self._flush_buffer(buffer, file_path)
 
         self.cache_manager.save()
 
@@ -341,21 +339,21 @@ class LLMAnnotator:
         logger.info(f"Salvamento intermediário a cada {intermediate} textos")
         logger.info(f"Máximo de textos processados simultaneamente: {max_concurrent_texts}")
 
-    def _load_checkpoint(self, file_path: Path) -> tuple[set, bool]:
+    def _load_checkpoint(self, file_path: Path) -> set:
         """
         Carrega o checkpoint intermediário se existir.
 
         Returns:
-            (text_ids já processados, flag indicando se o arquivo existe).
-            A flag controla se a próxima escrita deve incluir o header do CSV.
+            text_ids já processados (vazio se não há checkpoint). A necessidade
+            de header é decidida na hora da escrita, em `_append_chunk`.
         """
         if not file_path.exists():
-            return set(), False
+            return set()
 
         df_existing = pd.read_csv(file_path)
         processed_ids = set(df_existing["text_id"].tolist())
         logger.info(f"Checkpoint encontrado: {len(processed_ids)} textos já processados")
-        return processed_ids, True
+        return processed_ids
 
     async def _warmup(self, model_strategy: ExecutionStrategy) -> None:
         """
@@ -439,34 +437,33 @@ class LLMAnnotator:
 
         return text_results
 
-    async def _flush_buffer(
-        self,
-        buffer: list,
-        file_path: Path,
-        file_exists: bool
-    ) -> bool:
+    @staticmethod
+    def _append_chunk(df_chunk: pd.DataFrame, file_path: Path) -> None:
+        """
+        Anexa o chunk ao CSV, escrevendo o header apenas se o arquivo estiver vazio.
+
+        A decisão do header é tomada AQUI, com o arquivo já aberto em append
+        (`tell() == 0` ⇒ arquivo novo/vazio), e não a partir de um flag
+        capturado no início da execução. O checkpoint é compartilhado por
+        dataset (`<results>/<dataset>/intermediate.csv`): duas anotações
+        concorrentes do mesmo dataset carregam o checkpoint antes de qualquer
+        flush e ambas se achariam "a primeira", gravando um header no meio do
+        arquivo — linha que sobrevive ao `drop_duplicates(text_id)` (o
+        text_id dela é a string "text_id") e contamina consenso e métricas.
+        """
+        with open(file_path, "a", newline="", encoding="utf-8") as f:
+            df_chunk.to_csv(f, header=f.tell() == 0, index=False)
+
+    async def _flush_buffer(self, buffer: list, file_path: Path) -> None:
         """
         Escreve o buffer no CSV em append e limpa o buffer.
 
         A escrita acontece numa thread separada (`asyncio.to_thread`) para
-        não bloquear o event loop. O header só é incluído na primeira
-        escrita; chamadas seguintes anexam linhas sem header.
-
-        Returns:
-            True — usado pelo chamador para atualizar `file_exists` após
-            a primeira escrita.
+        não bloquear o event loop.
         """
         # Copia + clear sob o lock do chamador para liberar o buffer
         # enquanto o I/O acontece em background.
         df_chunk = pd.DataFrame(buffer.copy())
         buffer.clear()
 
-        await asyncio.to_thread(
-            df_chunk.to_csv,
-            file_path,
-            mode="a",
-            header=not file_exists,
-            index=False,
-            encoding="utf-8"
-        )
-        return True
+        await asyncio.to_thread(self._append_chunk, df_chunk, file_path)
