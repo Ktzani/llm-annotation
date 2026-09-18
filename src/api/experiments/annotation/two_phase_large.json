@@ -36,6 +36,6 @@
         "holdout_fold_index": 0,
         "run_baseline": false,
         "random_state": 42,
-        "resume_from": null
+        "resume_from": "2026-09-18_14-00-00"
     }
 }
