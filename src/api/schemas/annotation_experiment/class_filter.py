@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -104,4 +104,12 @@ class ClassFilterConfig(BaseModel):
     params: Dict[str, Any] = Field(
         default_factory=_default_filter_params,
         description="Hiperparâmetros específicos do método de filtro selecionado.",
+    )
+    resume_from: Optional[str] = Field(
+        default=None,
+        description=(
+            "Data da execução em <results>/<dataset>/two_phase/ a retomar do checkpoint "
+            "(ex.: '2026-09-18_14-05-38'). None (default) roda uma execução nova do zero."
+        ),
+        examples=[None, "2026-09-18_14-05-38"],
     )

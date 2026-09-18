@@ -33,8 +33,6 @@ from src.systems.class_filter_system.classifiers.factory import get_class_filter
 from src.systems.class_filter_system.folds.inner_split import inner_split
 from src.systems.class_filter_system.validation.recall_at_k import recall_at_k_sweep
 from src.systems.class_filter_system.versioning.run_versioner import TwoPhaseRunVersioner
-from src.systems.llm_annotation_system.core.model_variants import ModelVariantResolver
-from src.config.llms import LLM_CONFIGS
 
 
 class TwoPhaseAnnotationPipeline:
@@ -50,21 +48,6 @@ class TwoPhaseAnnotationPipeline:
         self.cf = config.class_filter
         self.prompt_template = get_prompt_template(config.prompt_type, config.custom_prompt)
         logger.success("✓ Setup 2 fases completo")
-
-    def _checkpoint_key(self) -> dict:
-        """Tudo que altera a anotação de um texto: modelos/params, prompt, repetições e filtro"""
-        resolver = ModelVariantResolver(self.config.use_alternative_params)
-        return {
-            "models": {
-                name: LLM_CONFIGS.get(name, {}).get("params")
-                for name in resolver.expand(self.config.models)
-            },
-            "prompt": self.prompt_template,
-            "num_repetitions": self.config.num_repetitions,
-            "class_filter": self.cf.model_dump(exclude={"enabled", "run_baseline", "k_sweep"}),
-            "sample_size": self.config.dataset_config.sample_size,
-            "random_state": self.config.dataset_config.random_state,
-        }
 
     # ------------------------------------------------------------------
     # Descoberta de folds (mesma convenção do fine-tuning)
@@ -164,11 +147,11 @@ class TwoPhaseAnnotationPipeline:
                 todas as classes (baseline comparável, mesmos textos).
         """
         versioner = TwoPhaseRunVersioner(Path(self.config.results_dir) / self.config.dataset_name)
-        base_dir = versioner.create_run_dir()
+        base_dir = versioner.get_run_dir(self.cf.resume_from)
         versioner.save_config(base_dir, self.config.request.model_dump(mode="json"))
 
-        # Checkpoint fora da execução: a mesma config retoma de onde parou
-        checkpoint_root = versioner.checkpoint_dir(self.cf.k, self._checkpoint_key())
+        # Checkpoint dentro da execução: rodada nova começa do zero, resume_from retoma
+        checkpoint_root = versioner.checkpoint_dir(base_dir)
 
         recall_frames = []
         fold = 0

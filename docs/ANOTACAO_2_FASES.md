@@ -29,7 +29,8 @@ classificador nunca vê o pedaço que prevê. O `test_fold` externo não é toca
      "k_sweep": [2, 3, 4],
      "n_inner_folds": 5,
      "holdout_fold_index": 0,
-     "random_state": 42
+     "random_state": 42,
+     "resume_from": null
    }
    ```
 
@@ -49,22 +50,18 @@ classificador nunca vê o pedaço que prevê. O `test_fold` externo não é toca
    classes, para comparação apples-to-apples. Vale para os dois caminhos (é lido
    da config, não hardcoded). Dobra o custo de chamadas ao LLM.
 
-## Saídas (`data/results/<dataset>/two_phase_<timestamp>/`)
-
-Cada execução ganha uma pasta própria ao lado das anotações normais do dataset
-(execuções antigas em `two_phase/<timestamp>/` continuam sendo lidas pelos scripts).
+## Saídas (`data/results/<dataset>/two_phase/<timestamp>/`)
 
 - `config.json` — request completo usado na execução.
 - `recall_at_k_all_folds.csv`, `recall_at_k_aggregated.csv` — teto por fold e agregado.
 - `fold_{f}/recall_at_k.csv`, `fold_{f}/filter_report.json` — Fase 1 por fold.
 - `fold_{f}/filtered/annotations.csv` + `model_metrics.csv` — Fase 2 (espaço reduzido).
 - `fold_{f}/baseline/...` — baseline (todas as classes), se `run_baseline=True`.
+- `_checkpoints/` — checkpoint da própria execução.
 
-**Checkpoint** (`data/results/<dataset>/_checkpoints_two_phase/k<k>_<hash>/`): fica fora
-da execução para retomar de onde parou. O hash vem da config (modelos + params das
-variações, prompt, repetições, filtro e amostragem): repetir a mesma config retoma;
-mudar qualquer um desses começa um checkpoint novo, sem misturar anotações.
-`checkpoint_config.json` registra a config de cada checkpoint.
+**Retomar:** cada execução nova roda do zero (o checkpoint é dela). Para continuar uma
+execução interrompida, passe a data dela em `class_filter.resume_from`
+(ex.: `"2026-09-18_14-05-38"`); com `null` (default) começa uma execução nova.
 
 ## Retrocompatibilidade
 
