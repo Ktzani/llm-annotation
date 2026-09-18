@@ -24,11 +24,7 @@ def load_hf_dataset(
     
 ) -> Tuple[List[str], List[str], Optional[List[str]]]:
     """
-    Carrega um dataset usando as configurações globais + específicas.
-
-    A origem vem de `source` na config do dataset: "hf" (default — HuggingFace
-    Hub) ou "local" (arquivos em disco, ex.: datasets proprietários; ver
-    `src/utils/local_datasets.py`).
+    Carrega um dataset (HF ou local) usando as configurações globais + específicas.
     """
     # ------------------------------
     # 1. Buscar config do dataset
@@ -140,8 +136,7 @@ def load_hf_dataset(
                 categories = sorted(list(set(dataset[label_column])))
                 logger.info(f"Categorias extraídas automaticamente: {categories}")
             elif LABEL_MEANINGS.get(dataset_name):
-                # Sem ground truth (anotação do zero): as classes válidas são as
-                # do mapeamento de rótulos.
+                # Sem ground truth: classes vêm do LABEL_MEANINGS
                 categories = sorted(int(k) for k in LABEL_MEANINGS[dataset_name])
                 logger.info(f"Categorias obtidas de LABEL_MEANINGS: {categories}")
             else:

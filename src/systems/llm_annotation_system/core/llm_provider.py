@@ -139,8 +139,7 @@ class LLMProvider:
         # TRANSFORMERS (modelos do HF rodando LOCALMENTE)
         # ------------------------------------------------------
         elif provider == "transformers":
-            # Import tardio: evita carregar torch/transformers quando só
-            # providers remotos (Ollama/Groq) são usados.
+            # Import tardio: só carrega torch/transformers quando usado
             from src.systems.llm_annotation_system.core.transformers_chat_model import TransformersChatModel
 
             transformers_allowed = {
@@ -161,8 +160,7 @@ class LLMProvider:
             )
 
         # ------------------------------------------------------
-        # HUGGINGFACE HUB (API inference — consome créditos do HF;
-        # para modelos do HF prefira o provider "transformers")
+        # HUGGINGFACE HUB (API inference - consome créditos)
         # ------------------------------------------------------
         elif provider == "huggingface":
             if ChatHuggingFace is None or HuggingFaceEndpoint is None:

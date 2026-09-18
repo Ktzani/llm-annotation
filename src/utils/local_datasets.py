@@ -1,37 +1,5 @@
 """
-Datasets locais / proprietários (fora do HuggingFace Hub)
-
-Um dataset local é registrado por um manifesto `dataset.json` dentro de uma
-pasta em `LOCAL_DATASETS_DIR` (default: `<projeto>/data/datasets`, que fica fora
-do git e é montada no Docker em `/app/data/datasets`). O nome da pasta é o
-`dataset_name` usado nos experimentos (anotação, consenso, fine-tuning):
-
-    data/datasets/
-      meu_dataset/
-        dataset.json          ← manifesto
-        data.csv              ← textos a anotar (hf_file/split resolvem aqui)
-        train_fold_0.csv      ← (opcional) folds p/ fine-tuning e 2 fases
-        test_fold_0.csv
-
-Manifesto (`dataset.json`):
-
-    {
-      "path": "data.csv",              # opcional: arquivo ou pasta, relativo ao manifesto (default: a pasta)
-      "text_column": "texto",
-      "label_column": "classe",        # ou null se não houver ground truth
-      "label_meanings": {"0": "financeiro", "1": "suporte técnico"},
-      "prompt": "Customer ticket",     # descrição do tipo de texto usada no prompt
-      "description": "Tickets internos de suporte",
-      "read_kwargs": {"sep": ";"}      # opcional: repassado ao pandas.read_csv (CSV/TSV)
-    }
-
-Os rótulos podem vir como inteiros (0, 1, ...) ou como os nomes presentes em
-`label_meanings` ("financeiro", ...): são convertidos para os códigos inteiros
-usados pelo resto do framework.
-
-Datasets locais também podem ser declarados direto em `DATASETS`
-(`src/config/datasets_collected.py`) com `"source": "local"` e `"path"` absoluto,
-junto de uma entrada em `LABEL_MEANINGS`.
+Local Datasets - Registra e carrega datasets locais/proprietários (manifesto em docs/GUIA_DATASETS.md)
 """
 
 import json
@@ -48,14 +16,14 @@ from src.config.datasets_collected import DATASETS, LABEL_MEANINGS
 MANIFEST_NAME = "dataset.json"
 DEFAULT_DATA_STEM = "data"
 
-# Ordem de preferência ao resolver um arquivo pelo nome sem extensão.
+# Ordem de preferência ao resolver um arquivo sem extensão
 SUPPORTED_EXTENSIONS = (".parquet", ".csv", ".tsv", ".jsonl", ".json", ".xlsx", ".xls")
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 def local_datasets_dir() -> Path:
-    """Pasta raiz dos datasets locais (sobrescrevível por `LOCAL_DATASETS_DIR`)."""
+    """Pasta raiz dos datasets locais (env LOCAL_DATASETS_DIR)"""
     return Path(os.getenv("LOCAL_DATASETS_DIR", _PROJECT_ROOT / "data" / "datasets"))
 
 
@@ -65,15 +33,10 @@ def local_datasets_dir() -> Path:
 
 def refresh_local_datasets() -> List[str]:
     """
-    Registra (ou atualiza) em `DATASETS` / `LABEL_MEANINGS` os datasets locais
-    descritos por manifestos. Idempotente e barato: chamado antes de cada
-    consulta ao registro, então pastas novas valem sem reiniciar a API.
-
-    Um manifesto inválido é ignorado com erro no log, sem afetar os demais.
-    Não sobrescreve datasets declarados em código (ex.: os do HF).
+    Registra os manifestos em DATASETS / LABEL_MEANINGS (sem sobrescrever os do HF)
 
     Returns:
-        Nomes dos datasets locais registrados.
+        Nomes dos datasets locais registrados
     """
     root = local_datasets_dir()
     if not root.is_dir():
@@ -109,7 +72,7 @@ _logged_problems: set = set()
 
 
 def _log_once(manifest_path: Path, level: str, message: str) -> None:
-    """O registro é reescaneado a cada consulta: loga cada problema uma vez por versão do manifesto."""
+    """Loga cada problema uma única vez por versão do manifesto"""
     key = (str(manifest_path), manifest_path.stat().st_mtime, message)
     if key not in _logged_problems:
         _logged_problems.add(key)
@@ -117,6 +80,7 @@ def _log_once(manifest_path: Path, level: str, message: str) -> None:
 
 
 def _read_manifest(manifest_path: Path) -> tuple[Dict, Dict[str, str]]:
+    """Lê e valida o dataset.json"""
     with open(manifest_path, "r", encoding="utf-8") as f:
         spec = json.load(f)
 
@@ -162,20 +126,15 @@ def load_local_dataframe(
     combine_splits: Optional[List[str]] = None,
 ) -> pd.DataFrame:
     """
-    Carrega um dataset local como DataFrame, espelhando as opções do HF:
+    Carrega um dataset local como DataFrame
 
-    - `hf_file`: arquivo dentro da pasta do dataset (ex.: "train_fold_0.parquet").
-    - `combine_splits`: concatena os arquivos cujo nome é o split (train.csv + test.csv).
-    - `split`: um único arquivo com esse nome.
-    - nenhum: o próprio arquivo de `path`, ou `data.*` / o único arquivo da pasta.
+    Args:
+        dataset_name: Nome do dataset registrado
+        spec: Config do dataset (DATASETS[dataset_name])
+        hf_file / split / combine_splits: Arquivo(s) da pasta do dataset, como no HF
 
-    Nomes são resolvidos pela extensão exata e, se não existir, pelo mesmo nome
-    com qualquer extensão suportada — "train_fold_0.parquet" encontra
-    "train_fold_0.csv". Assim os folds do fine-tuning/2 fases funcionam sem
-    mudar a convenção de nomes.
-
-    Os rótulos são validados e convertidos para os códigos inteiros de
-    `LABEL_MEANINGS[dataset_name]`.
+    Returns:
+        DataFrame com os rótulos convertidos para os códigos de LABEL_MEANINGS
     """
     root = Path(spec["path"])
     if not root.exists():
@@ -217,7 +176,7 @@ def load_local_dataframe(
             f"Colunas disponíveis: {list(df.columns)}"
         )
 
-    # Textos vazios não têm o que anotar e quebrariam o text_id.
+    # Textos vazios não têm o que anotar
     empty = df[text_column].isna() | (df[text_column].astype(str).str.strip() == "")
     if empty.any():
         logger.warning(f"Removidas {int(empty.sum())} linhas com texto vazio")
@@ -240,11 +199,7 @@ def load_local_dataframe(
 
 
 def encode_labels(labels: pd.Series, label_meanings: Dict[str, str], label_column: str) -> pd.Series:
-    """
-    Converte rótulos (inteiros, strings numéricas ou nomes de classe) para os
-    códigos inteiros de `label_meanings`. Falha com a lista dos valores
-    desconhecidos em vez de gerar ground truth silenciosamente errado.
-    """
+    """Converte rótulos (código ou nome da classe) para os códigos de label_meanings"""
     if labels.isna().any():
         raise ValueError(
             f"{int(labels.isna().sum())} linhas sem rótulo na coluna '{label_column}'. "
@@ -281,6 +236,7 @@ def encode_labels(labels: pd.Series, label_meanings: Dict[str, str], label_colum
 
 
 def _resolve_file(base_dir: Path, name: str) -> Path:
+    """Acha o arquivo pelo nome exato ou mesmo nome com outra extensão (train_fold_0.parquet → .csv)"""
     candidate = base_dir / name
     if candidate.is_file() and candidate.name != MANIFEST_NAME:
         return candidate
@@ -297,7 +253,7 @@ def _resolve_file(base_dir: Path, name: str) -> Path:
 
 
 def _find_default_file(base_dir: Path) -> Path:
-    """`data.*` se existir; senão o único arquivo de dados da pasta."""
+    """data.* se existir; senão o único arquivo de dados da pasta"""
     try:
         return _resolve_file(base_dir, DEFAULT_DATA_STEM)
     except FileNotFoundError:
@@ -321,8 +277,7 @@ def _data_files(base_dir: Path) -> List[str]:
 
 
 def _read_file(path: Path, read_kwargs: Dict) -> pd.DataFrame:
-    """`read_kwargs` vale só para CSV/TSV (sep, encoding, decimal...), para não
-    quebrar a leitura de um parquet na mesma pasta."""
+    """Lê o arquivo pela extensão (read_kwargs só vale para CSV/TSV)"""
     suffix = path.suffix.lower()
 
     if suffix == ".parquet":

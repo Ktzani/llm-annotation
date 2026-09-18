@@ -1,15 +1,5 @@
 """
-Transformers Chat Model - Executa modelos do HuggingFace LOCALMENTE via `transformers`
-
-Alternativa ao provider "huggingface" (Inference API), que consome créditos do
-HF a cada chamada. Aqui os pesos são baixados uma única vez para o cache do HF
-(`HF_HOME`) e a inferência roda na GPU/CPU da máquina.
-
-A resposta segue o mesmo contrato usado pelo `AnnotationEngine` para as demais
-chains LangChain: `content` (resposta final), e em `response_metadata` as chaves
-`thinking` (raciocínio entre <think>...</think>, se houver) e `logprobs`
-(lista de {"token", "logprob"} dos tokens da resposta final), consumidos pelo
-`ResponseProcessor` para calcular a confiança do rótulo.
+Transformers Chat Model - Executa modelos do HuggingFace localmente (sem Inference API)
 """
 
 import asyncio
@@ -39,11 +29,8 @@ _ROLE_MAP = {"human": "user", "ai": "assistant", "system": "system"}
 
 class _LoadedModel:
     """
-    Pesos + tokenizer de um modelo carregado, com um executor de 1 thread.
-
-    O executor serializa as gerações do mesmo modelo (a GPU não ganha nada com
-    `generate` concorrente sobre os mesmos pesos) sem bloquear o event loop:
-    enquanto um modelo local gera, chamadas a outros providers seguem em paralelo.
+    Pesos + tokenizer de um modelo carregado
+    O executor de 1 thread serializa as gerações do modelo sem bloquear o event loop
     """
 
     def __init__(self, model_name: str, model: Any, tokenizer: Any):
@@ -56,28 +43,23 @@ class _LoadedModel:
         weakref.finalize(self, self.executor.shutdown, wait=False)
 
 
-# Referências fracas: variações do mesmo modelo (ex.: `_alt1`, `_alt2`) e folds
-# da anotação em 2 fases reutilizam os mesmos pesos enquanto houver um annotator
-# vivo usando-os; quando ninguém mais referencia, a VRAM é liberada — importante
-# na API, onde o processo vive entre experimentos.
+# Referência fraca: variações (_alt) reutilizam os pesos e a VRAM é liberada quando ninguém mais usa
 _REGISTRY: "weakref.WeakValueDictionary[Tuple[str, str], _LoadedModel]" = weakref.WeakValueDictionary()
 _REGISTRY_LOCK = threading.Lock()
 
 
 def _hf_token() -> Optional[str]:
-    """Token só é necessário para BAIXAR modelos gated (ex.: meta-llama); a inferência é local."""
+    """Token só é usado para baixar modelos gated"""
     return os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACEHUB_API_TOKEN") or None
 
 
 def load_transformers_model(model_name: str, load_params: Optional[Dict[str, Any]] = None) -> _LoadedModel:
     """
-    Carrega (ou reutiliza) um modelo causal do HF Hub/disco.
+    Carrega (ou reutiliza) um modelo do HF Hub ou de um caminho local
 
     Args:
-        model_name: repo_id no HF Hub (ex.: "meta-llama/Llama-3.1-8B-Instruct")
-            ou caminho local para um checkpoint.
-        load_params: kwargs repassados ao `from_pretrained` (sobrescrevem
-            DEFAULT_LOAD_PARAMS). Ex.: {"dtype": "bfloat16", "device_map": "cuda:0"}.
+        model_name: repo_id do HF Hub ou caminho do checkpoint
+        load_params: kwargs do from_pretrained (sobrescrevem DEFAULT_LOAD_PARAMS)
     """
     params = {**DEFAULT_LOAD_PARAMS, **(load_params or {})}
     key = (model_name, json.dumps(params, sort_keys=True, default=str))
@@ -88,7 +70,7 @@ def load_transformers_model(model_name: str, load_params: Optional[Dict[str, Any
             logger.debug(f"Transformers: reutilizando {model_name} já carregado")
             return loaded
 
-        # Libera modelos órfãos (sem annotator vivo) antes de ocupar mais VRAM.
+        # Libera modelos sem uso antes de ocupar mais VRAM
         gc.collect()
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
@@ -111,17 +93,8 @@ def load_transformers_model(model_name: str, load_params: Optional[Dict[str, Any
 
 class _ChosenTokenLogprobs(LogitsProcessor):
     """
-    Registra o logprob de cada token gerado sem acumular os logits do vocabulário
-    inteiro por passo (o que `output_logits=True` faria — GBs em respostas longas
-    de modelos com raciocínio).
-
-    No passo t o processor recebe os scores do passo t; o token escolhido só
-    aparece em `input_ids` no passo t+1. Por isso guarda o log-softmax do passo
-    anterior e, ao fim da geração, `finalize` resolve o último token.
-
-    Roda depois dos processors padrão (ex.: repetition_penalty) e antes de
-    temperature/top-k/top-p — o logprob reflete a distribuição do modelo, não a
-    distribuição de amostragem.
+    Registra o logprob de cada token gerado sem guardar os logits de todos os passos
+    O token escolhido só aparece no passo seguinte, por isso guarda o log-softmax anterior
     """
 
     def __init__(self):
@@ -135,6 +108,7 @@ class _ChosenTokenLogprobs(LogitsProcessor):
         return scores
 
     def finalize(self, last_token_id: int) -> List[float]:
+        """Resolve o logprob do último token gerado"""
         if self._prev is not None:
             self.logprobs.append(self._prev[last_token_id].item())
             self._prev = None
@@ -143,9 +117,8 @@ class _ChosenTokenLogprobs(LogitsProcessor):
 
 class TransformersChatModel(BaseChatModel):
     """
-    Chat model LangChain que executa um modelo do HF localmente com `transformers`.
-
-    Compatível com `prompt | llm` (ver `LLMProvider.create_chain`).
+    Chat model LangChain que executa um modelo do HF localmente
+    Responsabilidades: aplicar chat template, gerar, separar thinking e calcular logprobs
     """
 
     model_name: str = Field(..., description="repo_id do HF Hub ou caminho local do checkpoint")
@@ -155,8 +128,7 @@ class TransformersChatModel(BaseChatModel):
     _loaded: _LoadedModel = PrivateAttr()
 
     def model_post_init(self, __context: Any) -> None:
-        # Carrega na inicialização (e não na 1ª chamada): erros de download,
-        # modelo gated ou falta de memória aparecem antes de começar a anotação.
+        # Carrega já na inicialização para falhar antes de começar a anotação
         super().model_post_init(__context)
         self._loaded = load_transformers_model(self.model_name, self.load_params)
 
@@ -178,8 +150,6 @@ class TransformersChatModel(BaseChatModel):
         run_manager: Any = None,
         **kwargs: Any,
     ) -> ChatResult:
-        # Mesmo caminho síncrono também passa pelo executor do modelo, para nunca
-        # rodar dois `generate` simultâneos sobre os mesmos pesos.
         return self._loaded.executor.submit(self._generate_sync, messages, stop).result()
 
     async def _agenerate(
@@ -238,7 +208,7 @@ class TransformersChatModel(BaseChatModel):
         return ChatResult(generations=[ChatGeneration(message=message)])
 
     def _encode(self, messages: List[BaseMessage]) -> Dict[str, torch.Tensor]:
-        """Aplica o chat template do modelo; sem template (modelos base), usa o texto cru."""
+        """Aplica o chat template do modelo (ou usa o texto cru se não houver)"""
         tokenizer = self._loaded.tokenizer
 
         if getattr(tokenizer, "chat_template", None):
@@ -254,14 +224,7 @@ class TransformersChatModel(BaseChatModel):
         return tokenizer(prompt, return_tensors="pt")
 
     def _build_generation_kwargs(self) -> Dict[str, Any]:
-        """
-        Traduz os params do config para kwargs do `generate`.
-
-        - temperature <= 0 → decodificação gulosa (determinística).
-        - temperature > 0 sem `do_sample` explícito → amostragem.
-        - Em modo guloso zera temperature/top_p/top_k para não herdar os valores
-          de amostragem do `generation_config` do modelo (e evitar warnings).
-        """
+        """Traduz os params do config para o generate (temperature <= 0 → guloso)"""
         params = dict(self.generation_params)
         params.setdefault("max_new_tokens", DEFAULT_MAX_NEW_TOKENS)
 
@@ -271,6 +234,7 @@ class TransformersChatModel(BaseChatModel):
         elif temperature is not None:
             params.setdefault("do_sample", True)
 
+        # Não herda a amostragem do generation_config do modelo no modo guloso
         if params.get("do_sample") is False:
             params.update({"temperature": None, "top_p": None, "top_k": None})
 
@@ -283,13 +247,7 @@ class TransformersChatModel(BaseChatModel):
     def _split_thinking(
         self, new_ids: List[int], logprobs: List[float]
     ) -> Tuple[Optional[str], str, List[int], List[float]]:
-        """
-        Separa o raciocínio (<think>...</think>) da resposta final.
-
-        Alguns templates (ex.: DeepSeek-R1-Distill) já abrem o <think> no prompt,
-        então a saída só contém o fechamento. Separar aqui evita que números do
-        raciocínio sejam extraídos como rótulo pelo `ResponseProcessor`.
-        """
+        """Separa o raciocínio (<think>...</think>) da resposta final"""
         tokenizer = self._loaded.tokenizer
         end_think_id = tokenizer.convert_tokens_to_ids("</think>")
         has_end_token = (
@@ -309,8 +267,7 @@ class TransformersChatModel(BaseChatModel):
         text = tokenizer.decode(new_ids, skip_special_tokens=True)
         if "</think>" in text:
             thinking, content = text.rsplit("</think>", 1)
-            # Sem fronteira em nível de token: logprobs ficam de fora para não
-            # casar um número do raciocínio como token do rótulo.
+            # Sem fronteira por token: descarta logprobs para não pegar número do raciocínio
             return thinking.replace("<think>", "").strip(), content.strip(), [], []
 
         return None, text.strip(), new_ids, logprobs

@@ -1,6 +1,8 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from typing import Optional, List, Dict, Any
 from datetime import datetime
+
+from src.systems.llm_annotation_system.core.model_variants import ModelVariantResolver
 
 from src.api.schemas.annotation_experiment.prompt_enum import PromptType
 from src.api.schemas.annotation_experiment.dataset import DatasetConfig
@@ -102,6 +104,12 @@ class ExperimentRequest(BaseModel):
             "(enabled=False): o pipeline roda como o baseline."
         )
     )
+
+    @model_validator(mode="after")
+    def _validate_alternative_params(self) -> "ExperimentRequest":
+        """Valida se as variações escolhidas existem para os modelos"""
+        ModelVariantResolver(self.annotation.use_alternative_params).resolve(self.models)
+        return self
 
 
 
