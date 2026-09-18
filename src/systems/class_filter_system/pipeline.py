@@ -16,7 +16,6 @@ comparável sobre exatamente os mesmos textos.
 import sys
 import json
 from pathlib import Path
-from datetime import datetime
 from typing import Optional
 
 import pandas as pd
@@ -33,6 +32,9 @@ from src.systems.llm_annotation_system.core.evaluate_model_metrics import evalua
 from src.systems.class_filter_system.classifiers.factory import get_class_filter
 from src.systems.class_filter_system.folds.inner_split import inner_split
 from src.systems.class_filter_system.validation.recall_at_k import recall_at_k_sweep
+from src.systems.class_filter_system.versioning.run_versioner import TwoPhaseRunVersioner
+from src.systems.llm_annotation_system.core.model_variants import ModelVariantResolver
+from src.config.llms import LLM_CONFIGS
 
 
 class TwoPhaseAnnotationPipeline:
@@ -48,6 +50,21 @@ class TwoPhaseAnnotationPipeline:
         self.cf = config.class_filter
         self.prompt_template = get_prompt_template(config.prompt_type, config.custom_prompt)
         logger.success("✓ Setup 2 fases completo")
+
+    def _checkpoint_key(self) -> dict:
+        """Tudo que altera a anotação de um texto: modelos/params, prompt, repetições e filtro"""
+        resolver = ModelVariantResolver(self.config.use_alternative_params)
+        return {
+            "models": {
+                name: LLM_CONFIGS.get(name, {}).get("params")
+                for name in resolver.expand(self.config.models)
+            },
+            "prompt": self.prompt_template,
+            "num_repetitions": self.config.num_repetitions,
+            "class_filter": self.cf.model_dump(exclude={"enabled", "run_baseline", "k_sweep"}),
+            "sample_size": self.config.dataset_config.sample_size,
+            "random_state": self.config.dataset_config.random_state,
+        }
 
     # ------------------------------------------------------------------
     # Descoberta de folds (mesma convenção do fine-tuning)
@@ -146,16 +163,12 @@ class TwoPhaseAnnotationPipeline:
             run_baseline: se True, também anota o MESMO held-out de cada fold com
                 todas as classes (baseline comparável, mesmos textos).
         """
-        two_phase_root = (
-            Path(self.config.results_dir) / self.config.dataset_name / "two_phase"
-        )
-        base_dir = two_phase_root / datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        base_dir.mkdir(parents=True, exist_ok=True)
+        versioner = TwoPhaseRunVersioner(Path(self.config.results_dir) / self.config.dataset_name)
+        base_dir = versioner.create_run_dir()
+        versioner.save_config(base_dir, self.config.request.model_dump(mode="json"))
 
-        # Raiz ESTÁVEL dos checkpoints (fora do run timestampado), keyed por k —
-        # permite retomar de onde parou entre runs. Trocar k → checkpoint novo,
-        # evitando reusar anotações do k anterior.
-        checkpoint_root = two_phase_root / "_checkpoints" / f"k{self.cf.k}"
+        # Checkpoint fora da execução: a mesma config retoma de onde parou
+        checkpoint_root = versioner.checkpoint_dir(self.cf.k, self._checkpoint_key())
 
         recall_frames = []
         fold = 0

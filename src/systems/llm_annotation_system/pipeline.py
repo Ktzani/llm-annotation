@@ -80,6 +80,7 @@ class AnnotationConfig:
         logger.info(f"Configurações carregadas de: {config_path}")
 
     def _apply_experiment(self, exp: ExperimentRequest) -> None:
+        self.request = exp
         self.dataset_name = exp.dataset_name
         self.models = exp.models
         self.prompt_type = exp.prompt_type

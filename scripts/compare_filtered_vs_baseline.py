@@ -21,7 +21,7 @@ Uso
 ---
     python -m scripts.compare_filtered_vs_baseline
     python -m scripts.compare_filtered_vs_baseline --datasets books
-    python -m scripts.compare_filtered_vs_baseline --run <path/two_phase/<ts>> --baseline <dir_ou_csv>
+    python -m scripts.compare_filtered_vs_baseline --run <path/two_phase_<ts>> --baseline <dir_ou_csv>
 """
 import argparse
 from pathlib import Path
@@ -41,12 +41,22 @@ INVALID = -1
 # ----------------------------------------------------------------------
 # Descoberta de diretórios
 # ----------------------------------------------------------------------
+TWO_PHASE_PREFIX = "two_phase_"   # <dataset>/two_phase_<data>/
+LEGACY_TWO_PHASE_DIR = "two_phase"  # formato antigo: <dataset>/two_phase/<data>/
+
+
+def two_phase_runs(dataset_dir: Path) -> list[Path]:
+    """Runs de 2 fases do dataset (formato novo e antigo), do mais recente ao mais antigo."""
+    runs = [d for d in dataset_dir.glob(f"{TWO_PHASE_PREFIX}*") if d.is_dir()]
+    legacy = dataset_dir / LEGACY_TWO_PHASE_DIR
+    if legacy.is_dir():
+        runs += [d for d in legacy.iterdir() if d.is_dir() and not d.name.startswith("_")]
+    return sorted(runs, key=lambda d: d.name.removeprefix(TWO_PHASE_PREFIX), reverse=True)
+
+
 def latest_two_phase_run(dataset_dir: Path) -> Path | None:
     """Último run de 2 fases com ao menos um fold_*/filtered/annotations.csv."""
-    tp = dataset_dir / "two_phase"
-    if not tp.is_dir():
-        return None
-    for run in sorted([d for d in tp.iterdir() if d.is_dir()], reverse=True):
+    for run in two_phase_runs(dataset_dir):
         if any(run.glob("fold_*/filtered/annotations.csv")):
             return run
     return None
@@ -55,7 +65,10 @@ def latest_two_phase_run(dataset_dir: Path) -> Path | None:
 def latest_baseline_dir(dataset_dir: Path) -> Path | None:
     """Último diretório de baseline do dataset que contenha `annotations.csv`."""
     for d in sorted(
-        [d for d in dataset_dir.iterdir() if d.is_dir() and d.name != "two_phase"],
+        [
+            d for d in dataset_dir.iterdir()
+            if d.is_dir() and not d.name.startswith((LEGACY_TWO_PHASE_DIR, "_"))
+        ],
         reverse=True,
     ):
         if (d / "annotations.csv").exists():
@@ -392,7 +405,7 @@ def build_report(dataset, run_dir, baseline_dir, models, per_fold, agg, ceiling)
 def discover_datasets(results_root: Path) -> list[Path]:
     return sorted(
         d for d in results_root.iterdir()
-        if d.is_dir() and (d / "two_phase").is_dir()
+        if d.is_dir() and two_phase_runs(d)
     )
 
 
