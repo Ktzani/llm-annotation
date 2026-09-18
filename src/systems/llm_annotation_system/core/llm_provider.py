@@ -3,7 +3,7 @@ LLM Provider - Gerencia inicialização e comunicação com LLMs
 """
 
 import os
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from loguru import logger
 from dotenv import load_dotenv
 import httpx
@@ -92,14 +92,23 @@ class LLMProvider:
         self._validate_required_keys(provider)
 
         try:
-            return self._create_llm_instance(provider, model_name, params)
+            return self._create_llm_instance(provider, model_name, params, config.get("load_params"))
         except Exception as e:
             logger.error(f"Erro ao inicializar {model}: {e}")
             raise
 
-    def _create_llm_instance(self, provider: str, model_name: str, params: Dict) -> Any:
+    def _create_llm_instance(
+        self,
+        provider: str,
+        model_name: str,
+        params: Dict,
+        load_params: Optional[Dict] = None,
+    ) -> Any:
         """
         Cria instância de LLM baseado no provider
+
+        Args:
+            load_params: kwargs de carregamento dos pesos (só provider "transformers")
         """
 
         # ------------------------------------------------------
@@ -127,7 +136,33 @@ class LLMProvider:
             )
 
         # ------------------------------------------------------
-        # HUGGINGFACE HUB (API inference)
+        # TRANSFORMERS (modelos do HF rodando LOCALMENTE)
+        # ------------------------------------------------------
+        elif provider == "transformers":
+            # Import tardio: evita carregar torch/transformers quando só
+            # providers remotos (Ollama/Groq) são usados.
+            from src.systems.llm_annotation_system.core.transformers_chat_model import TransformersChatModel
+
+            transformers_allowed = {
+                "max_new_tokens",
+                "temperature",
+                "top_p",
+                "top_k",
+                "do_sample",
+                "repetition_penalty",
+            }
+
+            transformers_params = self._filter_explicit_params(params, transformers_allowed)
+
+            return TransformersChatModel(
+                model_name=model_name,
+                generation_params=transformers_params,
+                load_params=load_params or {},
+            )
+
+        # ------------------------------------------------------
+        # HUGGINGFACE HUB (API inference — consome créditos do HF;
+        # para modelos do HF prefira o provider "transformers")
         # ------------------------------------------------------
         elif provider == "huggingface":
             if ChatHuggingFace is None or HuggingFaceEndpoint is None:

@@ -63,9 +63,9 @@ LLM_CONFIGS = {
         "download": "ollama pull llama3.1:8b"
     },
     "llama3.1-8b-hf": {
-        "provider": "huggingface",
+        "provider": "transformers",
         "model_name": "meta-llama/Llama-3.1-8B-Instruct",
-        "description": "Llama 3.1 8B Instruct - HuggingFace Chat API (rápido, sem reasoning)",
+        "description": "Llama 3.1 8B Instruct - HuggingFace via Transformers local (sem reasoning)",
         "params": {
             "temperature": 0.0,
             "max_new_tokens": 100,
@@ -76,7 +76,7 @@ LLM_CONFIGS = {
             {"temperature": 0.2, "max_new_tokens": 100, "do_sample": False},
             {"temperature": 0.4, "max_new_tokens": 100, "do_sample": False},
         ],
-        "requirements": "API HuggingFace (sem GPU local)",
+        "requirements": "~16GB VRAM (bf16) | modelo gated: requer HF token para baixar os pesos",
         "download": "https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct"
     },
 
@@ -311,7 +311,7 @@ LLM_CONFIGS = {
         "download": "ollama pull deepseek-v3"
     },
     "deepseek-r1-distill-llama-8b": {
-        "provider": "huggingface",
+        "provider": "transformers",
         "model_name": "deepseek-ai/DeepSeek-R1-Distill-Llama-8B",
         "description": (
             "DeepSeek R1 Distill Llama 8B - "
@@ -336,7 +336,7 @@ LLM_CONFIGS = {
                 "do_sample": True
             },
         ],
-        "requirements": "API HuggingFace (sem GPU local)",
+        "requirements": "~16GB VRAM (bf16)",
         "download": "https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Llama-8B"
     },
 
@@ -408,7 +408,7 @@ LLM_CONFIGS = {
     },
     
     "bloomz": {
-        "provider": "huggingface",
+        "provider": "transformers",
         "model_name": "bigscience/bloomz",
         "description": (
             "BLOOMZ - Família de modelos BLOOM finetunados em tarefas "
@@ -433,7 +433,7 @@ LLM_CONFIGS = {
                 "do_sample": True
             },
         ],
-        "requirements": "API HuggingFace (sem GPU local)",
+        "requirements": "~350GB VRAM (176B) - inviável localmente; para rodar, troque model_name por 'bigscience/bloomz-7b1'",
         "download": "https://huggingface.co/bigscience/bloomz"
     },
     "ornith-1.5-9b": {
@@ -474,6 +474,19 @@ PROVIDER_CONFIGS = {
         "get_key": "https://console.groq.com/keys",
     },
     
+    "transformers": {
+        "provider_name": "HuggingFace Transformers (local)",
+        "hub_url": "https://huggingface.co/models",
+        "api_key_env": "HUGGINGFACEHUB_API_TOKEN",  # só para baixar modelos gated
+        "free": True,
+        "privacy": "100% local (pesos em cache no HF_HOME)",
+        # Cada modelo pode ter "load_params" (kwargs do from_pretrained, ex.:
+        # {"dtype": "bfloat16", "device_map": "cuda:0"}), que sobrescrevem
+        # DEFAULT_LOAD_PARAMS em core/transformers_chat_model.py.
+    },
+
+    # Inference API: cada chamada consome créditos do HF — para modelos do HF
+    # use o provider "transformers".
     "huggingface": {
         "provider_name": "HuggingFace Inference API",
         "api_url": "https://huggingface.co/models",

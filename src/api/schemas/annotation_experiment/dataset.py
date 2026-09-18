@@ -8,12 +8,19 @@ class DatasetConfig(BaseModel):
 
     split: Optional[str] = Field(
         default=None,
-        description="Split principal do dataset HuggingFace a ser utilizado (ex: train, test, validation)."
+        description=(
+            "Split principal do dataset a ser utilizado (ex: train, test, validation). "
+            "Em datasets locais, é o nome do arquivo na pasta do dataset (ex: train → train.csv)."
+        )
     )
 
     hf_file: Optional[str] = Field(
         default=None,
-        description="Nome do arquivo específico a ser baixado do HuggingFace Hub (ex: data.parquet)."
+        description=(
+            "Nome do arquivo específico a ser baixado do HuggingFace Hub (ex: data.parquet). "
+            "Em datasets locais, é o arquivo dentro da pasta do dataset; se a extensão não "
+            "existir, aceita o mesmo nome com outra extensão suportada (ex: data.csv)."
+        )
     )
 
     combine_splits: Optional[List[str]] = Field(

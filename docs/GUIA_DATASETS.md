@@ -1,6 +1,7 @@
 # Guia de Datasets HuggingFace
 
 Este guia explica como configurar e usar datasets do HuggingFace (namespace `waashk`) com o sistema de anotação.
+Para datasets fora do HuggingFace (ex.: proprietários), veja [Datasets Locais / Proprietários](#datasets-locais--proprietários-fora-do-huggingface).
 
 ---
 
@@ -127,6 +128,68 @@ O arquivo `src/config/datasets_collected.py` já contém 30+ datasets configurad
 | **Livros** | `books`, `pang_movie` |
 
 Para usar um dataset já configurado, basta referenciar a chave no script de anotação.
+
+---
+
+## Datasets Locais / Proprietários (fora do HuggingFace)
+
+Datasets que não estão (ou não podem estar) no HuggingFace Hub são registrados por uma
+pasta em `data/datasets/<nome>/` com um manifesto `dataset.json`. A pasta `data/` fica
+fora do git e é montada no Docker (`/app/data`), então dados proprietários não vão para
+o repositório. A exceção é o exemplo versionado `data/datasets/exemplo_tickets/`, que traz
+um `LEIA-ME.md` com o passo a passo e é usado pelo experimento
+`src/api/experiments/annotation/exemplo_dataset_local.json`. O nome da pasta é o `dataset_name` usado em qualquer experimento
+(anotação, 2 fases, consenso, fine-tuning), sem precisar editar código nem reiniciar a API.
+
+```
+data/datasets/
+  tickets/
+    dataset.json
+    data.csv              # textos a anotar
+    train_fold_0.csv      # (opcional) folds p/ fine-tuning e anotação em 2 fases
+    test_fold_0.csv
+```
+
+`dataset.json`:
+
+```json
+{
+  "path": "data.csv",
+  "text_column": "texto",
+  "label_column": "classe",
+  "label_meanings": {"0": "financeiro", "1": "suporte técnico", "2": "comercial"},
+  "prompt": "Customer ticket",
+  "description": "Tickets internos de suporte",
+  "read_kwargs": {"sep": ";"}
+}
+```
+
+| Campo | Obrigatório | Descrição |
+|-------|-------------|-----------|
+| `text_column` | sim | Coluna com os textos |
+| `label_meanings` | sim | Código → nome de cada classe (o que aparece no prompt) |
+| `label_column` | não | Coluna com ground truth; `null` para anotar do zero |
+| `path` | não | Arquivo ou pasta, relativo ao manifesto (default: a própria pasta) |
+| `prompt` | não | Tipo de texto exibido no prompt (default: `"Text"`) |
+| `read_kwargs` | não | Repassado ao `pandas.read_csv` (CSV/TSV): `sep`, `encoding`... |
+
+- **Formatos**: `.csv`, `.tsv`, `.parquet`, `.json`, `.jsonl`, `.xlsx`/`.xls`.
+- **Rótulos**: podem ser os códigos (`0`, `1`) ou os nomes de `label_meanings`
+  (`"financeiro"`, sem diferenciar maiúsculas). Rótulo fora de `label_meanings` ou
+  vazio gera erro listando os valores problemáticos.
+- **Seleção de arquivo**: `hf_file` / `split` / `combine_splits` do experimento
+  apontam para arquivos da pasta; se a extensão pedida não existir, vale o mesmo nome
+  com outra extensão (`hf_file: "data.parquet"` encontra `data.csv`,
+  `train_fold_0.parquet` encontra `train_fold_0.csv`). Sem nenhum deles, usa o
+  arquivo de `path`, ou `data.*`, ou o único arquivo de dados da pasta.
+- **Fine-tuning / 2 fases**: exigem os folds `train_fold_{k}` / `test_fold_{k}` na pasta,
+  como nos datasets do HF.
+- **Sem ground truth**: as classes válidas saem das chaves de `label_meanings`.
+- Para usar outra pasta raiz, defina a variável de ambiente `LOCAL_DATASETS_DIR`.
+- Um nome que já existe em `datasets_collected.py` não é sobrescrito (aviso no log).
+
+Alternativa em código: uma entrada em `DATASETS` com `"source": "local"` e `"path"`
+absoluto, mais a entrada correspondente em `LABEL_MEANINGS`.
 
 ---
 

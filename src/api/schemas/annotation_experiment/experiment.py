@@ -23,8 +23,9 @@ class ExperimentRequest(BaseModel):
     dataset_name: str = Field(
         ...,
         description=(
-            "Nome do dataset no HuggingFace Hub. "
-            "Exemplos: 'sst2', 'ag_news', 'emotion'."
+            "Nome do dataset registrado: um dos datasets do HuggingFace Hub em "
+            "datasets_collected.py (ex.: 'sst2', 'agnews') ou um dataset local/proprietário "
+            "(pasta em data/datasets/<nome>/ com dataset.json)."
         )
     )
 
