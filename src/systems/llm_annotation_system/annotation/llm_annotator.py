@@ -119,7 +119,12 @@ class LLMAnnotator:
                         "provider": config["provider"],
                         "model_name": config["model_name"],
                         "description": f"{config['description']} (variação {idx+1})",
-                        "default_params": alt,
+                        # `initialize_llm` lê "params" (antes era "default_params",
+                        # e as variações rodavam com os defaults do modelo).
+                        "params": alt,
+                        # Mesmos kwargs de carregamento do modelo base: no provider
+                        # "transformers" a variação reutiliza os pesos já carregados.
+                        "load_params": config.get("load_params"),
                     }
 
                     logger.debug(f"Criada variação: {alt_name}")

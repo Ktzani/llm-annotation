@@ -191,9 +191,9 @@ Em `src/config/llms.py`:
 
 ```python
 LLM_CONFIGS["novo-modelo"] = {
-    "provider": "ollama",   # ou "huggingface", "groq"
+    "provider": "ollama",   # ou "transformers" (HF local), "groq"
     "model_name": "nome:tag",
-    "default_params": {
+    "params": {
         "temperature": 0.0,
         "num_predict": 50,
     },
