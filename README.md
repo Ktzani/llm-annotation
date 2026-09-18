@@ -202,6 +202,21 @@ poetry run python run_fine_tunning.py
 6. Treina RoBERTa-base com cross-validation de 5 folds
 7. Calcula métricas por fold e agrega resultados
 
+### Versionamento
+
+Cada execução é salva numa pasta própria dentro da anotação, sem sobrescrever as anteriores:
+
+```
+<results>/<dataset>/<data>/finetuning/
+├── v1_roberta-base_aggregated_bio-is/
+│   ├── config.json                              # request completo usado
+│   ├── roberta-base_fine_tuning_results.json
+│   └── roberta-base/fold_*/checkpoint-*
+└── v2_teste-lr-1e-4/                            # "run_name": "teste lr 1e-4"
+```
+
+Sem `run_name` no request, o nome é `<modelo>_<modo>[_<seleção de instâncias>][_single]`.
+
 ### Prevenção de Data Leakage
 
 O sistema detecta e remove automaticamente instâncias duplicadas entre treino e teste, emitindo warning em vez de erro, para garantir avaliação justa:

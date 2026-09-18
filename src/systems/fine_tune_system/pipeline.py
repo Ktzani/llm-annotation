@@ -35,6 +35,7 @@ from src.systems.llm_annotation_system.consensus.pipeline import ConsensusConfig
 
 from src.systems.fine_tune_system.core.hf_tokenizer import HFTokenizer
 from src.systems.fine_tune_system.core.model_factory import ModelFactory
+from src.systems.fine_tune_system.core.run_versioner import FineTuningRunVersioner
 
 from src.systems.fine_tune_system.training.trainer_builder import TrainerBuilder
 from src.systems.fine_tune_system.training.metrics import MetricsComputer
@@ -102,7 +103,9 @@ class FineTuningConfig:
         self.results_dir = Path(req.dataset.results_dir)
         self.specific_date = req.dataset.specific_date
         # Modelo / execução
+        self.request = req
         self.model_name = req.model_name
+        self.run_name = req.run_name
         self.run_type = req.run_type
         self.training_mode = req.training_mode
         self.max_parallel_folds = req.max_parallel_folds
@@ -128,11 +131,22 @@ class FineTuningPipeline:
     def __init__(self, config: FineTuningConfig):
         self.config = config
         self.results_dataset_path = self._get_results_path()
-        self.fine_tune_output_dir = self.results_dataset_path / "finetuning"
-        
-        self.fine_tune_output_dir.mkdir(parents=True, exist_ok=True)
-        
+        self.versioner = FineTuningRunVersioner(self.results_dataset_path / "finetuning")
+        self.fine_tune_output_dir = self._create_run_dir()
+
         logger.success("✓ Setup completo")
+
+    def _create_run_dir(self) -> Path:
+        """Cria a pasta versionada da execução (vN_<nome>) e salva a config usada"""
+        run_name = self.config.run_name or FineTuningRunVersioner.default_run_name(
+            model_name=self.config.model_name,
+            training_mode=self.config.training_mode,
+            run_type=self.config.run_type,
+            instance_selection_method=self.config.is_method if self.config.use_instance_selection else None,
+        )
+        run_dir = self.versioner.create_run_dir(run_name)
+        self.versioner.save_config(run_dir, self.config.request.model_dump(mode="json"))
+        return run_dir
     
     def _get_results_path(self) -> Path:
         """Obtém o caminho dos resultados"""

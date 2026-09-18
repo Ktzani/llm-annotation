@@ -33,7 +33,7 @@ async def run_fine_tuning_background(
         pipeline = FineTuningPipeline(ft_config)
 
         fine_tuning_jobs[job_id].progress = 0.2
-        fine_tuning_jobs[job_id].message = f"Pipeline criado. Executando run_type='{config.run_type}'..."
+        fine_tuning_jobs[job_id].message = f"Pipeline criado ({pipeline.fine_tune_output_dir.name}). Executando run_type='{config.run_type}'..."
 
         # pipeline.run() é síncrono — rodamos direto (já estamos numa background task)
         results: dict = pipeline.run(run_type=config.run_type, max_parallel_folds=config.max_parallel_folds)
@@ -44,6 +44,8 @@ async def run_fine_tuning_background(
         fine_tuning_jobs[job_id].message = "Fine-tuning concluído com sucesso"
         fine_tuning_jobs[job_id].results = {
             "dataset_name": config.dataset.dataset_name,
+            "run_name": pipeline.fine_tune_output_dir.name,
+            "output_dir": str(pipeline.fine_tune_output_dir),
             "model_name": config.model_name,
             "run_type": config.run_type,
             "max_parallel_folds": config.max_parallel_folds,

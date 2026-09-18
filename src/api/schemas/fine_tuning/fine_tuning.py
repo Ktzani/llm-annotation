@@ -28,7 +28,15 @@ class FineTuningRequest(BaseModel):
         default="roberta-base",
         description="Modelo base para fine-tuning"
     )
-    
+
+    run_name: Optional[str] = Field(
+        default=None,
+        description=(
+            "Nome da execução. Cada fine-tuning é salvo em finetuning/vN_<run_name>/ sem "
+            "sobrescrever os anteriores. Vazio: <modelo>_<modo>[_<seleção de instâncias>]."
+        ),
+    )
+
     run_type: str = Field(
         default="cross-validation",
         description="Tipo de execução: 'cross-validation' ou 'single' (teste rápido)",
