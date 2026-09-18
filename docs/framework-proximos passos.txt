@@ -8,6 +8,8 @@ PONTOS DE ATENÇÃO DO FRAMEWORK:
 
 4) Criar rota para rodar consensus na API -> PRIORIDADE ✔✔
 
+5) Criar um novo nome para cada fine-tuning. Versionar, pois farei diversos fine-tuning para uma mesma anotação
+
 EXTRA:
 Implementações - Framework Annotation
 - Criar uma parse regex na propria chain para adquirir minha resposta especficia ao inves de uma função separado apenas para obter a resposta✔ 
