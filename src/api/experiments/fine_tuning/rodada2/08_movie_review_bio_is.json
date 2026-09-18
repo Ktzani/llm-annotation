@@ -14,7 +14,6 @@
         "max_length": 256,
         "seed": 42
     },
-
     "instance_selection": {
         "enabled": true,
         "method": "bio-is",
@@ -23,9 +22,8 @@
             "theta": 0.5
         }
     },
-
     "model_name": "roberta-base",
-    "run_name": null,
+    "run_name": "roberta-base_bio-is",
     "run_type": "cross-validation",
     "training_mode": "aggregated",
     "max_parallel_folds": 5

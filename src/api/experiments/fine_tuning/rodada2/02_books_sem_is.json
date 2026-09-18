@@ -1,6 +1,6 @@
 {
     "dataset": {
-        "dataset_name": "movie_review",
+        "dataset_name": "books",
         "cache_dir": "/app/data/.cache",
         "results_dir": "/app/data/results",
         "specific_date": "latest"
@@ -14,18 +14,16 @@
         "max_length": 256,
         "seed": 42
     },
-
     "instance_selection": {
-        "enabled": true,
+        "enabled": false,
         "method": "bio-is",
         "params": {
             "beta": 0.25,
             "theta": 0.5
         }
     },
-
     "model_name": "roberta-base",
-    "run_name": null,
+    "run_name": "roberta-base",
     "run_type": "cross-validation",
     "training_mode": "aggregated",
     "max_parallel_folds": 5

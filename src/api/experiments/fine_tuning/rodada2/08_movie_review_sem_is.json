@@ -1,20 +1,19 @@
 {
     "dataset": {
         "dataset_name": "movie_review",
-        "cache_dir": "C:\\Users\\gabri\\Documents\\GitHub\\llm-annotation\\data\\.cache",
-        "results_dir": "C:\\Users\\gabri\\Documents\\GitHub\\llm-annotation\\data\\results",
-        "specific_date": "2026-04-09_13-17-23"
+        "cache_dir": "/app/data/.cache",
+        "results_dir": "/app/data/results",
+        "specific_date": "latest"
     },
     "hyperparams": {
         "learning_rate": 0.00005,
         "num_epochs": 20,
-        "train_batch_size": 32,
-        "eval_batch_size": 64,
+        "train_batch_size": 64,
+        "eval_batch_size": 128,
         "weight_decay": 0.01,
         "max_length": 256,
         "seed": 42
     },
-
     "instance_selection": {
         "enabled": false,
         "method": "bio-is",
@@ -23,10 +22,9 @@
             "theta": 0.5
         }
     },
-
     "model_name": "roberta-base",
-    "run_name": null,
-    "run_type": "single",
-    "training_mode": "perspectivism",
-    "max_parallel_folds": 1
+    "run_name": "roberta-base",
+    "run_type": "cross-validation",
+    "training_mode": "aggregated",
+    "max_parallel_folds": 5
 }
