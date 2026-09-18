@@ -13,6 +13,7 @@ import time
 from src.systems.llm_annotation_system.core.llm_provider import LLMProvider
 from src.systems.llm_annotation_system.core.cache_manager import CacheManager, LangChainCacheManager
 from src.systems.llm_annotation_system.core.response_processor import ResponseProcessor
+from src.systems.llm_annotation_system.core.model_variants import AlternativeParamsSelection, ModelVariantResolver
 from src.systems.llm_annotation_system.annotation.annotation_engine import AnnotationEngine
 from src.systems.llm_annotation_system.annotation.execution_estrategy import ExecutionStrategy
 
@@ -27,6 +28,7 @@ class LLMAnnotator:
     - LLMProvider: gerencia LLMs
     - CacheManager: gerencia cache
     - ResponseProcessor: processa respostas
+    - ModelVariantResolver: resolve variações de parâmetros (alternative_params)
     - AnnotationEngine: realiza anotações
     """
     
@@ -40,7 +42,7 @@ class LLMAnnotator:
         prompt_template = BASE_ANNOTATION_PROMPT,
         examples: Optional[List[Dict]] = None,
         use_cache: bool = True,
-        use_alternative_params: bool = False,
+        use_alternative_params: AlternativeParamsSelection = False,
         keep_alive: int | str | None = None,
         candidates_by_text_id: Optional[Dict[str, List[int]]] = None,
     ):
@@ -52,7 +54,7 @@ class LLMAnnotator:
             cache_dir: Diretório de cache
             results_dir: Diretório de resultados
             use_langchain_cache: Se True, usa cache do LangChain
-            use_alternative_params: Se True, usa alternative_params dos modelos
+            use_alternative_params: Seleção de alternative_params (ver ModelVariantResolver)
             candidates_by_text_id: Mapa opcional text_id -> classes candidatas da
                 Fase 1. Quando None (default), o LLM vê todas as classes (baseline).
         """
@@ -75,6 +77,7 @@ class LLMAnnotator:
         self.cache_manager = CacheManager(cache_dir, enabled=use_cache)
         self.langchain_cache = LangChainCacheManager(cache_dir, enabled=use_cache)
         self.response_processor = ResponseProcessor(categories)
+        self.variant_resolver = ModelVariantResolver(use_alternative_params)
         self.annotation_engine = AnnotationEngine(
             llm_provider=self.llm_provider,
             cache_manager=self.cache_manager,
@@ -85,48 +88,17 @@ class LLMAnnotator:
             candidates_by_text_id=candidates_by_text_id,
         )
         
-        # Expandir modelos com alternative_params se necessário
+        # Aplicar a seleção de alternative_params (ex.: "alt2" ou {"llama3.1-8b": "alt2"})
         if use_alternative_params:
-            self.models = self._expand_models(models)
-            logger.info(f"Alternative params ativado: {len(self.models)} variações")
-        
+            self.models = self.variant_resolver.expand(models)
+            logger.info(f"Alternative params ({use_alternative_params}): executando {self.models}")
+
         # Inicializar LLMs
         self.llms = self._initialize_llms()
-        
+
         logger.info(f"LLMAnnotator inicializado")
         logger.info(f"Modelos: {len(self.models)} | Categorias: {len(categories)}")
-        
-    @staticmethod
-    def _expand_models(models: list[str]) -> list[str]:
-        from src.config.llms import LLM_CONFIGS
-        expanded = []
 
-        for model in models:
-            if model not in LLM_CONFIGS:
-                logger.warning(f"Modelo {model} não encontrado em configs")
-                expanded.append(model)
-                continue
-            
-            config = LLM_CONFIGS[model]
-            expanded.append(model)
-
-            # Adicionando variações de parametros do modelo
-            if "alternative_params" in config:
-                for idx, alt in enumerate(config["alternative_params"]):
-                    alt_name = f"{model}_alt{idx+1}"
-
-                    LLM_CONFIGS[alt_name] = {
-                        "provider": config["provider"],
-                        "model_name": config["model_name"],
-                        "description": f"{config['description']} (variação {idx+1})",
-                        "default_params": alt,
-                    }
-
-                    logger.debug(f"Criada variação: {alt_name}")
-                    expanded.append(alt_name)
-
-        return expanded
-    
     def _initialize_llms(self) -> Dict[str, Any]:
         """Inicializa todas as LLMs"""
         llms = {}

@@ -1,0 +1,13 @@
+{
+    "path": "data.csv",
+    "text_column": "texto",
+    "label_column": "classe",
+    "label_meanings": {
+        "0": "financeiro",
+        "1": "suporte técnico",
+        "2": "comercial"
+    },
+    "prompt": "Support ticket",
+    "description": "Exemplo: tickets de atendimento classificados por área (financeiro, suporte técnico, comercial)",
+    "read_kwargs": {"sep": ";"}
+}

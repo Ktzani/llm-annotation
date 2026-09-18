@@ -148,7 +148,8 @@ Todos os modelos são open-source, sem custo de API proprietária:
 
 **Providers:**
 - **Ollama**: Execução local (100% privado, sem custo de API)
-- **HuggingFace Inference API**: Nuvem
+- **HuggingFace Transformers** (`provider: "transformers"`): modelos do HF executados localmente na GPU/CPU, sem consumir créditos da API (o token só é usado para baixar modelos gated)
+- **HuggingFace Inference API** (`provider: "huggingface"`): Nuvem, consome créditos — prefira `transformers`
 - **Groq**: Muito rápido (300+ tokens/s), com tier gratuito
 
 Configuração dos modelos em `src/config/llms.py`.

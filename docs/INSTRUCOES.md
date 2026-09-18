@@ -191,18 +191,36 @@ Em `src/config/llms.py`:
 
 ```python
 LLM_CONFIGS["novo-modelo"] = {
-    "provider": "ollama",   # ou "huggingface", "groq"
+    "provider": "ollama",   # ou "transformers" (HF local), "groq"
     "model_name": "nome:tag",
-    "default_params": {
+    "params": {
         "temperature": 0.0,
         "num_predict": 50,
     },
-    "alternative_params": [
-        {"temperature": 0.3},
-        {"temperature": 0.5},
-    ]
+    "alternative_params": {
+        "alt1": {"temperature": 0.3},
+        "alt2": {"temperature": 0.5},
+    }
 }
 ```
+
+### Escolher Parâmetros Alternativos no Experimento
+
+Em `annotation.use_alternative_params` do JSON do experimento (ou do request na API), escolha
+qual variação de `alternative_params` cada modelo usa. A variação N roda com o nome
+`<modelo>_altN`, que também é o nome das colunas no CSV. `"base"` são os `params` normais.
+
+| Valor | Modelos executados (com `models: ["llama3.1-8b", "qwen3-8b"]`) |
+|-------|------|
+| `false` (padrão) | `llama3.1-8b`, `qwen3-8b` |
+| `"alt2"` | `llama3.1-8b_alt2`, `qwen3-8b_alt2` |
+| `["base", "alt2"]` | base e alt2 de cada modelo |
+| `{"llama3.1-8b": "alt1"}` | `llama3.1-8b_alt1`, `qwen3-8b` (modelos não citados rodam com base) |
+| `{"qwen3-8b": ["base", "alt1"]}` | `llama3.1-8b`, `qwen3-8b`, `qwen3-8b_alt1` |
+| `true` | base e todas as variações de cada modelo |
+
+Uma variação inexistente, ou um modelo no dict que não está em `models`, é rejeitado antes de
+a anotação começar (erro 422 na API).
 
 ### Customizar Prompts
 

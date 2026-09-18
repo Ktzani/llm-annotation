@@ -48,7 +48,12 @@ data/raw/*.json
 data/raw/*.txt
 data/processed/*.csv
 data/processed/*.json
-data/
+# Tudo em data/ fica fora do git (dados, cache, resultados, datasets
+# proprietários), exceto o dataset local de exemplo
+data/*
+!data/datasets/
+data/datasets/*
+!data/datasets/exemplo_tickets/
 
 # Results and cache
 cache/*.json

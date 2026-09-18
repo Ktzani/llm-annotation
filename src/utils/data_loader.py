@@ -8,6 +8,7 @@ import sys
 import os
 
 from src.config.datasets_collected import DATASETS, LABEL_MEANINGS
+from src.utils.local_datasets import refresh_local_datasets, load_local_dataframe
 from datasets import load_dataset, concatenate_datasets, Dataset
 from huggingface_hub import hf_hub_download
 
@@ -23,12 +24,13 @@ def load_hf_dataset(
     
 ) -> Tuple[List[str], List[str], Optional[List[str]]]:
     """
-    Carrega um dataset do HuggingFace usando as configurações globais + específicas.
+    Carrega um dataset (HF ou local) usando as configurações globais + específicas.
     """
     # ------------------------------
     # 1. Buscar config do dataset
     # ------------------------------
     if dataset_specific_config is None:
+        refresh_local_datasets()
         if dataset_name not in DATASETS:
             raise ValueError(
                 f"Dataset '{dataset_name}' não encontrado.\n"
@@ -49,11 +51,32 @@ def load_hf_dataset(
     sample_size = dataset_specific_config.get("sample_size", dataset_global_config.sample_size)
     random_state = dataset_specific_config.get("random_state", dataset_global_config.random_state)
 
+    source = dataset_specific_config.get("source", "hf")
+    if source not in ("hf", "local"):
+        raise ValueError(f"source '{source}' inválido para o dataset '{dataset_name}' (use 'hf' ou 'local')")
+
     try:
+        # ================================================================
+        # DATASET LOCAL (PROPRIETÁRIO / FORA DO HF)
+        # ================================================================
+        if source == "local":
+            logger.info(f"Carregando dataset local de: {dataset_specific_config['path']}")
+
+            df = load_local_dataframe(
+                dataset_name=dataset_name,
+                spec=dataset_specific_config,
+                hf_file=hf_file,
+                split=split,
+                combine_splits=combine_splits,
+            )
+            dataset = Dataset.from_pandas(df, preserve_index=False)
+
+            logger.info(f"Dataset carregado: {len(dataset)} exemplos")
+
         # ================================================================
         # DOWNLOAD DIRETO DE ARQUIVO DO HF (PARQUET / CSV / ETC)
         # ================================================================
-        if hf_file:
+        elif hf_file:
             logger.info("Baixando parquet direto do HuggingFace Hub")
 
             file_path = hf_hub_download(
@@ -112,6 +135,10 @@ def load_hf_dataset(
             if label_column and label_column in dataset.column_names:
                 categories = sorted(list(set(dataset[label_column])))
                 logger.info(f"Categorias extraídas automaticamente: {categories}")
+            elif LABEL_MEANINGS.get(dataset_name):
+                # Sem ground truth: classes vêm do LABEL_MEANINGS
+                categories = sorted(int(k) for k in LABEL_MEANINGS[dataset_name])
+                logger.info(f"Categorias obtidas de LABEL_MEANINGS: {categories}")
             else:
                 categories = []
                 logger.info("Nenhuma categoria disponível")
@@ -161,6 +188,8 @@ def load_hf_dataset(
 # DATAFRAME
 # =============================================================================
 def add_label_description(df, dataset_name):
+    if dataset_name not in LABEL_MEANINGS:
+        refresh_local_datasets()
     mapping = LABEL_MEANINGS.get(dataset_name)
 
     if mapping is None:
@@ -203,10 +232,12 @@ def load_hf_dataset_as_dataframe(
 # =============================================================================
 
 def list_available_datasets() -> List[str]:
+    refresh_local_datasets()
     return list(DATASETS.keys())
 
 
 def get_dataset_info(dataset_name: str) -> Dict:
+    refresh_local_datasets()
     if dataset_name not in DATASETS:
         raise ValueError(f"Dataset '{dataset_name}' não encontrado.")
     return DATASETS[dataset_name].copy()
