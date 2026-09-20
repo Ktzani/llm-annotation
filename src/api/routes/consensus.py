@@ -10,7 +10,6 @@ from src.api.services.consensus_runner import run_consensus_background
 
 router = APIRouter(prefix="/consensus", tags=["Consensus"])
 
-
 @router.post("/", response_model=ConsensusStatus)
 async def create_consensus_job(
     config: ConsensusRequest,

@@ -90,10 +90,9 @@ class TwoPhaseAnnotationPipeline:
         out_dir.mkdir(parents=True, exist_ok=True)
         checkpoint_dir.mkdir(parents=True, exist_ok=True)
 
-        # O checkpoint (intermediate.csv) vive num caminho ESTÁVEL (fora do run
-        # timestampado), keyed por k/fold/variante — assim um re-run retoma de
-        # onde parou, pulando os text_ids já anotados. Os artefatos finais
-        # (annotations.csv, model_metrics.csv) vão para `out_dir` (o run atual).
+        # O checkpoint (intermediate.csv) fica em <run>/_checkpoints/, por fold/variante —
+        # retomar a execução (resume_from) pula os text_ids já anotados. Os artefatos
+        # finais (annotations.csv, model_metrics.csv) vão para `out_dir`.
         annotator = LLMAnnotator(
             dataset_name=self.config.dataset_name,
             models=self.config.models,
@@ -149,6 +148,7 @@ class TwoPhaseAnnotationPipeline:
         versioner = TwoPhaseRunVersioner(Path(self.config.results_dir) / self.config.dataset_name)
         base_dir = versioner.get_run_dir(self.cf.resume_from)
         versioner.save_config(base_dir, self.config.request.model_dump(mode="json"))
+        self.run_dir = base_dir
 
         # Checkpoint dentro da execução: rodada nova começa do zero, resume_from retoma
         checkpoint_root = versioner.checkpoint_dir(base_dir)

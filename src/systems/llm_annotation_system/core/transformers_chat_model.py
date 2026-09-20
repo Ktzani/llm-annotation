@@ -14,7 +14,14 @@ from typing import Any, Dict, List, Optional, Tuple
 import torch
 from loguru import logger
 from pydantic import Field, PrivateAttr
-from transformers import AutoModelForCausalLM, AutoTokenizer, LogitsProcessor, LogitsProcessorList
+from transformers import (
+    AutoModelForCausalLM,
+    AutoTokenizer,
+    LogitsProcessor,
+    LogitsProcessorList,
+    StoppingCriteria,
+    StoppingCriteriaList,
+)
 
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage, BaseMessage
@@ -115,6 +122,16 @@ class _ChosenTokenLogprobs(LogitsProcessor):
         return self.logprobs
 
 
+class _StopOnEvent(StoppingCriteria):
+    """Interrompe a geração no próximo token quando o evento é sinalizado (cancelamento)"""
+
+    def __init__(self, event: threading.Event):
+        self.event = event
+
+    def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> torch.BoolTensor:
+        return torch.full((input_ids.shape[0],), self.event.is_set(), dtype=torch.bool, device=input_ids.device)
+
+
 class TransformersChatModel(BaseChatModel):
     """
     Chat model LangChain que executa um modelo do HF localmente
@@ -160,9 +177,22 @@ class TransformersChatModel(BaseChatModel):
         **kwargs: Any,
     ) -> ChatResult:
         loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(self._loaded.executor, self._generate_sync, messages, stop)
+        cancelled = threading.Event()
+        try:
+            return await loop.run_in_executor(
+                self._loaded.executor, self._generate_sync, messages, stop, cancelled
+            )
+        except asyncio.CancelledError:
+            # O cancel não interrompe a thread: sinaliza para o generate parar
+            cancelled.set()
+            raise
 
-    def _generate_sync(self, messages: List[BaseMessage], stop: Optional[List[str]]) -> ChatResult:
+    def _generate_sync(
+        self,
+        messages: List[BaseMessage],
+        stop: Optional[List[str]],
+        cancelled: Optional[threading.Event] = None,
+    ) -> ChatResult:
         tokenizer = self._loaded.tokenizer
         model = self._loaded.model
 
@@ -175,6 +205,8 @@ class TransformersChatModel(BaseChatModel):
         if stop:
             gen_kwargs["stop_strings"] = stop
             gen_kwargs["tokenizer"] = tokenizer
+        if cancelled is not None:
+            gen_kwargs["stopping_criteria"] = StoppingCriteriaList([_StopOnEvent(cancelled)])
 
         with torch.inference_mode():
             sequences = model.generate(

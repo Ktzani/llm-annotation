@@ -8,6 +8,7 @@ from tqdm import tqdm
 from collections import Counter
 from loguru import logger
 import asyncio
+import threading
 import time
 
 from src.systems.llm_annotation_system.core.llm_provider import LLMProvider
@@ -19,6 +20,8 @@ from src.systems.llm_annotation_system.annotation.execution_estrategy import Exe
 
 from src.config.prompts import BASE_ANNOTATION_PROMPT
 from src.utils.get_text_id_from_text import get_text_id_from_text
+
+_CHECKPOINT_WRITE_LOCK = threading.Lock()
 
 class LLMAnnotator:
     """
@@ -259,27 +262,38 @@ class LLMAnnotator:
                         await self._flush_buffer(buffer, file_path)
 
         # Filtra textos já presentes no checkpoint (retomada idempotente)
+        # Tasks explícitas: o as_completed não cancela as tasks pendentes quando a anotação é cancelada
         tasks = [
-            process_text(text)
+            asyncio.create_task(process_text(text))
             for text in texts
             if get_text_id_from_text(text) not in processed_ids
         ]
         remaining = len(tasks)
 
         pbar = tqdm(total=remaining, desc="Anotando", smoothing=0.05)
-        for coro in asyncio.as_completed(tasks):
-            await coro
+        try:
+            for coro in asyncio.as_completed(tasks):
+                await coro
 
-            avg_time = total_time / completed
-            total_elapsed = time.perf_counter() - start_global
-            throughput = completed / total_elapsed
+                avg_time = total_time / completed
+                total_elapsed = time.perf_counter() - start_global
+                throughput = completed / total_elapsed
 
-            pbar.update(1)
-            pbar.set_postfix({
-                "avg_s": f"{avg_time:.2f}",
-                "it/s": f"{throughput:.2f}"
-            })
-        pbar.close()
+                pbar.update(1)
+                pbar.set_postfix({
+                    "avg_s": f"{avg_time:.2f}",
+                    "it/s": f"{throughput:.2f}"
+                })
+        except asyncio.CancelledError:
+            # Para as chamadas em andamento e salva os textos já anotados para a retomada
+            for task in tasks:
+                task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
+            await self._save_progress(buffer, file_path)
+            logger.warning(f"Anotação cancelada: {completed}/{remaining} textos anotados salvos em {file_path}")
+            raise
+        finally:
+            pbar.close()
 
         total_elapsed = time.perf_counter() - start_global
         logger.info("Finalizado ✅")
@@ -287,10 +301,7 @@ class LLMAnnotator:
         logger.info(f"Throughput médio: {remaining / total_elapsed:.2f} textos/s")
 
         # Flush do que sobrou (último lote menor que `intermediate`)
-        if buffer:
-            await self._flush_buffer(buffer, file_path)
-
-        self.cache_manager.save()
+        await self._save_progress(buffer, file_path)
 
         return pd.read_csv(file_path)
 
@@ -423,7 +434,8 @@ class LLMAnnotator:
         arquivo — linha que sobrevive ao `drop_duplicates(text_id)` (o
         text_id dela é a string "text_id") e contamina consenso e métricas.
         """
-        with open(file_path, "a", newline="", encoding="utf-8") as f:
+        # Lock: no cancelamento, a escrita de uma task cancelada ainda pode estar em andamento
+        with _CHECKPOINT_WRITE_LOCK, open(file_path, "a", newline="", encoding="utf-8") as f:
             df_chunk.to_csv(f, header=f.tell() == 0, index=False)
 
     async def _flush_buffer(self, buffer: list, file_path: Path) -> None:
@@ -439,3 +451,9 @@ class LLMAnnotator:
         buffer.clear()
 
         await asyncio.to_thread(self._append_chunk, df_chunk, file_path)
+
+    async def _save_progress(self, buffer: list, file_path: Path) -> None:
+        """Grava o que restou no buffer e salva o cache (fim da anotação ou cancelamento)"""
+        if buffer:
+            await self._flush_buffer(buffer, file_path)
+        self.cache_manager.save()

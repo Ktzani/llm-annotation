@@ -63,7 +63,7 @@ experiment = "exemplo_dataset_local"
 ```
 e rode `poetry run python -m src.run_annotation`.
 
-**Via API:** faça `POST /experiments` com o conteúdo do JSON no corpo. No Docker, troque os
+**Via API:** faça `POST /annotation` com o conteúdo do JSON no corpo. No Docker, troque os
 caminhos de `cache.dir` e `results.dir` para `/app/data/.cache` e `/app/data/results`. O
 dataset já aparece em `/app/data/datasets` pelo volume montado.
 

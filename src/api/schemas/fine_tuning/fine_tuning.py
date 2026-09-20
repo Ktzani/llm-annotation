@@ -57,7 +57,7 @@ class FineTuningStatus(BaseModel):
     """Status de um job de fine-tuning"""
 
     job_id: str
-    status: str = "pending"  # pending | running | completed | failed
+    status: str = "pending"  # pending | running | cancelling | cancelled | completed | failed
     created_at: datetime
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None

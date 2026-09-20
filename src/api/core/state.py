@@ -1,14 +1,15 @@
 from typing import Dict
-from src.api.schemas.annotation_experiment.experiment import ExperimentStatus
+from src.api.schemas.annotation_experiment.experiment import AnnotationStatus
 from src.api.schemas.consensus.consensus import ConsensusStatus
-from src.api.core.cancellation import CancellationToken
+from src.api.schemas.fine_tuning.fine_tuning import FineTuningStatus
+from src.api.core.job_runner import JobRunner
 
 # 📌 Depois isso vira Redis ou DynamoDB sem mudar API.
-experiments: Dict[str, ExperimentStatus] = {}
+annotation_jobs: Dict[str, AnnotationStatus] = {}
 
-fine_tuning_jobs: Dict[str, ExperimentStatus] = {}
+fine_tuning_jobs: Dict[str, FineTuningStatus] = {}
 
 consensus_jobs: Dict[str, ConsensusStatus] = {}
 
-# Um token por job/experimento em execução
-cancellation_tokens: dict[str, CancellationToken] = {}
+# Jobs em execução (anotação e fine-tuning), para o cancelamento
+job_runner = JobRunner()
