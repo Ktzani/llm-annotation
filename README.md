@@ -238,9 +238,9 @@ poetry run uvicorn src.api.server:app --reload
 
 | Método | Rota | Descrição |
 |--------|------|-----------|
-| POST | `/experiments` | Criar experimento de anotação |
-| GET | `/experiments/{id}` | Status do experimento |
-| POST | `/experiments/{id}/cancel` | Cancelar experimento em execução |
+| POST | `/annotation` | Criar anotação |
+| GET | `/annotation/{id}` | Status da anotação |
+| POST | `/annotation/{id}/cancel` | Cancelar anotação em execução |
 | POST | `/fine-tuning` | Iniciar job de fine-tuning |
 | GET | `/fine-tuning/{id}` | Status do fine-tuning |
 | POST | `/fine-tuning/{id}/cancel` | Cancelar fine-tuning em execução |

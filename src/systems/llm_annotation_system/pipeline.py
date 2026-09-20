@@ -19,7 +19,7 @@ logger.add(
     level="INFO"
 )
 
-from src.api.schemas.annotation_experiment.experiment import ExperimentRequest
+from src.api.schemas.annotation_experiment.experiment import AnnotationRequest
 from src.api.services.prompt_factory import get_prompt_template
 from src.utils.data_loader import load_hf_dataset
 from src.utils.get_text_id_from_text import get_text_id_from_text
@@ -36,7 +36,7 @@ class AnnotationConfig:
 
     1) **Path para JSON** (`str`): usado em execuções via CLI/script, quando o
        experimento está versionado em disco. O arquivo é lido e validado como
-       `ExperimentRequest`.
+       `AnnotationRequest`.
 
        Exemplo:
            config = AnnotationConfig(
@@ -44,14 +44,14 @@ class AnnotationConfig:
                experiment_config="experiments/experimento.json",
            )
 
-    2) **Objeto `ExperimentRequest`**: usado quando o experimento já foi
+    2) **Objeto `AnnotationRequest`**: usado quando o experimento já foi
        construído em memória — tipicamente pela API (FastAPI) após validar o
        payload do request. Evita round-trip desnecessário pelo disco.
 
        Exemplo:
            config = AnnotationConfig(
                dataset_name=request.dataset_name,
-               experiment_config=request,  # instância de ExperimentRequest
+               experiment_config=request,  # instância de AnnotationRequest
            )
 
     Em ambos os casos o método interno `_apply_experiment` popula os mesmos
@@ -61,11 +61,11 @@ class AnnotationConfig:
 
     def __init__(
         self,
-        experiment_config: Optional[Union[str, ExperimentRequest]] = None,
+        experiment_config: Optional[Union[str, AnnotationRequest]] = None,
     ):
         self.experiment_config_path = experiment_config if isinstance(experiment_config, str) else None
 
-        if isinstance(experiment_config, ExperimentRequest):
+        if isinstance(experiment_config, AnnotationRequest):
             self._apply_experiment(experiment_config)
         elif isinstance(experiment_config, str):
             self._load_from_experiment(experiment_config)
@@ -75,11 +75,11 @@ class AnnotationConfig:
         with open(config_path, "r") as f:
             config_dict = json.load(f)
 
-        exp = ExperimentRequest(**config_dict)
+        exp = AnnotationRequest(**config_dict)
         self._apply_experiment(exp)
         logger.info(f"Configurações carregadas de: {config_path}")
 
-    def _apply_experiment(self, exp: ExperimentRequest) -> None:
+    def _apply_experiment(self, exp: AnnotationRequest) -> None:
         self.request = exp
         self.dataset_name = exp.dataset_name
         self.models = exp.models

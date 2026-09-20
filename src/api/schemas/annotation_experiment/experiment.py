@@ -11,7 +11,7 @@ from src.api.schemas.annotation_experiment.annotation import AnnotationConfig
 from src.api.schemas.annotation_experiment.results import ResultsConfig
 from src.api.schemas.annotation_experiment.class_filter import ClassFilterConfig
 
-class ExperimentRequest(BaseModel):
+class AnnotationRequest(BaseModel):
     """
     Schema principal de configuração de um experimento de anotação com LLMs.
 
@@ -106,16 +106,16 @@ class ExperimentRequest(BaseModel):
     )
 
     @model_validator(mode="after")
-    def _validate_alternative_params(self) -> "ExperimentRequest":
+    def _validate_alternative_params(self) -> "AnnotationRequest":
         """Valida se as variações escolhidas existem para os modelos"""
         ModelVariantResolver(self.annotation.use_alternative_params).resolve(self.models)
         return self
 
 
 
-class ExperimentStatus(BaseModel):
+class AnnotationStatus(BaseModel):
     """
-    Representa o estado atual de um experimento em execução ou já finalizado.
+    Representa o estado atual de uma anotação em execução ou já finalizada.
 
     Utilizado para:
     - acompanhamento via polling
@@ -123,29 +123,29 @@ class ExperimentStatus(BaseModel):
     - recuperação de resultados
     """
 
-    experiment_id: str = Field(
-        description="Identificador único do experimento (UUID)."
+    annotation_id: str = Field(
+        description="Identificador único da anotação (UUID)."
     )
 
     status: str = Field(
         description=(
-            "Estado atual do experimento. "
+            "Estado atual da anotação. "
             "Valores possíveis: 'pending', 'running', 'cancelling', 'cancelled', 'completed', 'failed'."
         )
     )
 
     created_at: datetime = Field(
-        description="Timestamp de criação do experimento."
+        description="Timestamp de criação da anotação."
     )
 
     started_at: Optional[datetime] = Field(
         default=None,
-        description="Timestamp de início da execução do experimento."
+        description="Timestamp de início da execução da anotação."
     )
 
     completed_at: Optional[datetime] = Field(
         default=None,
-        description="Timestamp de finalização do experimento."
+        description="Timestamp de finalização da anotação."
     )
 
     progress: float = Field(
@@ -153,7 +153,7 @@ class ExperimentStatus(BaseModel):
         ge=0.0,
         le=1.0,
         description=(
-            "Progresso do experimento no intervalo [0, 1], "
+            "Progresso da anotação no intervalo [0, 1], "
             "onde 0 indica não iniciado e 1 indica concluído."
         )
     )
@@ -161,7 +161,7 @@ class ExperimentStatus(BaseModel):
     message: Optional[str] = Field(
         default=None,
         description=(
-            "Mensagem descritiva do estado atual do experimento, "
+            "Mensagem descritiva do estado atual da anotação, "
             "utilizada para feedback ao usuário."
         )
     )
@@ -169,7 +169,7 @@ class ExperimentStatus(BaseModel):
     results: Optional[Dict[str, Any]] = Field(
         default=None,
         description=(
-            "Resultados resumidos do experimento após a conclusão, "
+            "Resultados resumidos da anotação após a conclusão, "
             "incluindo métricas, caminhos de saída e metadados."
         )
     )
