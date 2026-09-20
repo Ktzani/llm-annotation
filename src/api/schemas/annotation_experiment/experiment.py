@@ -130,7 +130,7 @@ class ExperimentStatus(BaseModel):
     status: str = Field(
         description=(
             "Estado atual do experimento. "
-            "Valores possíveis: 'pending', 'running', 'completed', 'failed'."
+            "Valores possíveis: 'pending', 'running', 'cancelling', 'cancelled', 'completed', 'failed'."
         )
     )
 

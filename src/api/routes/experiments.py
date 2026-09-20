@@ -1,8 +1,8 @@
-from fastapi import APIRouter, BackgroundTasks, HTTPException
+from fastapi import APIRouter, HTTPException
 import uuid
 from datetime import datetime
 
-from src.api.core.state import experiments, cancellation_tokens
+from src.api.core.state import experiments, job_runner
 from src.api.schemas.annotation_experiment.experiment import ExperimentRequest, ExperimentStatus
 from src.api.services.experiment_runner import run_experiment_background
 
@@ -11,10 +11,7 @@ from loguru import logger
 router = APIRouter(prefix="/experiments", tags=["Experiments"])
 
 @router.post("/", response_model=ExperimentStatus)
-async def create_experiment(
-    config: ExperimentRequest,
-    background_tasks: BackgroundTasks
-):
+async def create_experiment(config: ExperimentRequest):
     """Cria e inicia um novo experimento"""
     experiment_id = str(uuid.uuid4())
     
@@ -27,8 +24,8 @@ async def create_experiment(
     
     experiments[experiment_id] = experiment_status
     
-    # Adicionar tarefa em background
-    background_tasks.add_task(run_experiment_background, experiment_id, config)
+    # Executa em background (cancelável via /cancel)
+    job_runner.start(experiment_id, run_experiment_background(experiment_id, config))
     
     logger.info(f"Experimento {experiment_id} criado e agendado")
     return experiment_status
@@ -54,20 +51,22 @@ async def delete_experiment(experiment_id: str):
     """Remove um experimento do histórico"""
     if experiment_id not in experiments:
         raise HTTPException(status_code=404, detail="Experimento não encontrado")
-    
+
+    if job_runner.is_running(experiment_id):
+        raise HTTPException(status_code=409, detail="Experimento em execução: cancele antes de remover")
+
     del experiments[experiment_id]
     return {"message": "Experimento removido com sucesso"}
 
-# !! TODO !! - endpoint de cancelamento
 @router.post("/{experiment_id}/cancel")
 async def cancel_experiment(experiment_id: str):
+    """Cancela o experimento: interrompe as chamadas aos modelos e salva o que já foi anotado"""
     if experiment_id not in experiments:
         raise HTTPException(status_code=404, detail="Experimento não encontrado")
 
-    if experiments[experiment_id].status != "running":
+    if not job_runner.cancel(experiment_id):
         raise HTTPException(status_code=400, detail="Experimento não está em execução")
 
-    cancellation_tokens[experiment_id].cancel()
-    experiments[experiment_id].status = "cancelled"
+    experiments[experiment_id].status = "cancelling"
     experiments[experiment_id].message = "Cancelamento solicitado"
     return {"message": "Cancelamento solicitado"}

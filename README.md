@@ -240,12 +240,21 @@ poetry run uvicorn src.api.server:app --reload
 |--------|------|-----------|
 | POST | `/experiments` | Criar experimento de anotação |
 | GET | `/experiments/{id}` | Status do experimento |
+| POST | `/experiments/{id}/cancel` | Cancelar experimento em execução |
 | POST | `/fine-tuning` | Iniciar job de fine-tuning |
 | GET | `/fine-tuning/{id}` | Status do fine-tuning |
+| POST | `/fine-tuning/{id}/cancel` | Cancelar fine-tuning em execução |
 | POST | `/consensus` | Aplicar consenso sobre as anotações de um experimento |
 | GET | `/consensus/{id}` | Status do job de consenso |
 | GET | `/datasets` | Listar datasets disponíveis |
 | GET | `/health` | Health check |
+
+**Cancelamento:** o status passa por `cancelling` → `cancelled`, sem precisar reiniciar a API.
+- **Anotação:** as chamadas aos modelos são interrompidas (o Ollama para de gerar; os modelos
+  continuam carregados na VRAM) e os textos já anotados são salvos no checkpoint. Na 2 fases,
+  `results.resume_from` indica a execução para retomar via `class_filter.resume_from`.
+- **Fine-tuning:** roda num processo separado (a API segue respondendo durante o treino); cancelar
+  mata esse processo e os dos folds, liberando a GPU. A pasta `vN_<run_name>` fica com o que já foi gerado.
 
 ## 📁 Estrutura do Projeto
 

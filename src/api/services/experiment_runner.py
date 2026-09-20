@@ -1,4 +1,7 @@
+import asyncio
 from datetime import datetime
+from pathlib import Path
+from typing import Optional
 from loguru import logger
 
 from src.api.core.state import experiments
@@ -7,10 +10,19 @@ from src.systems.llm_annotation_system.pipeline import AnnotationConfig, Annotat
 from src.systems.class_filter_system.pipeline import TwoPhaseAnnotationPipeline
 
 
+def _cancelled_results(config: ExperimentRequest, pipeline: Optional[object]) -> dict:
+    """Onde ficou o que já foi anotado e como retomar"""
+    run_dir = getattr(pipeline, "run_dir", None)
+    if run_dir is not None:
+        return {"mode": "two_phase", "output_dir": str(run_dir), "resume_from": run_dir.name}
+    return {"checkpoint": str(Path(config.results.dir) / config.dataset_name / "intermediate.csv")}
+
+
 async def run_experiment_background(
     experiment_id: str,
     config: ExperimentRequest,
 ):
+    pipeline = None
     try:
         experiments[experiment_id].status = "running"
         experiments[experiment_id].started_at = datetime.now()
@@ -68,6 +80,20 @@ async def run_experiment_background(
         }
 
         logger.success(f"[{experiment_id}] Experimento concluído!")
+
+    except asyncio.CancelledError:
+        # As chamadas aos modelos já foram interrompidas e o que foi anotado está no checkpoint
+        results = _cancelled_results(config, pipeline)
+        logger.warning(f"[{experiment_id}] Experimento cancelado")
+        experiments[experiment_id].status = "cancelled"
+        experiments[experiment_id].completed_at = datetime.now()
+        experiments[experiment_id].results = results
+        experiments[experiment_id].message = (
+            f"Experimento cancelado. Para retomar: class_filter.resume_from='{results['resume_from']}'"
+            if "resume_from" in results
+            else "Experimento cancelado. Rodar o mesmo dataset de novo retoma do checkpoint"
+        )
+        raise
 
     except Exception as e:
         logger.exception(f"[{experiment_id}] Erro no experimento: {e}")
