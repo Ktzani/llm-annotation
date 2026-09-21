@@ -19,8 +19,8 @@ app = FastAPI(
 setup_cors(app)
 
 app.include_router(annotation_router)
-app.include_router(fine_tuning_router)
 app.include_router(consensus_router)
+app.include_router(fine_tuning_router)
 app.include_router(datasets_router)
 app.include_router(health_router)
 
