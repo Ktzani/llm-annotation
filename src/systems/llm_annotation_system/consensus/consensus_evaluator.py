@@ -174,8 +174,10 @@ class ConsensusEvaluator:
             - confusion_matrix (np.ndarray)
         """
 
-        # Inserir ground truth
-        df_with_consensus = df_with_consensus.copy()
+        # Rótulos como inteiros: ground_truth pode vir float do CSV e viraria chave "0.0" no report
+        df_with_consensus = df_with_consensus.dropna(subset=[ground_truth_col, "resolved_annotation"]).copy()
+        df_with_consensus[ground_truth_col] = df_with_consensus[ground_truth_col].astype(int)
+        df_with_consensus["resolved_annotation"] = df_with_consensus["resolved_annotation"].astype(int)
 
         # ---------------------- ACCURACY ----------------------
         accuracy = accuracy_score(
@@ -191,6 +193,10 @@ class ConsensusEvaluator:
             df_with_consensus["resolved_annotation"],
             output_dict=True
         )
+        # sklearn devolve support como float (ex.: 4682.0)
+        for metrics in cls_report.values():
+            if isinstance(metrics, dict) and "support" in metrics:
+                metrics["support"] = int(metrics["support"])
         print(cls_report)
 
         # ---------------------- CONFUSION MATRIX ----------------------

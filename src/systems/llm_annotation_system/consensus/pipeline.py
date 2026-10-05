@@ -12,16 +12,17 @@ disperso no notebook de análise de consenso:
     4. Exporta o dataset de consenso em
        `<results>/<dataset>/<date>/consensus/dataset_consenso.csv` e os demais
        artefatos consolidados em `<results>/<dataset>/<date>/summary/`:
-           consensus/dataset_consenso.csv   Dataset com consenso (resolved_annotation)
+           consensus/dataset_consenso.csv   Dataset com consenso (resolved_annotation), sem casos problemáticos
            summary/alta_confianca.csv       Subconjunto com score >= threshold
            summary/necessita_revisao.csv    Subconjunto com score < threshold
            summary/sumario_experimento.json Métricas resumidas
 
-IMPORTANTE: o consenso é calculado e exportado SEM filtragem — o summary e o
-relatório refletem o dataset completo (inclusive instâncias inválidas/`-1` e
-problemáticas/baixo consenso, que precisam ser identificadas e validadas). A
-filtragem é responsabilidade dos consumidores downstream (ex.: o fine-tuning,
-via `remove_invalid_instances` / `remove_problematic_instances` / IS).
+IMPORTANTE: o relatório e o summary refletem TODAS as anotações (inclusive
+instâncias inválidas/`-1` e problemáticas), que precisam ser identificadas e
+reportadas. Já o `dataset_consenso.csv` exclui os casos problemáticos (empate
+entre os votos, ex.: 1x1x1): sem voto majoritário o `resolved_annotation` seria
+apenas um desempate arbitrário, então eles são só reportados em
+`problematic_cases.csv`. As demais filtragens (ex.: `-1`, IS) seguem downstream.
 
 A parte de gráficos (calibração, ECE/BBS, heatmaps) permanece em notebook para
 análise posterior — este pipeline materializa apenas os artefatos de dados.
@@ -125,9 +126,19 @@ class ConsensusPipeline:
     # -------------------------------------------------------------------------
     # EXPORTAÇÃO
     # -------------------------------------------------------------------------
+    def _drop_problematic(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Dataset de consenso sem os casos problemáticos (sem voto majoritário)."""
+        dataset = df[~df["is_problematic"]].reset_index(drop=True)
+        logger.info(
+            f"Casos problemáticos fora do {self.DATASET_FILENAME}: {len(df) - len(dataset)} "
+            f"(reportados em problematic_cases.csv)"
+        )
+        return dataset
+
     def _export(
         self,
         df: pd.DataFrame,
+        df_dataset: pd.DataFrame,
         report: dict,
         categories: List[int],
         models: List[str],
@@ -135,8 +146,8 @@ class ConsensusPipeline:
     ) -> None:
         consensus_dataset_path = self.dataset_path(self.results_dataset_path)
         consensus_dataset_path.parent.mkdir(parents=True, exist_ok=True)
-        df.to_csv(consensus_dataset_path, index=False)
-        logger.info(f"✓ {consensus_dataset_path.name}: {len(df)} registros")
+        df_dataset.to_csv(consensus_dataset_path, index=False)
+        logger.info(f"✓ {consensus_dataset_path.name}: {len(df_dataset)} registros")
 
         thr = self.config.consensus_threshold
         high_conf = df[df["consensus_score"] >= thr]
@@ -226,11 +237,13 @@ class ConsensusPipeline:
             df_valid = df[df["resolved_annotation"] != -1]
             _, cls_report, _ = evaluator.evaluate_ground_truth(df_valid)
 
-        # 4. Exportação do dataset de consenso completo.
-        self._export(df, report, categories, models, cls_report)
+        # 4. Exportação: dataset sem problemáticos; summary sobre o df completo.
+        df_dataset = self._drop_problematic(df)
+        self._export(df, df_dataset, report, categories, models, cls_report)
 
         return {
-            "df_with_consensus": df,
+            "df_with_consensus": df_dataset,
+            "df_full": df,
             "report": report,
             "categories": categories,
             "models": models,

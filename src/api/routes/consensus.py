@@ -23,7 +23,7 @@ async def create_consensus_job(
     rodar localmente e devolver os artefatos).
 
     Gera, em `<results_dir>/<dataset>/<date>/`:
-        consensus/dataset_consenso.csv   Dataset com `resolved_annotation`
+        consensus/dataset_consenso.csv   Dataset com `resolved_annotation` (sem casos problemáticos)
         consensus/problematic_cases.csv  Casos de baixo consenso
         summary/alta_confianca.csv       Score >= threshold
         summary/necessita_revisao.csv    Score < threshold

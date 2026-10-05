@@ -47,11 +47,12 @@ def main() -> None:
     consensus_pipeline = ConsensusPipeline(config)
     result = consensus_pipeline.run()
 
-    df = result["df_with_consensus"]
+    df = result["df_full"]
     report = result["report"]
     logger.success("Consenso aplicado.")
     logger.info(
-        f"Registros: {len(df)} | Consenso médio: {df['consensus_score'].mean():.2%} | "
+        f"Registros: {len(df)} (dataset de consenso: {len(result['df_with_consensus'])}) | "
+        f"Consenso médio: {df['consensus_score'].mean():.2%} | "
         f"Fleiss' Kappa: {report['fleiss_kappa']:.3f} ({report['fleiss_interpretation']})"
     )
 

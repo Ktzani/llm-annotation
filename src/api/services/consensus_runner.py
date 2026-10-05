@@ -56,7 +56,8 @@ async def run_consensus_background(
         # pipeline.run() é síncrono — rodamos direto (já estamos numa background task)
         result = pipeline.run()
 
-        df = result["df_with_consensus"]
+        # Estatísticas do relatório sobre todas as anotações (o dataset exclui os problemáticos)
+        df = result["df_full"]
         report = result["report"]
         problematic = report.get("problematic_cases")
 
