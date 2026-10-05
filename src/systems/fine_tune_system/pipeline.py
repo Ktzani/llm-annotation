@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 from typing import Optional, Dict, Union
 import json
+from functools import cached_property
 
 import pandas as pd
 from datasets import Dataset
@@ -47,7 +48,7 @@ from src.systems.fine_tune_system.training.cross_validator import CrossValidator
 from src.utils.get_latest_results_date import get_latest_results_date
 from src.api.schemas.annotation_experiment.dataset import DatasetConfig
 from src.api.schemas.fine_tuning.fine_tuning import FineTuningRequest
-from src.systems.instance_selection_system.filtering.annotation_filter import AnnotationFilter, save_filter_result
+from src.systems.instance_selection_system.pipeline import InstanceSelectionConfig, InstanceSelectionPipeline
 
 
 
@@ -121,6 +122,7 @@ class FineTuningConfig:
         self.use_instance_selection = req.instance_selection.enabled
         self.is_method = req.instance_selection.method
         self.is_params = req.instance_selection.params
+        self.is_sweep = req.instance_selection.sweep if self.use_instance_selection else None
         logger.info(
             f"Configurações aplicadas: {self.dataset_name} | model={self.model_name} | run_type={self.run_type} | training_mode={self.training_mode} | IS={self.use_instance_selection} ({self.is_method})"
         )
@@ -132,18 +134,20 @@ class FineTuningPipeline:
         self.config = config
         self.results_dataset_path = self._get_results_path()
         self.versioner = FineTuningRunVersioner(self.results_dataset_path / "finetuning")
-        self.fine_tune_output_dir = self._create_run_dir()
 
         logger.success("✓ Setup completo")
 
-    def _create_run_dir(self) -> Path:
-        """Cria a pasta versionada da execução (vN_<nome>) e salva a config usada"""
+    @cached_property
+    def fine_tune_output_dir(self) -> Path:
+        """Cria a pasta versionada da execução (vN_<nome>) no primeiro acesso e salva a config usada"""
         run_name = self.config.run_name or FineTuningRunVersioner.default_run_name(
             model_name=self.config.model_name,
             training_mode=self.config.training_mode,
             run_type=self.config.run_type,
             instance_selection_method=self.config.is_method if self.config.use_instance_selection else None,
         )
+        if not self.config.run_name and self.config.is_sweep:
+            run_name += f"_curva-{self.config.is_sweep.param}"
         run_dir = self.versioner.create_run_dir(run_name)
         self.versioner.save_config(run_dir, self.config.request.model_dump(mode="json"))
         return run_dir
@@ -190,84 +194,52 @@ class FineTuningPipeline:
 
         return df_annotations
 
-    def apply_instance_selection(self, df_annotations: pd.DataFrame) -> pd.DataFrame:
-        """
-        Mantém apenas as instâncias selecionadas pela filtragem biO-IS.
-
-        Prefere o resultado pré-computado em
-        `instance_selection/dataset_filtrado.csv` (gerado por
-        `src/run_instance_selection.py`). Se ausente, executa a seleção e SALVA
-        os artefatos com TODAS as colunas originais (para análises futuras), no
-        mesmo formato do pipeline dedicado.
-
-        Para não re-filtrar um conjunto diferente, a seleção roda sobre as
-        colunas completas do CSV anotado RESTRITAS exatamente às mesmas linhas
-        de `df_annotations` (alinhadas pela chave canônica). Filtra uma única
-        vez e deriva o conjunto de treino da mesma seleção.
-
-        O join (caminho pré-computado) usa a chave canônica `md5(text.strip())`
-        — a mesma do alinhamento com os splits do HuggingFace —, pois o
-        `text_id` salvo no CSV difere do recalculado pelo fine-tuning.
-        """
-        if not self.config.use_instance_selection:
-            logger.info("Seleção de instâncias desativada (use_instance_selection=False).")
-            return df_annotations
-
-        filtered_path = (
-            self.results_dataset_path / "instance_selection" / "dataset_filtrado.csv"
-        )
+    def apply_instance_selection(self, df_annotations: pd.DataFrame, params: Optional[dict] = None) -> tuple[pd.DataFrame, dict]:
+        """Mantém só as instâncias selecionadas (seleção versionada pelos params) e devolve o resumo do treino"""
         before = len(df_annotations)
 
-        if filtered_path.exists():
-            df_filtered = pd.read_csv(filtered_path)
-            selected_ids = set(df_filtered["text"].apply(get_text_id_from_text))
+        if not self.config.use_instance_selection:
+            logger.info("Seleção de instâncias desativada (use_instance_selection=False).")
+            return df_annotations, self._training_summary(before, before)
 
-            df_annotations = df_annotations[
-                df_annotations["text_id"].isin(selected_ids)
-            ].reset_index(drop=True)
-
-            logger.info(
-                f"Seleção de instâncias (biO-IS, pré-computado): "
-                f"{before} → {len(df_annotations)} (removidas {before - len(df_annotations)})"
+        is_pipeline = InstanceSelectionPipeline(
+            InstanceSelectionConfig(
+                dataset_name=self.config.dataset_name,
+                results_dir=str(self.config.results_dir),
+                specific_date=self.results_dataset_path.name,
+                method=self.config.is_method,
+                params=params if params is not None else self.config.is_params,
+                random_state=self.config.seed,
             )
-            return df_annotations
-
-        # Sem filtragem salva: executa e salva os artefatos com TODAS as colunas
-        # originais (para análises futuras), restringindo o CSV anotado completo
-        # exatamente às mesmas linhas já carregadas em df_annotations.
-        logger.warning(
-            f"'{filtered_path.name}' não encontrado — executando e salvando a filtragem..."
         )
-
-        full_df = pd.read_csv(
-            ConsensusPipeline.dataset_path(self.results_dataset_path)
-        )
-        canon_key = full_df["text"].apply(get_text_id_from_text)
-        full_aligned = full_df[
-            canon_key.isin(set(df_annotations["text_id"]))
-        ].reset_index(drop=True)
-
-        is_overrides = self.config.is_params or {}
-        annotation_filter = AnnotationFilter(
-            method=self.config.is_method,
-            label_column="resolved_annotation",
-            random_state=self.config.seed,
-            **is_overrides,
-        )
-        result = annotation_filter.filter(full_aligned)
-        save_filter_result(result, self.results_dataset_path / "instance_selection")
-
-        # Conjunto de treino: deriva da MESMA seleção (mantém as 4 colunas).
-        selected_ids = set(result.filtered_df["text"].apply(get_text_id_from_text))
-        df_annotations = df_annotations[
-            df_annotations["text_id"].isin(selected_ids)
-        ].reset_index(drop=True)
+        selected_ids = set(is_pipeline.load_or_run()["text"].apply(get_text_id_from_text))
+        df_selected = df_annotations[df_annotations["text_id"].isin(selected_ids)].reset_index(drop=True)
 
         logger.info(
-            f"Seleção de instâncias ({self.config.is_method}, computado e salvo): "
-            f"{before} → {len(df_annotations)} (removidas {before - len(df_annotations)})"
+            f"Seleção de instâncias [{is_pipeline.store.run_dir.name}]: "
+            f"{before} → {len(df_selected)} (removidas {before - len(df_selected)})"
         )
-        return df_annotations
+        summary = self._training_summary(
+            before,
+            len(df_selected),
+            selection_dir=is_pipeline.store.run_dir.name,
+            params=is_pipeline.store.params,
+            stats=is_pipeline.store.load_report(),
+        )
+        return df_selected, summary
+
+    def _training_summary(self, before: int, after: int, **instance_selection) -> dict:
+        """Tamanho do conjunto anotado antes/depois da seleção (pontos da curva retenção × F1)"""
+        return {
+            "annotated_instances": before,
+            "kept_instances": after,
+            "retention": after / before if before else None,
+            "instance_selection": {
+                "enabled": self.config.use_instance_selection,
+                "method": self.config.is_method if self.config.use_instance_selection else None,
+                **instance_selection,
+            },
+        }
 
     def load_aggregated_data(self) -> tuple[pd.DataFrame, pd.DataFrame]:
         """
@@ -313,7 +285,6 @@ class FineTuningPipeline:
         
         df_annotations = self.remove_invalid_instances(df_annotations)
         df_annotations = self.remove_problematic_instances(df_annotations)
-        df_annotations = self.apply_instance_selection(df_annotations)
 
         return df_annotations
 
@@ -328,8 +299,8 @@ class FineTuningPipeline:
         consenso agregado.
 
         Em seguida aplica as mesmas etapas de limpeza por `text_id` do modo
-        agregado (`remove_problematic_instances` / `apply_instance_selection`),
-        que operam via `isin` e portanto funcionam com `text_id` repetido.
+        agregado (`remove_problematic_instances`; a seleção de instâncias é
+        aplicada no `run`), que operam via `isin` e funcionam com `text_id` repetido.
         """
         logger.info("Carregando dados anotados (modo PERSPECTIVISMO)...")
 
@@ -342,7 +313,6 @@ class FineTuningPipeline:
         df_annotations = perspectivism_pipeline.run()
 
         df_annotations = self.remove_problematic_instances(df_annotations)
-        df_annotations = self.apply_instance_selection(df_annotations)
 
         return df_annotations
 
@@ -416,10 +386,10 @@ class FineTuningPipeline:
 
         return aligned_splits
     
-    def create_training_args(self) -> TrainingArguments:
+    def create_training_args(self, output_dir: Path) -> TrainingArguments:
         """Cria argumentos de treinamento"""
         return TrainingArguments(
-            output_dir=self.fine_tune_output_dir,
+            output_dir=output_dir,
             eval_strategy="epoch",
             save_strategy="epoch",
             learning_rate=self.config.learning_rate,
@@ -440,12 +410,13 @@ class FineTuningPipeline:
         train_ds: Dataset,
         eval_ds: Dataset,
         label_schema: LabelSchema,
-        experiment_name: str
+        experiment_name: str,
+        output_dir: Path,
     ) -> dict:
         """Executa fine-tuning"""
         logger.info(f"Iniciando fine-tuning: {experiment_name}")
         
-        training_args = self.create_training_args()
+        training_args = self.create_training_args(output_dir)
         
         fine_tuner = SupervisedFineTuner(
             model_name=self.config.model_name,
@@ -477,12 +448,13 @@ class FineTuningPipeline:
         cv_splits: pd.DataFrame,
         label_schema: LabelSchema,
         experiment_name: str,
+        output_dir: Path,
         max_parallel_folds: int = 4,
     ):
         """Executa cross-validation"""
         logger.info(f"\n🚀 Cross-validation: {experiment_name}")
         
-        training_args = self.create_training_args()
+        training_args = self.create_training_args(output_dir)
 
         # factory
         factory = FineTunerFactory(
@@ -511,28 +483,97 @@ class FineTuningPipeline:
 
         return results
     
+    def load_annotations(self) -> pd.DataFrame:
+        """Carrega o conjunto anotado de treino conforme o training_mode (agregado ou perspectivismo)"""
+        if self.config.training_mode == "perspectivism":
+            return self.load_perspectivism_data()
+        return self.load_aggregated_data()
+
+    @staticmethod
+    def _save_json(path: Path, data: dict) -> None:
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=4, ensure_ascii=False)
+
     def run(self, run_type: str = "single", max_parallel_folds: int = 4) -> dict:
-        """Executa pipeline completo"""
+        """Executa pipeline completo (um treino, ou um por valor do sweep de seleção de instâncias)"""
         logger.info("=" * 60)
         logger.info("Iniciando pipeline de fine-tuning")
         logger.info("=" * 60)
-        
-        # Modo de rotulagem do treino: agregado (consenso) ou perspectivismo
-        training_mode = getattr(self.config, "training_mode", "aggregated")
-        is_perspectivism = training_mode == "perspectivism"
-        label_tag = "perspectivism" if is_perspectivism else "consensus_llm"
 
-        # Carregar dados
-        if is_perspectivism:
-            df_annotations = self.load_perspectivism_data()
-        else:
-            df_annotations = self.load_aggregated_data()
-
-        # Criar label schema
+        # Dados e folds carregados uma vez; a seleção de instâncias é aplicada por treino
+        df_annotations = self.load_annotations()
         label_schema = LabelSchema.from_dataframe(df_annotations)
         logger.info(f"Labels: {label_schema.id2label}")
-
         cv_splits_hf = self.load_hf_splits_data()
+
+        if self.config.is_sweep:
+            return self.run_instance_selection_curve(df_annotations, label_schema, cv_splits_hf, run_type, max_parallel_folds)
+
+        df_train, summary = self.apply_instance_selection(df_annotations)
+        self._save_json(self.fine_tune_output_dir / "training_data_summary.json", summary)
+        return self._train(df_train, label_schema, cv_splits_hf, self.fine_tune_output_dir, run_type, max_parallel_folds)
+
+    def run_instance_selection_curve(
+        self,
+        df_annotations: pd.DataFrame,
+        label_schema: LabelSchema,
+        cv_splits_hf: dict,
+        run_type: str,
+        max_parallel_folds: int,
+    ) -> dict:
+        """Treina um modelo por valor do parâmetro de IS (demais fixos) e salva a curva retenção × macro-F1 em curve.csv"""
+        sweep = self.config.is_sweep
+        curve = []
+
+        for value in sweep.values:
+            params = {**self.config.is_params, sweep.param: value}
+            point_dir = self.fine_tune_output_dir / f"{sweep.param}{value:g}"
+            point_dir.mkdir(exist_ok=True)
+            logger.info(f"Curva de IS: {sweep.param}={value:g}")
+
+            df_train, summary = self.apply_instance_selection(df_annotations, params)
+            self._save_json(point_dir / "training_data_summary.json", summary)
+            results = self._train(df_train, label_schema, cv_splits_hf, point_dir, run_type, max_parallel_folds)
+
+            curve.append(self._curve_point(sweep.param, value, summary, results))
+            # Salva a cada ponto: um job interrompido mantém os pontos já treinados
+            pd.DataFrame(curve).to_csv(self.fine_tune_output_dir / "curve.csv", index=False, encoding="utf-8")
+
+        logger.success(f"Curva salva em: {self.fine_tune_output_dir / 'curve.csv'}")
+        return {"curve": curve}
+
+    @staticmethod
+    def _curve_point(param: str, value: float, summary: dict, results: dict) -> dict:
+        metrics = results.get("cv", results)  # cross-validation: {"mean", "std"}; single: valor direto
+
+        def mean_std(key):
+            metric = metrics.get(key)
+            return (metric["mean"], metric["std"]) if isinstance(metric, dict) else (metric, None)
+
+        f1_mean, f1_std = mean_std("eval_f1_macro")
+        return {
+            param: value,
+            "annotated_instances": summary["annotated_instances"],
+            "kept_instances": summary["kept_instances"],
+            "retention": summary["retention"],
+            "f1_macro_mean": f1_mean,
+            "f1_macro_std": f1_std,
+            "accuracy_mean": mean_std("eval_accuracy")[0],
+        }
+
+    def _train(
+        self,
+        df_annotations: pd.DataFrame,
+        label_schema: LabelSchema,
+        cv_splits_hf: dict,
+        output_dir: Path,
+        run_type: str,
+        max_parallel_folds: int,
+    ) -> dict:
+        """Alinha os folds com o conjunto de treino, treina e salva os resultados em output_dir"""
+        is_perspectivism = self.config.training_mode == "perspectivism"
+        label_tag = "perspectivism" if is_perspectivism else "consensus_llm"
+
         cv_aligned_annotaded_splits = self.align_datasets_splits(
             cv_splits_hf,
             df_annotations,
@@ -554,7 +595,8 @@ class FineTuningPipeline:
                 train_ds=cv_aligned_annotaded_splits[0]["train"],
                 eval_ds=cv_aligned_annotaded_splits[0]["val"],
                 label_schema=label_schema,
-                experiment_name=f"{label_tag}_single"
+                experiment_name=f"{label_tag}_single",
+                output_dir=output_dir,
             )
 
         elif run_type == "cross-validation":
@@ -562,22 +604,17 @@ class FineTuningPipeline:
                 cv_splits=cv_aligned_annotaded_splits,
                 label_schema=label_schema,
                 experiment_name=f"{label_tag}_cv",
+                output_dir=output_dir,
                 max_parallel_folds=max_parallel_folds
             )
 
         else:
             raise ValueError(f"Tipo de execução desconhecido: {run_type}")
-        
+
         # Salvar resultados (sufixo por modo para não sobrescrever o agregado)
         results_suffix = "_perspectivism" if is_perspectivism else ""
-        output_path = (
-            self.fine_tune_output_dir
-            / f"{self.config.model_name}{results_suffix}_fine_tuning_results.json"
-        )
-
-        with open(output_path, "w", encoding="utf-8") as f:
-            json.dump(results, f, indent=4, ensure_ascii=False)
-        
+        output_path = output_dir / f"{self.config.model_name}{results_suffix}_fine_tuning_results.json"
+        self._save_json(output_path, results)
         logger.success(f"\nResultados salvos em: {output_path}")
-        
+
         return results
