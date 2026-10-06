@@ -37,4 +37,6 @@ class InterRaterAgreement:
             return np.nan
         codes = table.apply(lambda col: pd.Categorical(col, categories=sorted(set(table.values.ravel()))).codes)
         counts, _ = aggregate_raters(codes.to_numpy())
-        return float(fleiss_kappa(counts))
+        # Indefinido (NaN) quando todos usam um único rótulo: concordância esperada = 1
+        with np.errstate(invalid="ignore", divide="ignore"):
+            return float(fleiss_kappa(counts))

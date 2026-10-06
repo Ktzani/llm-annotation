@@ -53,7 +53,20 @@ AGREEMENT_GROUPS = {
 EVALUATORS = ["avaliador_1", "avaliador_2", "avaliador_3"]
 
 # Opção extra de rotulo_escolhido para texto sem informação suficiente / fora da taxonomia
-INSUFFICIENT_INFO_OPTION = "informação insuficiente"
+INSUFFICIENT_INFO_OPTION = "não é possível decidir com este texto"
+
+# =============================================================================
+# INTERFACE WEB
+# =============================================================================
+
+# Banco SQLite da interface (respostas, rodadas e sessões), em <results>/validacao_humana/
+INTERFACE_DB_NAME = "validacao_humana.db"
+INTERFACE_HOST = "0.0.0.0"
+INTERFACE_PORT = 8001
+# Códigos de acesso vêm do .env (nunca do repositório):
+#   HV_ADMIN_CODE=<código do administrador>
+#   HV_CODE_AVALIADOR_1=<código>  (uma variável por avaliador: HV_CODE_<NOME EM MAIÚSCULAS>)
+ADMIN_USER = "admin"
 
 # Prefixo do id_anonimo (fallback: duas primeiras letras do dataset)
 ID_PREFIXES = {"books": "BK", "dblp": "DB"}

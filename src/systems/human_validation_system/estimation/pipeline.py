@@ -10,7 +10,7 @@ INITIAL_ROUND_SIZE documentos válidos (regra do TLC, Merlo et al., CIKM'25).
 Como a MoE é verificada a cada rodada (parada sequencial), a cobertura real do
 IC fica um pouco abaixo da nominal; vale registrar isso ao reportar.
 
-Estrutura de saída (em ``<results>/<dataset>/<date>/validacao_humana/estimativas/``):
+Estrutura de saída (em ``<results>/validacao_humana/<dataset>/<date>/estimativas/``):
     estimativa_ate_rodada_XX.csv    θ̂, IC, MoE e status por grupo e métrica
     estratos_ate_rodada_XX.csv      Detalhe por estrato (N_h, n_h, θ̂_h, W_h)
     documentos_ate_rodada_XX.csv    Gabarito + rótulo humano, situação, observações e métricas por documento
@@ -18,7 +18,7 @@ Estrutura de saída (em ``<results>/<dataset>/<date>/validacao_humana/estimativa
 """
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Protocol, Tuple
 
 import pandas as pd
 from loguru import logger
@@ -42,6 +42,13 @@ from src.systems.human_validation_system.estimation.stopping_status import Stopp
 from src.systems.human_validation_system.estimation.stratified_estimator import StratifiedEstimator
 from src.systems.human_validation_system.pipeline import DEFAULT_RESULTS_DIR, HumanValidationPipeline
 from src.systems.human_validation_system.sampling.sampling_ledger import SamplingLedger
+
+
+class ResponseSource(Protocol):
+    """Origem das respostas: planilhas (EvaluationResponseLoader) ou banco da interface web."""
+
+    def load(self, validation_dir: Path, n_rounds: int) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        ...
 
 
 class HumanValidationEstimationConfig:
@@ -76,10 +83,10 @@ class HumanValidationEstimationPipeline:
 
     GROUPS = ("A", "B", "C")
 
-    def __init__(self, config: HumanValidationEstimationConfig):
+    def __init__(self, config: HumanValidationEstimationConfig, response_source: Optional[ResponseSource] = None):
         self.config = config
-        self.validation_dir = (
-            Path(config.results_dir) / config.dataset_name / config.specific_date / HumanValidationPipeline.OUTPUT_DIR_NAME
+        self.validation_dir = HumanValidationPipeline.validation_dir(
+            config.results_dir, config.dataset_name, config.specific_date
         )
         self.output_dir = self.validation_dir / StoppingStatusReader.OUTPUT_SUBDIR
         self.output_dir.mkdir(parents=True, exist_ok=True)
@@ -90,7 +97,7 @@ class HumanValidationEstimationPipeline:
         # Inicializar componentes
         n = len(config.evaluators)
         self.ledger = SamplingLedger(self.validation_dir)
-        self.loader = EvaluationResponseLoader(
+        self.loader = response_source or EvaluationResponseLoader(
             config.evaluators, [self.class_names[c] for c in sorted(self.class_names)], INSUFFICIENT_INFO_OPTION
         )
         self.aggregator = HumanLabelAggregator(n)

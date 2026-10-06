@@ -35,7 +35,7 @@ class StoppingStatusReader:
         if not path.exists():
             raise FileNotFoundError(
                 f"Estimativa da rodada {n_rounds} não encontrada ({path}). Rode "
-                f"run_human_validation_estimate.py com as planilhas preenchidas antes de pedir a próxima rodada."
+                f"run_human_validation.py (mode=\"estimativa\") com as planilhas preenchidas antes de pedir a próxima rodada."
             )
         summary = pd.read_csv(path)
         primary = summary[summary["principal"]]

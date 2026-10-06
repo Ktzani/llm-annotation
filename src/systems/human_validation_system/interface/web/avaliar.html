@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Validação humana — Avaliação</title>
+  <link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>Validação humana</h1>
+    <div><span class="who" id="quem"></span> · <button class="link" type="button" onclick="logout()">Sair</button></div>
+  </header>
+
+  <div class="container">
+    <nav class="tabs" id="datasets" aria-label="Datasets"></nav>
+    <p class="muted" id="sem-rodada"></p>
+
+    <div class="layout hidden" id="area">
+      <main>
+        <section class="card">
+          <div class="actions" style="margin-top:0; justify-content:space-between">
+            <strong id="posicao"></strong>
+            <span class="muted" id="contagem"></span>
+          </div>
+          <div class="progress" aria-hidden="true"><span id="barra" style="width:0%"></span></div>
+        </section>
+
+        <section class="card hidden" id="concluido">
+          <h2>Você concluiu esta rodada</h2>
+          <p class="muted">Obrigado! Você ainda pode revisar suas respostas em "Minhas respostas" até o administrador fechar a rodada.</p>
+        </section>
+
+        <section class="card hidden" id="documento">
+          <p class="muted" id="modo"></p>
+          <div class="doc-text" id="texto"></div>
+
+          <form id="form-resposta">
+            <fieldset>
+              <legend>1. Qual rótulo melhor descreve este texto?</legend>
+              <div class="choices" id="rotulos"></div>
+            </fieldset>
+
+            <fieldset id="etapa2" disabled>
+              <legend>2. Algum outro rótulo também poderia ser razoavelmente justificado?</legend>
+              <div class="choices" id="sim-nao"></div>
+              <div id="bloco-outro" class="hidden">
+                <label for="qual-outro">Qual?</label>
+                <select id="qual-outro"></select>
+              </div>
+            </fieldset>
+
+            <label for="observacao">Observação (opcional)</label>
+            <textarea id="observacao" rows="2" maxlength="2000"></textarea>
+
+            <div class="actions">
+              <button class="primary" type="submit" id="salvar">Salvar e próximo</button>
+              <button type="button" class="hidden" id="voltar">Voltar ao próximo pendente</button>
+              <span class="notice" id="aviso" role="status"></span>
+            </div>
+            <p class="error" id="erro" role="alert"></p>
+          </form>
+        </section>
+      </main>
+
+      <aside class="side">
+        <section class="card">
+          <h2>Guia</h2>
+          <p class="muted">Use sempre o nome do rótulo exatamente como aparece nas opções. A descrição é só um apoio.</p>
+          <div id="guia"></div>
+        </section>
+        <section class="card">
+          <h2>Minhas respostas</h2>
+          <ul class="answers" id="respostas"></ul>
+        </section>
+      </aside>
+    </div>
+  </div>
+
+  <script src="/static/js/api.js"></script>
+  <script src="/static/js/avaliar.js"></script>
+</body>
+</html>

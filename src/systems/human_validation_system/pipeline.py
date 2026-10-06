@@ -14,13 +14,15 @@ no registro, então pode mudar entre rodadas (ex.: 10 -> 20).
 
 A partir da 2ª rodada, só os grupos que ainda não atingiram o critério de
 parada são sorteados: o status vem da estimativa da última rodada
-(`run_human_validation_estimate.py`), que precisa existir antes do pedido.
+(`run_human_validation.py`, mode="estimativa"), que precisa existir antes do pedido.
 
-Estrutura de saída (em ``<results>/<dataset>/<date>/validacao_humana/``):
+Estrutura de saída (em ``<results>/validacao_humana/<dataset>/<date>/``, fora das pastas
+de experimento, que guardam só os resultados de anotação/consenso/fine-tuning):
     amostragem.json                        Registro: semente, sha do CSV de origem, rodadas entregues
     guia_avaliador.md                      Guia do avaliador
     exemplos_guia.csv                      Documentos reservados para o guia (fora de todas as rodadas)
-    rodada_XX/planilha_avaliacao_<avaliador>.xlsx
+    rodada_XX/planilha_avaliacao_<avaliador>.xlsx   (se export_sheets=True)
+    rodada_XX/documentos_rodada.csv                 Lista cega (id_anonimo, texto) na ordem da planilha
     rodada_XX/gabarito.csv
 """
 from pathlib import Path
@@ -74,6 +76,7 @@ class HumanValidationConfig:
         examples_per_class: int = EXAMPLES_PER_CLASS,
         overwrite_guide: bool = False,
         skip_stopped_groups: bool = True,
+        export_sheets: bool = True,
     ):
         self.dataset_name = dataset_name
         # Data explícita: `latest` (por mtime) pode apontar para outro experimento
@@ -88,6 +91,8 @@ class HumanValidationConfig:
         self.overwrite_guide = overwrite_guide
         # Não sorteia grupos com status `parar` na última estimativa
         self.skip_stopped_groups = skip_stopped_groups
+        # False na interface web: as respostas vêm do banco, não de planilhas
+        self.export_sheets = export_sheets
 
 
 class HumanValidationPipeline:
@@ -95,10 +100,20 @@ class HumanValidationPipeline:
 
     OUTPUT_DIR_NAME = "validacao_humana"
 
+    @classmethod
+    def validation_root(cls, results_dir: str) -> Path:
+        """Raiz da validação humana: `<results>/validacao_humana`."""
+        return Path(results_dir) / cls.OUTPUT_DIR_NAME
+
+    @classmethod
+    def validation_dir(cls, results_dir: str, dataset_name: str, specific_date: str) -> Path:
+        """Pasta de um experimento: `<results>/validacao_humana/<dataset>/<date>`."""
+        return cls.validation_root(results_dir) / dataset_name / specific_date
+
     def __init__(self, config: HumanValidationConfig):
         self.config = config
         self.results_dataset_path = Path(config.results_dir) / config.dataset_name / config.specific_date
-        self.output_dir = self.results_dataset_path / self.OUTPUT_DIR_NAME
+        self.output_dir = self.validation_dir(config.results_dir, config.dataset_name, config.specific_date)
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
         self.label_names = {int(k): v for k, v in LABEL_MEANINGS[config.dataset_name].items()}
@@ -199,8 +214,10 @@ class HumanValidationPipeline:
         for group, alloc in allocation.items():
             logger.info(f"  Grupo {group}: {sum(alloc.values())} -> {alloc}")
 
+    DOCUMENTS_FILE = "documentos_rodada.csv"
+
     def _write_round(self, round_number: int, pool: pd.DataFrame) -> Path:
-        """Gera planilhas e gabarito a partir do registro da rodada."""
+        """Gera lista cega, planilhas e gabarito a partir do registro da rodada."""
         record = self.ledger.get_round(round_number)
         round_dir = self.output_dir / f"rodada_{round_number:02d}"
         round_dir.mkdir(parents=True, exist_ok=True)
@@ -210,7 +227,9 @@ class HumanValidationPipeline:
         sample["id_anonimo"] = [row["id_anonimo"] for row in record["rows"]]
 
         sheet_rows = sample[["id_anonimo", "text"]].rename(columns={"text": "texto"})
-        self.sheet_writer.write_copies(sheet_rows, self.config.evaluators, round_dir)
+        sheet_rows.to_csv(round_dir / self.DOCUMENTS_FILE, index=False)
+        if self.config.export_sheets:
+            self.sheet_writer.write_copies(sheet_rows, self.config.evaluators, round_dir)
 
         llm_columns = list(self.ledger.data["llm_columns"].values())
         AnswerKeyWriter(self.label_names, llm_columns).write(sample, round_dir)

@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Validação humana — Acompanhamento</title>
+  <link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>Acompanhamento das rodadas</h1>
+    <div><span class="who">Administrador</span> · <button class="link" type="button" onclick="logout()">Sair</button></div>
+  </header>
+  <div class="container">
+    <p class="muted">A rodada só pode ser fechada quando os três avaliadores terminarem. Ao fechar, as respostas são consolidadas,
+      as estimativas são calculadas e a planilha consolidada é atualizada. Atualiza sozinho a cada 20 segundos.</p>
+    <p class="error" id="erro" role="alert"></p>
+    <div class="grid" id="datasets"></div>
+  </div>
+  <script src="/static/js/api.js"></script>
+  <script src="/static/js/admin.js"></script>
+</body>
+</html>

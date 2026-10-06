@@ -65,6 +65,10 @@ name = "pytorch"
 url = "https://download.pytorch.org/whl/cu121"
 priority = "explicit"
 
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+
 [tool.poetry.group.dev.dependencies]
 # Testing
 pytest = "^7.4.0"

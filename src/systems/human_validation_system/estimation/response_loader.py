@@ -8,7 +8,7 @@ from typing import List, Optional, Tuple
 import pandas as pd
 from loguru import logger
 
-from src.systems.human_validation_system.output.answer_key_writer import AnswerKeyWriter
+from src.systems.human_validation_system.estimation.answer_key_reader import AnswerKeyReader
 from src.systems.human_validation_system.output.evaluation_sheet_writer import EvaluationSheetWriter
 
 
@@ -29,6 +29,7 @@ class EvaluationResponseLoader:
         self._labels = {self._key(n): n for n in class_names}
         self._chosen = {**self._labels, self._key(insufficient_option): insufficient_option}
         self._yes_no = {self._key(v): v for v in EvaluationSheetWriter.YES_NO}
+        self.answer_key_reader = AnswerKeyReader()
         logger.debug(f"EvaluationResponseLoader inicializado ({len(evaluators)} avaliadores)")
 
     @staticmethod
@@ -68,11 +69,11 @@ class EvaluationResponseLoader:
 
     def load(self, output_dir: Path, n_rounds: int) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Respostas em formato longo (documento x avaliador) e gabarito de todas as rodadas."""
-        responses, keys = [], []
+        answer_key = self.answer_key_reader.read(output_dir, n_rounds)
+        responses = []
         for round_number in range(1, n_rounds + 1):
             round_dir = Path(output_dir) / f"rodada_{round_number:02d}"
-            key = pd.read_csv(round_dir / AnswerKeyWriter.FILE_NAME)
-            keys.append(key.assign(rodada=round_number))
+            key = answer_key[answer_key["rodada"] == round_number]
 
             for evaluator in self.evaluators:
                 sheet = self._load_sheet(round_dir / f"planilha_avaliacao_{evaluator}.xlsx", evaluator, round_number)
@@ -84,4 +85,4 @@ class EvaluationResponseLoader:
 
         columns = ["id_anonimo"] + self.ANSWER_COLUMNS + ["avaliador", "rodada"]
         responses_df = pd.concat(responses, ignore_index=True) if responses else pd.DataFrame(columns=columns)
-        return responses_df, pd.concat(keys, ignore_index=True)
+        return responses_df, answer_key

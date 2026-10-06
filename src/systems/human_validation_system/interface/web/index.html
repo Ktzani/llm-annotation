@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Validação humana — Entrar</title>
+  <link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body>
+  <main class="login card">
+    <h1>Validação humana</h1>
+    <p class="muted">Entre com seu nome e o código de acesso que você recebeu.</p>
+    <form id="login-form">
+      <label for="usuario">Usuário</label>
+      <select id="usuario" required></select>
+      <label for="codigo">Código de acesso</label>
+      <input id="codigo" type="password" autocomplete="current-password" required>
+      <div class="actions">
+        <button class="primary" type="submit">Entrar</button>
+      </div>
+      <p class="error" id="erro" role="alert"></p>
+    </form>
+  </main>
+  <script src="/static/js/api.js"></script>
+  <script src="/static/js/login.js"></script>
+</body>
+</html>
