@@ -59,8 +59,14 @@ INSUFFICIENT_INFO_OPTION = "não é possível decidir com este texto"
 # INTERFACE WEB
 # =============================================================================
 
-# Banco SQLite da interface (respostas, rodadas e sessões), em <results>/validacao_humana/
+# Banco SQLite da interface (respostas, rodadas e sessões), em data/validacao_humana/
 INTERFACE_DB_NAME = "validacao_humana.db"
+# Ao fechar uma rodada, abre a próxima sozinha se algum grupo ainda não parou
+AUTO_START_NEXT_ROUND = True
+# Com os três completos, a rodada fecha sozinha após esta janela sem novas respostas
+# (tempo para revisão; 0 desliga o fechamento automático)
+REVIEW_WINDOW_MINUTES = 10
+AUTO_CLOSE_CHECK_SECONDS = 30
 INTERFACE_HOST = "0.0.0.0"
 INTERFACE_PORT = 8001
 # Códigos de acesso vêm do .env (nunca do repositório):

@@ -8,7 +8,9 @@ from tests.human_validation_system.conftest import DATASET, answer_all
 
 
 def run_round(client, admin, evaluators):
-    assert client.post(f"/api/admin/{DATASET}/rodadas", headers=admin).status_code == 200
+    """Abre a rodada se ainda não houver uma aberta (após o 1º fechamento ela abre sozinha)."""
+    if client.get("/api/admin/status", headers=admin).json()[0]["estado"] != "aberta":
+        assert client.post(f"/api/admin/{DATASET}/rodadas", headers=admin).status_code == 200
     for headers in evaluators.values():
         answer_all(client, headers)
     assert client.post(f"/api/admin/{DATASET}/fechar", headers=admin).status_code == 200

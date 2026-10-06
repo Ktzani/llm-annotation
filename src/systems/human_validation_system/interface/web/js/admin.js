@@ -107,6 +107,13 @@ function datasetCard(s) {
       onclick: () => act(s.dataset, "rodadas", `${label} de ${s.dataset}?`),
     }, working ? "Processando…" : label));
   }
+  if (s.estado === "aberta" && s.fecha_automaticamente_em) {
+    const hora = new Date(s.fecha_automaticamente_em).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    card.append(el("p", { class: "go" }, `Todos terminaram. Fecha automaticamente às ${hora} (janela de revisão; reinicia se alguém editar).`));
+  }
+  if (s.estado === "aberta" && s.proxima_automatica) {
+    card.append(el("p", { class: "muted" }, "Ao fechar, a próxima rodada abre sozinha para os grupos que ainda não pararam."));
+  }
   if (s.planilha_disponivel) actions.append(el("button", { onclick: () => download(s.dataset) }, "Baixar planilha consolidada"));
   card.append(actions);
 
@@ -123,5 +130,63 @@ async function refresh() {
   }
 }
 
+async function setupAutomation() {
+  const close = document.getElementById("auto-fechar");
+  const next = document.getElementById("auto-proxima");
+  const notice = document.getElementById("auto-aviso");
+
+  const show = (a) => {
+    close.checked = a.fechamento_automatico;
+    next.checked = a.proxima_automatica;
+    document.getElementById("auto-fechar-janela").textContent = `(${a.janela_revisao_minutos} min após a última resposta)`;
+  };
+  const save = async (body) => {
+    try {
+      show(await api("PUT", "/api/admin/automacao", body));
+      notice.textContent = "Preferência salva.";
+      setTimeout(() => (notice.textContent = ""), 2500);
+      await refresh();
+    } catch (e) {
+      document.getElementById("erro").textContent = e.message;
+    }
+  };
+
+  close.addEventListener("change", () => save({ fechamento_automatico: close.checked }));
+  next.addEventListener("change", () => save({ proxima_automatica: next.checked }));
+  show(await api("GET", "/api/admin/automacao"));
+}
+
+function setupReset() {
+  const dialog = document.getElementById("reinicio");
+  const input = document.getElementById("reinicio-confirmacao");
+  const confirmButton = document.getElementById("reinicio-confirmar");
+  const error = document.getElementById("reinicio-erro");
+
+  document.getElementById("abrir-reinicio").addEventListener("click", () => {
+    input.value = "";
+    error.textContent = "";
+    confirmButton.disabled = true;
+    dialog.showModal();
+    input.focus();
+  });
+  document.getElementById("reinicio-cancelar").addEventListener("click", () => dialog.close());
+  input.addEventListener("input", () => (confirmButton.disabled = input.value !== "REINICIAR"));
+  confirmButton.addEventListener("click", async () => {
+    confirmButton.disabled = true;
+    try {
+      const result = await api("POST", "/api/admin/reiniciar", { confirmacao: input.value });
+      dialog.close();
+      window.alert(`Validação reiniciada. Cópia de segurança em:\n${result.backups.join("\n")}`);
+      await refresh();
+    } catch (e) {
+      error.textContent = e.message;
+      confirmButton.disabled = false;
+    }
+  });
+}
+
+setupReset();
+setupAutomation();
+watchVersion(() => window.location.reload());
 refresh();
 setInterval(() => { if (!busy.size) refresh(); }, 20000);

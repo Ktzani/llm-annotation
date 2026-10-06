@@ -99,3 +99,12 @@ def test_interface_database_stores_no_answer_key(client, admin):
             for col in con.execute(f"PRAGMA table_info({table})")
         }
     assert not columns & FORBIDDEN_KEYS
+
+
+@pytest.mark.parametrize("page", ["/", "/avaliar", "/admin"])
+def test_pages_reference_versioned_assets(client, page):
+    """CSS/JS com ?v=<versão>: o navegador não reaproveita arquivos antigos de cache."""
+    html = client.get(page).text
+    version = client.get("/api/versao").json()["versao"]
+    assert "__VERSAO__" not in html
+    assert f".js?v={version}" in html and f".css?v={version}" in html

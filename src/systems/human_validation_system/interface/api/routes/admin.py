@@ -1,8 +1,11 @@
 """
 Rotas do administrador: acompanhamento, abertura/fechamento de rodadas e planilha consolidada.
 """
+from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import FileResponse
+from pydantic import BaseModel
 
 from src.systems.human_validation_system.interface.api.core.auth import require_admin
 from src.systems.human_validation_system.interface.api.services.round_controller import RoundStateError
@@ -44,6 +47,37 @@ def close_round(dataset: str, request: Request):
         return _controller(request).close_round(dataset)
     except RoundStateError as e:
         raise HTTPException(status_code=409, detail=str(e))
+
+
+class AutomationRequest(BaseModel):
+    proxima_automatica: Optional[bool] = None
+    fechamento_automatico: Optional[bool] = None
+
+
+@router.get("/automacao")
+def get_automation(request: Request):
+    return _controller(request).automation()
+
+
+@router.put("/automacao")
+def set_automation(body: AutomationRequest, request: Request):
+    """Liga/desliga a abertura automática da próxima rodada e o fechamento automático."""
+    return _controller(request).set_automation(body.proxima_automatica, body.fechamento_automatico)
+
+
+RESET_WORD = "REINICIAR"
+
+
+class ResetRequest(BaseModel):
+    confirmacao: str
+
+
+@router.post("/reiniciar")
+def reset_all(body: ResetRequest, request: Request):
+    """Apaga rodadas, respostas, estimativas e planilhas de todos os experimentos (com backup)."""
+    if body.confirmacao != RESET_WORD:
+        raise HTTPException(status_code=400, detail=f"Digite {RESET_WORD} para confirmar")
+    return {"backups": _controller(request).reset_all()}
 
 
 @router.get("/{dataset}/planilha")

@@ -53,7 +53,7 @@ o script. A interface sobe em `http://localhost:8001`.
 3. Avaliadores respondem em `/avaliar`.
 4. Com os três completos, **Fechar rodada**: consolida por maioria, classifica os desfechos,
    calcula concordância e intervalos, aplica o critério de parada e atualiza
-   `data/results/validacao_humana/<dataset>/<date>/validacao_consolidada_<dataset>.xlsx` (abas: respostas individuais,
+   `data/validacao_humana/<dataset>/<date>/validacao_consolidada_<dataset>.xlsx` (abas: respostas individuais,
    consolidado por documento, resumo, histórico).
 5. Se algum grupo não parou, gere a próxima rodada (só os grupos pendentes são sorteados).
 
@@ -62,7 +62,7 @@ o script. A interface sobe em `http://localhost:8001`.
 1. Clone o repositório na VM e crie o `.env` com as variáveis acima.
 2. Copie para a VM apenas o necessário de cada experimento:
    `data/results/<dataset>/<date>/consensus/dataset_consenso.csv`
-   (e, se já houver rodadas, a pasta `data/results/validacao_humana/` inteira, que inclui o banco).
+   (e, se já houver rodadas, a pasta `data/validacao_humana/` inteira, que inclui o banco).
 3. Suba: `docker compose -f docker/docker-compose.validacao.yml up -d --build`.
 4. HTTPS sem domínio próprio: na VM, `cloudflared tunnel --url http://localhost:8001`
    gera um endereço `https://<palavras>.trycloudflare.com` (muda se o túnel reiniciar).
@@ -71,7 +71,7 @@ o script. A interface sobe em `http://localhost:8001`.
 
 ## Backup
 
-Tudo da validação humana fica em `data/results/validacao_humana/`: o banco
+Tudo da validação humana fica em `data/validacao_humana/` (ao lado de `data/results/`): o banco
 `validacao_humana.db` (SQLite) e uma pasta `<dataset>/<date>/` por experimento. Faça cópias
 periódicas, de preferência com o servidor parado ou via `sqlite3 validacao_humana.db ".backup copia.db"`.
 

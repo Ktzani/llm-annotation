@@ -48,6 +48,20 @@ function el(tag, attrs = {}, ...children) {
   return node;
 }
 
+// Avisa quando as telas mudaram no servidor (abas abertas antes de uma atualização)
+async function watchVersion(onChange, intervalMs = 30000) {
+  let current = null;
+  const check = async () => {
+    try {
+      const { versao } = await (await fetch("/api/versao", { cache: "no-store" })).json();
+      if (current && versao !== current) onChange();
+      current = versao;
+    } catch { /* servidor reiniciando: tenta de novo no próximo ciclo */ }
+  };
+  await check();
+  setInterval(check, intervalMs);
+}
+
 function logout() {
   Session.clear();
   window.location.href = "/";

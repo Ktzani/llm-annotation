@@ -2,7 +2,7 @@
 Situation Classifier - Classifica cada documento nas quatro situações do RQ4
 """
 from collections import Counter
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 
 import numpy as np
 import pandas as pd
@@ -71,24 +71,15 @@ class SituationClassifier:
             situation = "benchmark_mislabeling"
         return {"situacao": situation, "rotulo_oposto": opposite, "apoio_oposto": opposite_support}
 
-    @staticmethod
-    def _observations(answers: pd.DataFrame) -> str:
-        notes: List[str] = [
-            f"{a['avaliador']}: {str(a['observacao']).strip()}"
-            for _, a in answers.iterrows()
-            if pd.notna(a.get("observacao")) and str(a["observacao"]).strip()
-        ]
-        return " | ".join(notes)
-
     def classify(self, responses: pd.DataFrame, docs: pd.DataFrame) -> pd.DataFrame:
-        """Acrescenta situação, lado oposto do conflito, observações e indicadores 0/1 por situação."""
+        """Acrescenta situação, lado oposto do conflito e indicadores 0/1 por situação."""
         by_doc = {i: g for i, g in responses.groupby("id_anonimo")}
         empty = responses.head(0)
 
         rows = []
         for _, doc in docs.iterrows():
             answers = by_doc.get(doc["id_anonimo"], empty)
-            rows.append({**self._classify_doc(doc, answers), "observacoes": self._observations(answers)})
+            rows.append(self._classify_doc(doc, answers))
         out = pd.concat([docs.reset_index(drop=True), pd.DataFrame(rows)], axis=1)
 
         for situation in self.SITUATIONS:

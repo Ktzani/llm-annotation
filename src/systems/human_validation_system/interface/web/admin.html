@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Validação humana — Acompanhamento</title>
-  <link rel="stylesheet" href="/static/css/app.css">
+  <link rel="stylesheet" href="/static/css/app.css?v=__VERSAO__">
 </head>
 <body>
   <header class="topbar">
@@ -12,12 +12,59 @@
     <div><span class="who">Administrador</span> · <button class="link" type="button" onclick="logout()">Sair</button></div>
   </header>
   <div class="container">
-    <p class="muted">A rodada só pode ser fechada quando os três avaliadores terminarem. Ao fechar, as respostas são consolidadas,
-      as estimativas são calculadas e a planilha consolidada é atualizada. Atualiza sozinho a cada 20 segundos.</p>
+    <p class="muted">Ao fechar uma rodada (só com os três avaliadores completos), as respostas são consolidadas, as
+      estimativas são calculadas e a planilha é atualizada. Esta tela atualiza a cada 20 segundos.</p>
+
+    <section class="card">
+      <h2>Automação</h2>
+      <label class="toggle">
+        <input type="checkbox" id="auto-fechar">
+        <span>Fechar a rodada automaticamente <span class="muted" id="auto-fechar-janela"></span></span>
+      </label>
+      <p class="muted toggle-help">Quando os três terminam, espera a janela de revisão sem novas respostas e fecha sozinha.
+        Desligado: você fecha pelo botão.</p>
+      <label class="toggle">
+        <input type="checkbox" id="auto-proxima">
+        <span>Abrir a próxima rodada automaticamente</span>
+      </label>
+      <p class="muted toggle-help">Ao fechar, se algum grupo ainda não atingiu o critério de parada, a próxima rodada abre
+        sozinha para esses grupos. Desligado: você abre pelo botão "Gerar próxima rodada".</p>
+      <p class="notice" id="auto-aviso" role="status"></p>
+    </section>
+
     <p class="error" id="erro" role="alert"></p>
     <div class="grid" id="datasets"></div>
+
+    <section class="card danger-zone">
+      <h2>Reiniciar tudo</h2>
+      <p class="muted">Apaga todas as rodadas e respostas e recomeça a validação do zero. Use só se realmente precisar.</p>
+      <button class="danger" type="button" id="abrir-reinicio">Reiniciar tudo…</button>
+    </section>
   </div>
-  <script src="/static/js/api.js"></script>
-  <script src="/static/js/admin.js"></script>
+
+  <dialog id="reinicio" aria-labelledby="reinicio-titulo">
+    <form method="dialog" id="reinicio-form">
+      <h2 id="reinicio-titulo">Tem certeza?</h2>
+      <div class="alert" role="alert">
+        <strong>Atenção: esta ação apaga o progresso de todos os datasets.</strong>
+        <ul>
+          <li>Todas as rodadas (abertas e fechadas) e todas as respostas dos avaliadores.</li>
+          <li>Estimativas, histórico e planilhas consolidadas.</li>
+          <li>Os avaliadores perdem o que já responderam na rodada atual.</li>
+        </ul>
+        Uma cópia de segurança será salva em <code>data/validacao_humana/_backup/</code>. Como o sorteio usa a mesma
+        semente, a nova rodada 1 terá os mesmos documentos da anterior.
+      </div>
+      <label for="reinicio-confirmacao">Digite <strong>REINICIAR</strong> para confirmar</label>
+      <input id="reinicio-confirmacao" autocomplete="off">
+      <p class="error" id="reinicio-erro" role="alert"></p>
+      <div class="actions">
+        <button type="button" id="reinicio-cancelar">Cancelar</button>
+        <button class="danger" type="button" id="reinicio-confirmar" disabled>Reiniciar tudo</button>
+      </div>
+    </form>
+  </dialog>
+  <script src="/static/js/api.js?v=__VERSAO__"></script>
+  <script src="/static/js/admin.js?v=__VERSAO__"></script>
 </body>
 </html>

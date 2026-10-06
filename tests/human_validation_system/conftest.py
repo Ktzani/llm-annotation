@@ -48,10 +48,12 @@ def synthetic_consensus() -> pd.DataFrame:
 
 @pytest.fixture
 def results_dir(tmp_path: Path) -> Path:
-    consensus_dir = tmp_path / DATASET / DATE / "consensus"
+    """`<tmp>/results`; a validação humana vai para a irmã `<tmp>/validacao_humana`."""
+    results = tmp_path / "results"
+    consensus_dir = results / DATASET / DATE / "consensus"
     consensus_dir.mkdir(parents=True)
     synthetic_consensus().to_csv(consensus_dir / "dataset_consenso.csv", index=False)
-    return tmp_path
+    return results
 
 
 @pytest.fixture

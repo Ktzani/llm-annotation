@@ -10,10 +10,10 @@ INITIAL_ROUND_SIZE documentos válidos (regra do TLC, Merlo et al., CIKM'25).
 Como a MoE é verificada a cada rodada (parada sequencial), a cobertura real do
 IC fica um pouco abaixo da nominal; vale registrar isso ao reportar.
 
-Estrutura de saída (em ``<results>/validacao_humana/<dataset>/<date>/estimativas/``):
+Estrutura de saída (em ``data/validacao_humana/<dataset>/<date>/estimativas/``):
     estimativa_ate_rodada_XX.csv    θ̂, IC, MoE e status por grupo e métrica
     estratos_ate_rodada_XX.csv      Detalhe por estrato (N_h, n_h, θ̂_h, W_h)
-    documentos_ate_rodada_XX.csv    Gabarito + rótulo humano, situação, observações e métricas por documento
+    documentos_ate_rodada_XX.csv    Gabarito + rótulo humano, situação e métricas por documento
     historico.csv                   Uma linha por grupo/métrica/rodada (recalcular a rodada substitui as linhas dela)
 """
 from datetime import datetime

@@ -80,7 +80,11 @@ def next_document(dataset: str, request: Request, user: str = Depends(require_ev
     answered = store.progress(key, round_number, [user])[user]
     doc = store.next_unanswered(key, round_number, user)
     if doc is None:
-        return NextDocumentOut(concluido=True, respondidos=answered, total=total)
+        deadline = _controller(request).review_deadline(dataset)
+        return NextDocumentOut(
+            concluido=True, respondidos=answered, total=total,
+            revisao_ate=deadline.isoformat(timespec="seconds") if deadline else None,
+        )
     return NextDocumentOut(
         concluido=False, respondidos=answered, total=total, documento=DocumentOut(**doc, total=total)
     )

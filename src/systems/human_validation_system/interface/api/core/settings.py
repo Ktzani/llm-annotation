@@ -7,7 +7,13 @@ from typing import Dict, Optional
 
 from loguru import logger
 
-from src.config.human_validation import EVALUATORS, INCREMENT_SIZE, INTERFACE_DB_NAME
+from src.config.human_validation import (
+    AUTO_START_NEXT_ROUND,
+    EVALUATORS,
+    INCREMENT_SIZE,
+    INTERFACE_DB_NAME,
+    REVIEW_WINDOW_MINUTES,
+)
 from src.systems.human_validation_system.pipeline import HumanValidationPipeline
 
 
@@ -18,7 +24,7 @@ class InterfaceSettings:
     Responsabilidades:
     - Definir quais experimentos (dataset -> data) a interface conduz
     - Guardar os códigos de acesso de avaliadores e administrador (vindos do .env)
-    - Resolver o caminho do banco SQLite (padrão: `<results_dir>/validacao_humana/validacao_humana.db`)
+    - Resolver o caminho do banco SQLite (padrão: `data/validacao_humana/validacao_humana.db`)
     """
 
     def __init__(
@@ -29,6 +35,8 @@ class InterfaceSettings:
         admin_code: str,
         db_path: Optional[str] = None,
         increment_size: int = INCREMENT_SIZE,
+        auto_next_round: bool = AUTO_START_NEXT_ROUND,
+        review_window_minutes: int = REVIEW_WINDOW_MINUTES,
     ):
         if not admin_code:
             raise ValueError("Código do administrador ausente (HV_ADMIN_CODE)")
@@ -43,6 +51,8 @@ class InterfaceSettings:
         self.admin_code = admin_code
         self.db_path = Path(db_path) if db_path else HumanValidationPipeline.validation_root(results_dir) / INTERFACE_DB_NAME
         self.increment_size = increment_size
+        self.auto_next_round = auto_next_round
+        self.review_window_minutes = review_window_minutes
         logger.debug(f"InterfaceSettings: {list(experiments)} | banco em {self.db_path}")
 
     @staticmethod

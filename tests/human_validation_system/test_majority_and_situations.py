@@ -1,7 +1,6 @@
 """
 Maioria entre os três avaliadores e classificação nas quatro situações (com fronteiras).
 """
-import numpy as np
 import pandas as pd
 import pytest
 
@@ -20,7 +19,7 @@ def build(cases):
                     "rotulo_consolidado": llm})
         for i, (chosen, other, which) in enumerate(answers, start=1):
             responses.append({"id_anonimo": doc_id, "avaliador": f"av{i}", "rotulo_escolhido": chosen,
-                              "outro_rotulo_possivel": other, "qual_outro_rotulo": which, "observacao": np.nan})
+                              "outro_rotulo_possivel": other, "qual_outro_rotulo": which})
     responses = pd.DataFrame(responses)
     docs = HumanLabelAggregator(N).aggregate(responses, pd.DataFrame(key))
     return SituationClassifier(N, UNDECIDABLE).classify(responses, docs).set_index("id_anonimo")

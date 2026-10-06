@@ -15,18 +15,27 @@ function checked(name) {
 
 function renderOptions() {
   const { classes, opcao_indecidivel, sim_nao } = state.options;
-  $("rotulos").replaceChildren(
-    ...classes.map((c) => radio("rotulo", c.rotulo, c.rotulo)),
-    radio("rotulo", opcao_indecidivel, opcao_indecidivel, "undecidable"),
-  );
+  $("rotulos").replaceChildren(...classes.map((c) => radio("rotulo", c.rotulo, c.rotulo)));
+  // Fora da grade de classes: é uma resposta sobre o texto, não uma classe
+  const undecidableLabel = opcao_indecidivel.charAt(0).toUpperCase() + opcao_indecidivel.slice(1);
+  $("indecidivel").replaceChildren(radio("rotulo", opcao_indecidivel, undecidableLabel, "undecidable"));
   $("sim-nao").replaceChildren(...sim_nao.map((v) => radio("outro", v, v)));
 
-  $("guia").replaceChildren(...classes.map((c) =>
+  $("guia").replaceChildren(
+    ...classes.map((c) =>
+      el("details", {},
+        el("summary", {}, c.rotulo),
+        c.descricao ? el("p", {}, c.descricao) : null,
+        ...c.exemplos.map((t) => el("p", { class: "example" }, t)),
+      )),
     el("details", {},
-      el("summary", {}, c.rotulo),
-      c.descricao ? el("p", {}, c.descricao) : null,
-      ...c.exemplos.map((t) => el("p", { class: "example" }, t)),
-    )));
+      el("summary", {}, undecidableLabel),
+      el("p", {}, "Use só quando o texto não traz informação suficiente para escolher qualquer rótulo: "
+        + "está truncado, é genérico demais ou trata de um assunto fora de todos os rótulos."),
+      el("p", {}, "Não use quando estiver em dúvida entre dois rótulos: escolha o mais adequado na etapa 1 "
+        + "e indique o outro na etapa 2."),
+    ),
+  );
 }
 
 function refreshOtherOptions(selected) {
@@ -48,10 +57,13 @@ function fillForm(answer) {
   if (answer) {
     document.querySelector(`input[name="rotulo"][value="${CSS.escape(answer.rotulo_escolhido)}"]`).checked = true;
     document.querySelector(`input[name="outro"][value="${CSS.escape(answer.outro_rotulo_possivel)}"]`).checked = true;
-    $("observacao").value = answer.observacao || "";
   }
   refreshOtherOptions(answer?.qual_outro_rotulo);
   syncStep2();
+}
+
+function hhmm(iso) {
+  return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 }
 
 function showProgress(respondidos, total) {
@@ -79,6 +91,9 @@ async function loadNext() {
   showProgress(next.respondidos, next.total);
   if (next.concluido) {
     state.doc = null;
+    $("revisao").textContent = next.revisao_ate
+      ? `Todos os avaliadores terminaram. Você pode revisar suas respostas em "Minhas respostas" até ${hhmm(next.revisao_ate)}; depois a rodada fecha automaticamente.`
+      : `Obrigado! Você ainda pode revisar suas respostas em "Minhas respostas" até a rodada fechar.`;
     $("documento").classList.add("hidden");
     $("concluido").classList.remove("hidden");
     $("posicao").textContent = "Rodada concluída";
@@ -109,7 +124,6 @@ async function save(event) {
     rotulo_escolhido: checked("rotulo"),
     outro_rotulo_possivel: checked("outro"),
     qual_outro_rotulo: checked("outro") === "sim" ? $("qual-outro").value : null,
-    observacao: $("observacao").value,
   };
   try {
     await api("PUT", `/api/avaliacao/${state.dataset}/respostas/${encodeURIComponent(state.doc.id_anonimo)}`, body);
@@ -139,8 +153,28 @@ async function selectDataset(dataset, datasets) {
   await loadNext();
 }
 
+// Introdução: aparece na primeira visita do avaliador e pode ser reaberta em "Instruções"
+const introKey = () => `hv_intro_vista_${Session.get("usuario")}`;
+
+function showIntro(visible) {
+  $("intro").classList.toggle("hidden", !visible);
+  $("trabalho").classList.toggle("hidden", visible);
+  window.scrollTo(0, 0);
+}
+
+function introSeen() {
+  try { return localStorage.getItem(introKey()) === "1"; } catch { return false; }
+}
+
+function markIntroSeen() {
+  try { localStorage.setItem(introKey(), "1"); } catch { /* sem armazenamento: mostra de novo na próxima visita */ }
+}
+
 async function init() {
   $("quem").textContent = Session.get("usuario");
+  $("comecar").addEventListener("click", () => { markIntroSeen(); showIntro(false); });
+  $("abrir-intro").addEventListener("click", () => showIntro(true));
+  showIntro(!introSeen());
   $("form-resposta").addEventListener("submit", save);
   $("form-resposta").addEventListener("change", (e) => {
     if (e.target.name === "rotulo") refreshOtherOptions($("qual-outro").value);
@@ -156,4 +190,13 @@ async function init() {
   if (first) await selectDataset(first.dataset, datasets);
 }
 
+function showUpdateBanner() {
+  if ($("atualizacao")) return;
+  document.body.prepend(el("div", { class: "update-banner", id: "atualizacao", role: "status" },
+    "A página foi atualizada. Salve a resposta atual e clique em ",
+    el("button", { type: "button", class: "primary", onclick: () => window.location.reload() }, "Recarregar"),
+    "."));
+}
+
+watchVersion(showUpdateBanner);
 init().catch((e) => ($("sem-rodada").textContent = e.message));

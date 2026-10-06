@@ -56,9 +56,9 @@ class EvaluatorGuideWriter:
             "em `qual_outro_rotulo`.",
             "",
             f"Se o texto não traz informação suficiente para decidir, ou nenhuma das classes se aplica, "
-            f"escolha `{self.insufficient_option}` em `rotulo_escolhido` e explique em `observacao`.",
-            "",
-            "Use `observacao` para qualquer comentário (texto confuso, dúvida entre classes etc.).",
+            f"escolha `{self.insufficient_option}` em `rotulo_escolhido` (texto truncado, genérico demais ou fora "
+            "de todos os rótulos). Em dúvida entre dois rótulos, não use esta opção: escolha o mais adequado e "
+            "indique o outro na etapa 2.",
             "",
             "As colunas de rótulo aceitam apenas os valores da lista suspensa, escritos exatamente como abaixo. "
             "Avalie cada texto de forma independente e não consulte os outros avaliadores.",

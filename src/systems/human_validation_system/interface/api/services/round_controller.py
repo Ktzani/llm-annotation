@@ -1,6 +1,9 @@
 """
 Round Controller - Abre, acompanha e fecha rodadas da validação humana via interface
 """
+import shutil
+import threading
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -45,12 +48,18 @@ class RoundController:
     - Informar o progresso de cada avaliador
     - Fechar a rodada somente com todos completos: estimação (respostas do banco),
       critério de parada e planilha consolidada
+    - Abrir a próxima rodada automaticamente se algum grupo não parou
+    - Fechar sozinho as rodadas completas após a janela de revisão (close_due_rounds)
+    - As duas automações podem ser ligadas/desligadas pelo administrador (salvas no banco)
+    - Reiniciar tudo, guardando antes uma cópia de segurança (reset_all)
     """
 
     def __init__(self, settings: InterfaceSettings, store: ResponseStore):
         self.settings = settings
         self.store = store
         self.workbook_writer = ConsolidatedWorkbookWriter()
+        # Serializa abrir/fechar (botão do admin x verificação automática); reentrante pois fechar abre a próxima
+        self._lock = threading.RLock()
         logger.debug(f"RoundController inicializado ({list(settings.experiments)})")
 
     # ------------------------------------------------------------- caminhos
@@ -136,6 +145,39 @@ class RoundController:
         stopped = all(g["status"] == StoppingStatusReader.STOP for g in groups.values())
         return {"rodada": round_number, "grupos": groups, "todos_pararam": stopped}
 
+    # ------------------------------------------------------------- automação
+    AUTO_NEXT_KEY = "proxima_automatica"
+    AUTO_CLOSE_KEY = "fechamento_automatico"
+
+    def _flag(self, key: str, default: bool) -> bool:
+        value = self.store.get_option(key)
+        return default if value is None else value == "1"
+
+    def automation(self) -> Dict:
+        """Escolha do administrador (banco) ou, se ainda não houver, o padrão da configuração."""
+        return {
+            self.AUTO_NEXT_KEY: self._flag(self.AUTO_NEXT_KEY, self.settings.auto_next_round),
+            self.AUTO_CLOSE_KEY: self._flag(self.AUTO_CLOSE_KEY, self.settings.review_window_minutes > 0),
+            "janela_revisao_minutos": self.settings.review_window_minutes,
+        }
+
+    def set_automation(self, auto_next: Optional[bool] = None, auto_close: Optional[bool] = None) -> Dict:
+        for key, value in ((self.AUTO_NEXT_KEY, auto_next), (self.AUTO_CLOSE_KEY, auto_close)):
+            if value is not None:
+                self.store.set_option(key, "1" if value else "0")
+        logger.info(f"Automação atualizada: {self.automation()}")
+        return self.automation()
+
+    def review_deadline(self, dataset: str) -> Optional[datetime]:
+        """Fim da janela de revisão: última resposta + janela, só com rodada aberta e todos completos."""
+        round_number = self.store.open_round(self.store_key(dataset))
+        if round_number is None or not self.settings.review_window_minutes or not self.automation()[self.AUTO_CLOSE_KEY]:
+            return None
+        if any(p["faltam"] for p in self.progress(dataset, round_number).values()):
+            return None
+        last = self.store.last_answer_at(self.store_key(dataset), round_number)
+        return datetime.fromisoformat(last) + timedelta(minutes=self.settings.review_window_minutes) if last else None
+
     def status(self, dataset: str) -> Dict:
         self._check_dataset(dataset)
         current = self.store.current_round(self.store_key(dataset))
@@ -145,7 +187,9 @@ class RoundController:
         round_number, state = current["rodada"], current["estado"]
         progress = self.progress(dataset, round_number)
         complete = all(p["faltam"] == 0 for p in progress.values())
-        result = self.last_result(dataset, round_number) if state == "fechada" else None
+        # Resultado da última rodada fechada (a atual, ou a anterior se a atual está aberta)
+        closed = round_number if state == "fechada" else round_number - 1
+        result = self.last_result(dataset, closed) if closed > 0 else None
         return {
             "dataset": dataset,
             "rodada": round_number,
@@ -153,13 +197,62 @@ class RoundController:
             "progresso": progress,
             "pode_fechar": state == "aberta" and complete,
             "pode_iniciar": state == "fechada" and not (result and result["todos_pararam"]),
+            "proxima_automatica": self.automation()[self.AUTO_NEXT_KEY],
+            "fecha_automaticamente_em": self._iso(self.review_deadline(dataset)),
             "resultado": result,
             "planilha_disponivel": self.workbook_path(dataset).exists(),
         }
 
+    @staticmethod
+    def _iso(moment: Optional[datetime]) -> Optional[str]:
+        return moment.isoformat(timespec="seconds") if moment else None
+
+    # ------------------------------------------------------------- reinício
+    BACKUP_DIR = "_backup"
+
+    def reset_all(self) -> List[str]:
+        """Zera a validação de todos os experimentos; tudo vai antes para `_backup/`. Retorna as pastas de backup."""
+        with self._lock:
+            stamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+            backups = []
+            for dataset, date in self.settings.experiments.items():
+                key = self.store_key(dataset)
+                backup = HumanValidationPipeline.validation_root(self.settings.results_dir) / self.BACKUP_DIR / f"{dataset}_{date}_{stamp}"
+                backup.mkdir(parents=True, exist_ok=True)
+
+                for table, rows in self.store.export_experiment(key).items():
+                    rows.to_csv(backup / f"banco_{table}.csv", index=False)
+                source = self.validation_dir(dataset)
+                if source.exists():
+                    shutil.move(str(source), str(backup / "arquivos"))
+                self.store.delete_experiment(key)
+
+                backups.append(str(backup))
+                logger.warning(f"{dataset}: validação reiniciada (backup em {backup})")
+            return backups
+
     # ------------------------------------------------------------- ciclo
+    def close_due_rounds(self, now: Optional[datetime] = None) -> List[str]:
+        """Fecha as rodadas cuja janela de revisão terminou; retorna os datasets fechados."""
+        now = now or datetime.now()
+        closed = []
+        for dataset in self.settings.experiments:
+            deadline = self.review_deadline(dataset)
+            if deadline is None or now < deadline:
+                continue
+            try:
+                self.close_round(dataset)
+                closed.append(dataset)
+            except RoundStateError:
+                pass  # fechada pelo admin no meio do caminho
+        return closed
+
     def start_round(self, dataset: str) -> Dict:
         """Sorteia (ou republica) a próxima rodada e a abre para os avaliadores."""
+        with self._lock:
+            return self._start_round(dataset)
+
+    def _start_round(self, dataset: str) -> Dict:
         self._check_dataset(dataset)
         if self.store.open_round(self.store_key(dataset)) is not None:
             raise RoundStateError("Já existe uma rodada aberta para este dataset")
@@ -185,7 +278,11 @@ class RoundController:
         return self.status(dataset)
 
     def close_round(self, dataset: str) -> Dict:
-        """Fecha a rodada aberta se todos terminaram; roda a estimação e a planilha consolidada."""
+        """Fecha a rodada se todos terminaram: estimação, planilha e (se configurado) abre a próxima."""
+        with self._lock:
+            return self._close_round(dataset)
+
+    def _close_round(self, dataset: str) -> Dict:
         self._check_dataset(dataset)
         round_number = self.store.open_round(self.store_key(dataset))
         if round_number is None:
@@ -213,7 +310,18 @@ class RoundController:
             self.store.reopen_round(self.store_key(dataset), round_number)
             raise
         logger.success(f"{dataset}: rodada {round_number} fechada")
+
+        result = self.last_result(dataset, round_number)
+        if self.automation()[self.AUTO_NEXT_KEY] and result and not result["todos_pararam"]:
+            self._start_next_automatically(dataset)
         return self.status(dataset)
+
+    def _start_next_automatically(self, dataset: str) -> None:
+        """Abre a próxima rodada; se falhar, a rodada fechada continua válida e o botão manual segue disponível."""
+        try:
+            self.start_round(dataset)
+        except Exception as e:
+            logger.error(f"{dataset}: não foi possível abrir a próxima rodada automaticamente: {e}")
 
     def _write_workbook(self, dataset: str, round_number: int, summary: pd.DataFrame) -> None:
         estimates = self.validation_dir(dataset) / StoppingStatusReader.OUTPUT_SUBDIR

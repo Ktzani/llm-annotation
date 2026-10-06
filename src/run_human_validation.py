@@ -5,7 +5,7 @@ Modos (`mode` no main):
     "interface"   Sobe a interface web (avaliadores + acompanhamento do administrador);
                   respostas no SQLite, rodadas abertas/fechadas pela tela /admin.
                   Códigos de acesso no .env (HV_ADMIN_CODE, HV_CODE_AVALIADOR_1..3).
-    "rodada"      Gera em `<results>/validacao_humana/<dataset>/<date>/` o guia do
+    "rodada"      Gera em `data/validacao_humana/<dataset>/<date>/` o guia do
                   avaliador e, para a rodada pedida, as planilhas cegas (uma por
                   avaliador) e o gabarito interno.
     "estimativa"  Lê as planilhas preenchidas de todas as rodadas e recalcula θ̂, IC
@@ -22,6 +22,7 @@ Fluxo de cada rodada:
 
 As configurações são definidas estaticamente abaixo.
 """
+import os
 import sys
 
 import uvicorn
@@ -47,7 +48,6 @@ from src.systems.human_validation_system.estimation.pipeline import (
     HumanValidationEstimationPipeline,
 )
 from src.systems.human_validation_system.interface.api.core.settings import InterfaceSettings
-from src.systems.human_validation_system.interface.api.server import create_app
 from src.systems.human_validation_system.pipeline import (
     DEFAULT_RESULTS_DIR,
     HumanValidationConfig,
@@ -57,9 +57,20 @@ from src.systems.human_validation_system.pipeline import (
 
 def run_interface(experiments: dict, increment_size: int) -> None:
     load_dotenv()
-    settings = InterfaceSettings.from_env(experiments, DEFAULT_RESULTS_DIR, increment_size)
-    logger.info(f"Interface em http://localhost:{INTERFACE_PORT} (banco: {settings.db_path})")
-    uvicorn.run(create_app(settings), host=INTERFACE_HOST, port=INTERFACE_PORT)
+    # reload exige a fábrica por import: a configuração estática segue para ela via ambiente
+    os.environ["HV_EXPERIMENTS"] = ",".join(f"{d}:{date}" for d, date in experiments.items())
+    os.environ["HV_RESULTS_DIR"] = DEFAULT_RESULTS_DIR
+    os.environ["HV_INCREMENT_SIZE"] = str(increment_size)
+    settings = InterfaceSettings.from_env()  # valida códigos do .env antes de subir
+    logger.info(f"Interface em http://localhost:{INTERFACE_PORT} (banco: {settings.db_path}); recarrega ao salvar .py")
+    uvicorn.run(
+        "src.systems.human_validation_system.interface.api.server:create_app_from_env",
+        factory=True,
+        host=INTERFACE_HOST,
+        port=INTERFACE_PORT,
+        reload=True,
+        reload_dirs=["src"],
+    )
 
 
 def run_round(experiments: dict, round_number, increment_size: int) -> None:

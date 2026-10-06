@@ -16,8 +16,8 @@ A partir da 2ª rodada, só os grupos que ainda não atingiram o critério de
 parada são sorteados: o status vem da estimativa da última rodada
 (`run_human_validation.py`, mode="estimativa"), que precisa existir antes do pedido.
 
-Estrutura de saída (em ``<results>/validacao_humana/<dataset>/<date>/``, fora das pastas
-de experimento, que guardam só os resultados de anotação/consenso/fine-tuning):
+Estrutura de saída (em ``data/validacao_humana/<dataset>/<date>/``, irmã de ``data/results``:
+as pastas de experimento guardam só os resultados de anotação/consenso/fine-tuning):
     amostragem.json                        Registro: semente, sha do CSV de origem, rodadas entregues
     guia_avaliador.md                      Guia do avaliador
     exemplos_guia.csv                      Documentos reservados para o guia (fora de todas as rodadas)
@@ -102,12 +102,12 @@ class HumanValidationPipeline:
 
     @classmethod
     def validation_root(cls, results_dir: str) -> Path:
-        """Raiz da validação humana: `<results>/validacao_humana`."""
-        return Path(results_dir) / cls.OUTPUT_DIR_NAME
+        """Raiz da validação humana, ao lado de results: `data/results` -> `data/validacao_humana`."""
+        return Path(results_dir).parent / cls.OUTPUT_DIR_NAME
 
     @classmethod
     def validation_dir(cls, results_dir: str, dataset_name: str, specific_date: str) -> Path:
-        """Pasta de um experimento: `<results>/validacao_humana/<dataset>/<date>`."""
+        """Pasta de um experimento: `data/validacao_humana/<dataset>/<date>`."""
         return cls.validation_root(results_dir) / dataset_name / specific_date
 
     def __init__(self, config: HumanValidationConfig):

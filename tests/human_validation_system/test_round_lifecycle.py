@@ -37,9 +37,10 @@ def test_round_closes_when_all_complete_and_locks_answers(client, admin, evaluat
 
     response = client.post(f"/api/admin/{DATASET}/fechar", headers=admin)
     assert response.status_code == 200
-    assert response.json()["estado"] == "fechada"
+    assert response.json()["resultado"]["rodada"] == 1
     assert set(response.json()["resultado"]["grupos"]) == {"A", "B", "C"}
 
+    # Documento da rodada 1 não pode mais ser editado (não pertence à rodada aberta)
     key = client.app.state.controller.store_key(DATASET)
     any_id = client.app.state.store.all_responses(key, 1)["id_anonimo"].iloc[0]
     edit = client.put(
@@ -47,7 +48,31 @@ def test_round_closes_when_all_complete_and_locks_answers(client, admin, evaluat
         json={"rotulo_escolhido": "romance", "outro_rotulo_possivel": "não"},
         headers=evaluators["avaliador_1"],
     )
-    assert edit.status_code == 409
+    assert edit.status_code in (404, 409)
+
+
+def test_next_round_opens_automatically_when_groups_pending(client, admin, evaluators):
+    client.post(f"/api/admin/{DATASET}/rodadas", headers=admin)
+    for headers in evaluators.values():
+        answer_all(client, headers)
+
+    status = client.post(f"/api/admin/{DATASET}/fechar", headers=admin).json()
+    assert not status["resultado"]["todos_pararam"]
+    assert (status["rodada"], status["estado"]) == (2, "aberta")
+    assert status["resultado"]["rodada"] == 1
+    nxt = client.get(f"/api/avaliacao/{DATASET}/proximo", headers=evaluators["avaliador_1"]).json()
+    assert not nxt["concluido"] and nxt["respondidos"] == 0
+
+
+def test_no_automatic_round_when_disabled(client, admin, evaluators):
+    client.app.state.settings.auto_next_round = False
+    client.post(f"/api/admin/{DATASET}/rodadas", headers=admin)
+    for headers in evaluators.values():
+        answer_all(client, headers)
+
+    status = client.post(f"/api/admin/{DATASET}/fechar", headers=admin).json()
+    assert (status["rodada"], status["estado"]) == (1, "fechada")
+    assert status["pode_iniciar"] is True
 
 
 def test_same_order_for_all_evaluators(client, admin, evaluators):
@@ -102,7 +127,7 @@ def test_other_experiment_date_does_not_share_rounds(client, admin, results_dir)
 
 
 def test_outputs_stay_out_of_experiment_folder(client, admin, evaluators, results_dir):
-    """Tudo da validação humana fica em <results>/validacao_humana; a pasta do experimento não muda."""
+    """Tudo da validação humana fica em data/validacao_humana (irmã de results); a pasta do experimento não muda."""
     from tests.human_validation_system.conftest import DATE
 
     client.post(f"/api/admin/{DATASET}/rodadas", headers=admin)
@@ -110,7 +135,8 @@ def test_outputs_stay_out_of_experiment_folder(client, admin, evaluators, result
         answer_all(client, headers)
     client.post(f"/api/admin/{DATASET}/fechar", headers=admin)
 
-    validation = results_dir / "validacao_humana"
+    validation = results_dir.parent / "validacao_humana"
+    assert not (results_dir / "validacao_humana").exists()
     assert client.app.state.controller.validation_dir(DATASET) == validation / DATASET / DATE
     assert client.app.state.settings.db_path == validation / "validacao_humana.db"
     assert (validation / DATASET / DATE / f"validacao_consolidada_{DATASET}.xlsx").exists()

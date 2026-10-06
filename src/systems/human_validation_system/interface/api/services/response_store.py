@@ -37,7 +37,6 @@ CREATE TABLE IF NOT EXISTS respostas (
     rotulo_escolhido TEXT NOT NULL,
     outro_rotulo_possivel TEXT NOT NULL,
     qual_outro_rotulo TEXT,
-    observacao TEXT,
     atualizado_em TEXT NOT NULL,
     PRIMARY KEY (dataset, rodada, avaliador, id_anonimo)
 );
@@ -47,9 +46,13 @@ CREATE TABLE IF NOT EXISTS sessoes (
     papel TEXT NOT NULL,
     criada_em TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS configuracoes (
+    chave TEXT PRIMARY KEY,
+    valor TEXT NOT NULL
+);
 """
 
-ANSWER_FIELDS = ("rotulo_escolhido", "outro_rotulo_possivel", "qual_outro_rotulo", "observacao")
+ANSWER_FIELDS = ("rotulo_escolhido", "outro_rotulo_possivel", "qual_outro_rotulo")
 
 
 def _now() -> str:
@@ -64,6 +67,7 @@ class ResponseStore:
     - Rodadas (aberta/fechada) e a lista cega de documentos de cada rodada
     - Respostas por avaliador, gravadas a cada envio (upsert)
     - Sessões de login (token -> usuário/papel)
+    - Opções escolhidas pelo administrador na tela (ex.: automação)
 
     Nunca armazena gabarito, grupo ou classe: só id_anonimo e texto.
     """
@@ -85,6 +89,19 @@ class ResponseStore:
             con.commit()
         finally:
             con.close()
+
+    # ------------------------------------------------------------------ opções
+    def get_option(self, key: str) -> Optional[str]:
+        with self._connect() as con:
+            row = con.execute("SELECT valor FROM configuracoes WHERE chave = ?", (key,)).fetchone()
+        return row["valor"] if row else None
+
+    def set_option(self, key: str, value: str) -> None:
+        with self._connect() as con:
+            con.execute(
+                "INSERT INTO configuracoes VALUES (?, ?) ON CONFLICT (chave) DO UPDATE SET valor = excluded.valor",
+                (key, value),
+            )
 
     # ------------------------------------------------------------------ sessões
     def create_session(self, user: str, role: str) -> str:
@@ -167,12 +184,12 @@ class ResponseStore:
         values = tuple(answer.get(f) for f in ANSWER_FIELDS)
         with self._connect() as con:
             con.execute(
-                """INSERT INTO respostas VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                f"""INSERT INTO respostas (dataset, rodada, avaliador, id_anonimo, {', '.join(ANSWER_FIELDS)}, atualizado_em)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                    ON CONFLICT (dataset, rodada, avaliador, id_anonimo) DO UPDATE SET
                    rotulo_escolhido = excluded.rotulo_escolhido,
                    outro_rotulo_possivel = excluded.outro_rotulo_possivel,
                    qual_outro_rotulo = excluded.qual_outro_rotulo,
-                   observacao = excluded.observacao,
                    atualizado_em = excluded.atualizado_em""",
                 (dataset, round_number, evaluator, id_anonimo, *values, _now()),
             )
@@ -182,7 +199,7 @@ class ResponseStore:
         with self._connect() as con:
             rows = con.execute(
                 """SELECT d.posicao, r.id_anonimo, r.rotulo_escolhido, r.outro_rotulo_possivel,
-                          r.qual_outro_rotulo, r.observacao, r.atualizado_em
+                          r.qual_outro_rotulo, r.atualizado_em
                    FROM respostas r JOIN documentos d USING (dataset, rodada, id_anonimo)
                    WHERE r.dataset = ? AND r.rodada = ? AND r.avaliador = ? ORDER BY d.posicao""",
                 (dataset, round_number, evaluator),
@@ -198,6 +215,13 @@ class ResponseStore:
             ).fetchone()
         return dict(row) if row else None
 
+    def last_answer_at(self, dataset: str, round_number: int) -> Optional[str]:
+        """Momento da resposta mais recente da rodada (ISO)."""
+        with self._connect() as con:
+            return con.execute(
+                "SELECT MAX(atualizado_em) FROM respostas WHERE dataset = ? AND rodada = ?", (dataset, round_number)
+            ).fetchone()[0]
+
     def progress(self, dataset: str, round_number: int, evaluators: List[str]) -> Dict[str, int]:
         """Nº de documentos respondidos por avaliador na rodada."""
         with self._connect() as con:
@@ -207,6 +231,20 @@ class ResponseStore:
             ).fetchall()
         counts = {r["avaliador"]: r["n"] for r in rows}
         return {e: counts.get(e, 0) for e in evaluators}
+
+    def export_experiment(self, dataset: str) -> Dict[str, pd.DataFrame]:
+        """Todas as linhas de um experimento, por tabela (para backup antes de reiniciar)."""
+        with self._connect() as con:
+            return {
+                table: pd.read_sql_query(f"SELECT * FROM {table} WHERE dataset = ?", con, params=(dataset,))
+                for table in ("rodadas", "documentos", "respostas")
+            }
+
+    def delete_experiment(self, dataset: str) -> None:
+        """Apaga rodadas, documentos e respostas de um experimento."""
+        with self._connect() as con:
+            for table in ("respostas", "documentos", "rodadas"):
+                con.execute(f"DELETE FROM {table} WHERE dataset = ?", (dataset,))
 
     def all_responses(self, dataset: str, up_to_round: int) -> pd.DataFrame:
         """Respostas de todas as rodadas até `up_to_round`, em formato longo."""

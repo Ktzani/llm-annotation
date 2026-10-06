@@ -3,7 +3,7 @@ Schemas do avaliador - o que as telas de avaliação podem receber
 """
 from typing import List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 # Nenhum destes modelos tem campo de rótulo de referência, LLM, grupo ou classe:
 # o response_model descarta qualquer campo extra antes de chegar ao navegador.
@@ -32,7 +32,6 @@ class AnswerIn(BaseModel):
     rotulo_escolhido: str
     outro_rotulo_possivel: str
     qual_outro_rotulo: Optional[str] = None
-    observacao: Optional[str] = Field(default=None, max_length=2000)
 
 
 class AnswerOut(BaseModel):
@@ -41,7 +40,6 @@ class AnswerOut(BaseModel):
     rotulo_escolhido: str
     outro_rotulo_possivel: str
     qual_outro_rotulo: Optional[str]
-    observacao: Optional[str]
     atualizado_em: str
 
 
@@ -58,3 +56,5 @@ class NextDocumentOut(BaseModel):
     respondidos: int
     total: int
     documento: Optional[DocumentOut] = None
+    # Quando todos terminaram: até quando ainda dá para revisar (fechamento automático)
+    revisao_ate: Optional[str] = None

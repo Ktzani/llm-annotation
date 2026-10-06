@@ -24,7 +24,7 @@ class EvaluationSheetWriter:
     - Não sobrescrever planilhas existentes (podem já estar preenchidas)
     """
 
-    COLUMNS = ["id_anonimo", "texto", "rotulo_escolhido", "outro_rotulo_possivel", "qual_outro_rotulo", "observacao"]
+    COLUMNS = ["id_anonimo", "texto", "rotulo_escolhido", "outro_rotulo_possivel", "qual_outro_rotulo"]
     YES_NO = ["sim", "não"]
     EXCEL_CELL_LIMIT = 32_000
     EXCEL_LIST_LIMIT = 255
@@ -64,7 +64,7 @@ class EvaluationSheetWriter:
         ws.append(self.COLUMNS)
 
         for id_anonimo, texto in zip(rows["id_anonimo"], rows["texto"]):
-            ws.append([id_anonimo, self._clean_text(texto), None, None, None, None])
+            ws.append([id_anonimo, self._clean_text(texto), None, None, None])
 
         n = len(rows)
         ws.add_data_validation(self._list_validation(self.chosen_options, "C", n))
@@ -73,7 +73,7 @@ class EvaluationSheetWriter:
 
         for cell in ws[1]:
             cell.font = Font(bold=True)
-        for col, width in zip("ABCDEF", (14, 90, 26, 22, 26, 40)):
+        for col, width in zip("ABCDE", (14, 90, 26, 22, 26)):
             ws.column_dimensions[col].width = width
         for row in ws.iter_rows(min_row=2, min_col=2, max_col=2):
             row[0].alignment = Alignment(wrap_text=True, vertical="top")

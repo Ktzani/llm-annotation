@@ -22,7 +22,7 @@ class EvaluationResponseLoader:
     - Tratar valores fora da lista como ausentes, registrando-os no log
     """
 
-    ANSWER_COLUMNS = ["rotulo_escolhido", "outro_rotulo_possivel", "qual_outro_rotulo", "observacao"]
+    ANSWER_COLUMNS = ["rotulo_escolhido", "outro_rotulo_possivel", "qual_outro_rotulo"]
 
     def __init__(self, evaluators: List[str], class_names: List[str], insufficient_option: str):
         self.evaluators = evaluators
@@ -62,7 +62,6 @@ class EvaluationResponseLoader:
         out["rotulo_escolhido"] = self._normalize(sheet["rotulo_escolhido"], self._chosen, where)
         out["outro_rotulo_possivel"] = self._normalize(sheet["outro_rotulo_possivel"], self._yes_no, where)
         out["qual_outro_rotulo"] = self._normalize(sheet["qual_outro_rotulo"], self._labels, where)
-        out["observacao"] = sheet["observacao"]
         out["avaliador"] = evaluator
         out["rodada"] = round_number
         return out
