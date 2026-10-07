@@ -45,6 +45,7 @@ from src.systems.fine_tune_system.training.cross_validator import CrossValidator
 
 
 from src.utils.get_latest_results_date import get_latest_results_date
+from src.utils.clean_checkpoints import clean_checkpoints
 from src.api.schemas.annotation_experiment.dataset import DatasetConfig
 from src.api.schemas.fine_tuning.fine_tuning import FineTuningRequest
 from src.systems.instance_selection_system.filtering.annotation_filter import AnnotationFilter, save_filter_result
@@ -579,5 +580,8 @@ class FineTuningPipeline:
             json.dump(results, f, indent=4, ensure_ascii=False)
         
         logger.success(f"\nResultados salvos em: {output_path}")
-        
+
+        # Mantém só os JSONs (config/trainer_state) dos checkpoints: os pesos não são reutilizados
+        clean_checkpoints(self.fine_tune_output_dir)
+
         return results
