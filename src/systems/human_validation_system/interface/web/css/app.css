@@ -34,6 +34,10 @@ h1, h2, h3 { line-height: 1.25; margin: 0 0 .5rem; }
 h1 { font-size: 1.25rem; }
 h2 { font-size: 1.1rem; }
 h3 { font-size: 1rem; }
+/* Títulos de seção dentro de cards: respiro em relação ao conteúdo anterior */
+.card h3 { margin: 1.75rem 0 .75rem; }
+.card h2 + h3, .card > h3:first-child { margin-top: 1rem; }
+.card h2 { margin-bottom: .75rem; }
 
 .topbar {
   display: flex; align-items: center; justify-content: space-between; gap: 1rem;
@@ -56,6 +60,8 @@ button, .button {
 button.primary { background: var(--primary); border-color: var(--primary); color: var(--primary-text); }
 button:disabled { opacity: .5; cursor: not-allowed; }
 button.danger { background: var(--danger); border-color: var(--danger); color: #fff; }
+button.danger-outline { background: none; border-color: var(--danger); color: var(--danger); font-size: .85rem; padding: .3rem .7rem; }
+.card-reset { justify-content: flex-end; border-top: 1px solid var(--border); padding-top: .75rem; }
 button.link { border: none; background: none; color: var(--primary); padding: 0; text-decoration: underline; }
 
 input, select, textarea {
@@ -111,7 +117,7 @@ legend { font-weight: 700; padding: 0 .25rem; }
 .choice.undecidable { border-style: dashed; border-color: var(--warning); color: var(--warning); font-style: italic; background: var(--bg); }
 .choice.undecidable:has(input:checked) { background: var(--bg); border-style: solid; border-width: 2px; }
 
-.actions { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: 1rem; align-items: center; }
+.actions { display: flex; gap: .5rem; flex-wrap: wrap; margin: 1rem 0; align-items: center; }
 
 .side details { border-bottom: 1px solid var(--border); padding: .4rem 0; }
 .side summary { cursor: pointer; font-weight: 600; }
@@ -120,6 +126,13 @@ legend { font-weight: 700; padding: 0 .25rem; }
 .answers li { display: flex; justify-content: space-between; gap: .5rem; padding: .35rem 0; border-bottom: 1px solid var(--border); font-size: .9rem; }
 
 /* administração */
+.stack { display: flex; flex-direction: column; gap: 1rem; }
+.stack table td, #paineis table td { padding: .5rem .6rem; }
+.section-title { margin-top: 2.5rem; }
+.panel-controls { display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; margin-bottom: 1rem; }
+.panel-controls label { display: flex; gap: .4rem; align-items: center; margin: 0; font-weight: 600; }
+.panel-controls select { width: auto; }
+.small { font-size: .78rem; }
 .toggle { display: flex; align-items: center; gap: .6rem; font-weight: 600; margin: .75rem 0 .1rem; cursor: pointer; }
 .toggle input { width: 1.1rem; height: 1.1rem; margin: 0; }
 .toggle-help { margin: 0 0 .25rem 1.7rem; font-size: .88rem; }
@@ -135,7 +148,7 @@ dialog::backdrop { background: rgba(0, 0, 0, .55); }
 .badge.fechada { color: var(--success); border-color: var(--success); }
 .evaluator { margin: .5rem 0; }
 .evaluator .row { display: flex; justify-content: space-between; font-size: .9rem; }
-table { width: 100%; border-collapse: collapse; font-size: .88rem; margin-top: .5rem; }
+table { width: 100%; border-collapse: collapse; font-size: .88rem; margin: .5rem 0 1rem; }
 th, td { text-align: left; padding: .35rem .4rem; border-bottom: 1px solid var(--border); vertical-align: top; }
 td.num { font-variant-numeric: tabular-nums; }
 .stop { color: var(--success); font-weight: 600; }

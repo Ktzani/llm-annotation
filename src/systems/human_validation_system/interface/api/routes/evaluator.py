@@ -59,6 +59,8 @@ def list_datasets(request: Request, user: str = Depends(require_evaluator)):
             rodada_aberta=is_open,
             respondidos=answered,
             total=total,
+            rodada_aberta_em=current["aberta_em"] if is_open else None,
+            janela_revisao_minutos=request.app.state.settings.review_window_minutes,
         ))
     return out
 
@@ -80,10 +82,13 @@ def next_document(dataset: str, request: Request, user: str = Depends(require_ev
     answered = store.progress(key, round_number, [user])[user]
     doc = store.next_unanswered(key, round_number, user)
     if doc is None:
-        deadline = _controller(request).review_deadline(dataset)
+        controller = _controller(request)
+        deadline = controller.review_deadline(dataset)
+        everyone_done = all(p["faltam"] == 0 for p in controller.progress(dataset, round_number).values())
         return NextDocumentOut(
             concluido=True, respondidos=answered, total=total,
             revisao_ate=deadline.isoformat(timespec="seconds") if deadline else None,
+            todos_terminaram=everyone_done,
         )
     return NextDocumentOut(
         concluido=False, respondidos=answered, total=total, documento=DocumentOut(**doc, total=total)

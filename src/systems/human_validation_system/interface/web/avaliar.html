@@ -42,9 +42,14 @@
           Use sempre o nome do rótulo exatamente como aparece nas opções.</li>
         <li>Avalie de forma <strong>independente</strong>: não converse com os outros avaliadores sobre os textos.</li>
         <li>Cada resposta é salva ao clicar em "Salvar e próximo". Você pode sair e continuar depois de onde parou.</li>
-        <li>Você pode revisar as suas respostas em "Minhas respostas" enquanto a rodada estiver aberta. Quando todos
-          terminam, ainda há alguns minutos para revisão antes de a rodada fechar.</li>
-        <li>Os textos chegam em rodadas. Quando uma nova rodada for aberta, ela aparecerá nesta página.</li>
+        <li>Você pode revisar as suas respostas em "Minhas respostas" enquanto a rodada estiver aberta.</li>
+        <li><strong>Se terminar antes dos outros, pode aguardar:</strong> a rodada só fecha quando todos terminarem.
+          Você será avisado(a) pessoalmente quando a próxima rodada começar.</li>
+        <li><strong>Quando o último avaliador termina, todos ainda têm <span class="janela-min">5</span> minutos para
+          revisar.</strong> Qualquer alteração nesse período reinicia os <span class="janela-min">5</span> minutos.
+          Depois disso, a rodada fecha automaticamente.</li>
+        <li>Os textos chegam em rodadas, e o tempo da rodada aparece acima do texto. Quando uma nova rodada for aberta,
+          ela aparecerá nesta página.</li>
       </ul>
       <div class="actions">
         <button class="primary" type="button" id="comecar">Começar</button>
@@ -60,7 +65,7 @@
           <section class="card">
             <div class="actions" style="margin-top:0; justify-content:space-between">
               <strong id="posicao"></strong>
-              <span class="muted" id="contagem"></span>
+              <span class="muted"><span id="tempo"></span> <span id="contagem"></span></span>
             </div>
             <div class="progress" aria-hidden="true"><span id="barra" style="width:0%"></span></div>
           </section>

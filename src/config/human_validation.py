@@ -65,8 +65,11 @@ INTERFACE_DB_NAME = "validacao_humana.db"
 AUTO_START_NEXT_ROUND = True
 # Com os três completos, a rodada fecha sozinha após esta janela sem novas respostas
 # (tempo para revisão; 0 desliga o fechamento automático)
-REVIEW_WINDOW_MINUTES = 10
+REVIEW_WINDOW_MINUTES = 5
 AUTO_CLOSE_CHECK_SECONDS = 30
+# Aviso por email ao fechar uma rodada (SMTP; credenciais no .env: HV_NOTIFY_EMAIL, HV_SMTP_*)
+SMTP_DEFAULT_HOST = "smtp.gmail.com"
+SMTP_DEFAULT_PORT = 587
 INTERFACE_HOST = "0.0.0.0"
 INTERFACE_PORT = 8001
 # Códigos de acesso vêm do .env (nunca do repositório):

@@ -25,6 +25,7 @@ from src.systems.human_validation_system.estimation.situation_classifier import 
 from src.systems.human_validation_system.estimation.stopping_status import StoppingStatusReader
 from src.systems.human_validation_system.interface.api.services.consolidated_workbook import ConsolidatedWorkbookWriter
 from src.systems.human_validation_system.interface.api.services.database_response_source import DatabaseResponseSource
+from src.systems.human_validation_system.interface.api.services.email_notifier import EmailNotifier
 from src.systems.human_validation_system.interface.api.services.response_store import ResponseStore
 from src.systems.human_validation_system.interface.api.core.settings import InterfaceSettings
 from src.systems.human_validation_system.pipeline import HumanValidationConfig, HumanValidationPipeline
@@ -51,13 +52,18 @@ class RoundController:
     - Abrir a próxima rodada automaticamente se algum grupo não parou
     - Fechar sozinho as rodadas completas após a janela de revisão (close_due_rounds)
     - As duas automações podem ser ligadas/desligadas pelo administrador (salvas no banco)
-    - Reiniciar tudo, guardando antes uma cópia de segurança (reset_all)
+    - Guardar as métricas acumuladas até cada rodada para o painel por dataset
+    - Avisar o administrador por email quando uma rodada fecha
+    - Reiniciar um dataset ou tudo, guardando antes uma cópia de segurança
     """
 
-    def __init__(self, settings: InterfaceSettings, store: ResponseStore):
+    def __init__(self, settings: InterfaceSettings, store: ResponseStore, notifier: Optional[EmailNotifier] = None):
         self.settings = settings
         self.store = store
         self.workbook_writer = ConsolidatedWorkbookWriter()
+        self.notifier = notifier or EmailNotifier(
+            settings.notify_email, settings.smtp_host, settings.smtp_port, settings.smtp_user, settings.smtp_password
+        )
         # Serializa abrir/fechar (botão do admin x verificação automática); reentrante pois fechar abre a próxima
         self._lock = threading.RLock()
         logger.debug(f"RoundController inicializado ({list(settings.experiments)})")
@@ -190,10 +196,15 @@ class RoundController:
         # Resultado da última rodada fechada (a atual, ou a anterior se a atual está aberta)
         closed = round_number if state == "fechada" else round_number - 1
         result = self.last_result(dataset, closed) if closed > 0 else None
+        info = self.round_history(dataset)[-1]
         return {
             "dataset": dataset,
             "rodada": round_number,
             "estado": state,
+            "aberta_em": info["aberta_em"],
+            "concluida_em": info["concluida_em"],
+            "fechada_em": info["fechada_em"],
+            "duracao_segundos": info["duracao_segundos"],
             "progresso": progress,
             "pode_fechar": state == "aberta" and complete,
             "pode_iniciar": state == "fechada" and not (result and result["todos_pararam"]),
@@ -207,29 +218,117 @@ class RoundController:
     def _iso(moment: Optional[datetime]) -> Optional[str]:
         return moment.isoformat(timespec="seconds") if moment else None
 
+    # ------------------------------------------------------------- painel
+    @staticmethod
+    def _seconds(start: Optional[str], end: Optional[str]) -> Optional[int]:
+        if not start or not end:
+            return None
+        return int((datetime.fromisoformat(end) - datetime.fromisoformat(start)).total_seconds())
+
+    def round_history(self, dataset: str) -> List[Dict]:
+        """Rodadas com datas; duração = da abertura até o último avaliador terminar."""
+        return [
+            {**r, "duracao_segundos": self._seconds(r["aberta_em"], r["concluida_em"])}
+            for r in self.store.rounds(self.store_key(dataset))
+        ]
+
+    # Sempre acumulado até a rodada (procedimento sequencial de Merlo et al.): rodadas nunca são lidas sozinhas
+    SCOPE = "acumulado"
+
+    def dashboard(self, dataset: str) -> Dict:
+        """Painel de UM dataset: rodadas fechadas e métricas acumuladas até cada uma."""
+        self._check_dataset(dataset)
+        metrics = self.store.round_metrics(self.store_key(dataset))
+        metrics = metrics[metrics["escopo"] == self.SCOPE].drop(columns=["dataset", "escopo"])
+        return {
+            "dataset": dataset,
+            "rodadas": [r for r in self.round_history(dataset) if r["estado"] == "fechada"],
+            "metricas": metrics.astype(object).where(metrics.notna(), None).to_dict(orient="records"),
+        }
+
+    def _save_round_metrics(self, dataset: str, round_number: int, cumulative: pd.DataFrame) -> None:
+        key = self.store_key(dataset)
+        self.store.save_round_metrics(key, round_number, self.SCOPE, cumulative)
+        path = self.validation_dir(dataset) / StoppingStatusReader.OUTPUT_SUBDIR / "metricas_por_rodada.csv"
+        self.store.round_metrics(key).to_csv(path, index=False)
+
+    # ------------------------------------------------------------- aviso por email
+    @staticmethod
+    def _format_duration(seconds: Optional[int]) -> str:
+        if seconds is None:
+            return "—"
+        hours, rest = divmod(seconds, 3600)
+        return f"{hours}h {rest // 60:02d}min" if hours else f"{rest // 60}min"
+
+    def _notify_round_closed(self, dataset: str, round_number: int) -> None:
+        closed = next(r for r in self.round_history(dataset) if r["rodada"] == round_number)
+        result = self.last_result(dataset, round_number) or {"grupos": {}, "todos_pararam": False}
+        status = self.status(dataset)
+
+        lines = [
+            f"A rodada {round_number} de {dataset} ({self.settings.experiments[dataset]}) foi fechada.",
+            f"Duração (abertura até o último avaliador terminar): {self._format_duration(closed['duracao_segundos'])}",
+            f"Documentos na rodada: {closed['documentos']}",
+            "",
+            "Critério de parada (humano = referência, acumulado):",
+        ]
+        for group, g in result["grupos"].items():
+            m = g["metricas"][PRIMARY_METRIC]
+            lines.append(
+                f"  Grupo {group}: {m['theta']:.1%} [{m['ic_inferior']:.1%} - {m['ic_superior']:.1%}], "
+                f"MoE {m['moe']:.1%} (n={g['n']}) -> {g['status']}"
+            )
+        lines += ["", "Benchmark mislabeling (acumulado):"]
+        for group, g in result["grupos"].items():
+            m = g["metricas"]["benchmark_mislabeling"]
+            lines.append(f"  Grupo {group}: {m['theta']:.1%} [{m['ic_inferior']:.1%} - {m['ic_superior']:.1%}]")
+
+        lines.append("")
+        if result["todos_pararam"]:
+            lines.append(f"Todos os grupos atingiram o critério de parada: validação de {dataset} concluída.")
+        elif status["estado"] == "aberta" and status["rodada"] == round_number + 1:
+            total = next(iter(status["progresso"].values()))["total"]
+            lines.append(f"A rodada {round_number + 1} já foi aberta ({total} documentos). Avise os avaliadores.")
+        else:
+            lines.append("A próxima rodada não foi aberta automaticamente: gere-a pelo painel /admin e avise os avaliadores.")
+
+        self.notifier.send(f"[Validação humana] {dataset}: rodada {round_number} fechada", "\n".join(lines))
+
     # ------------------------------------------------------------- reinício
     BACKUP_DIR = "_backup"
 
-    def reset_all(self) -> List[str]:
-        """Zera a validação de todos os experimentos; tudo vai antes para `_backup/`. Retorna as pastas de backup."""
+    @staticmethod
+    def _stamp() -> str:
+        return datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+
+    def reset_dataset(self, dataset: str) -> str:
+        """Zera a validação de UM dataset (os demais seguem intactos); retorna a pasta de backup."""
+        self._check_dataset(dataset)
         with self._lock:
-            stamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-            backups = []
-            for dataset, date in self.settings.experiments.items():
-                key = self.store_key(dataset)
-                backup = HumanValidationPipeline.validation_root(self.settings.results_dir) / self.BACKUP_DIR / f"{dataset}_{date}_{stamp}"
-                backup.mkdir(parents=True, exist_ok=True)
+            return self._reset_experiment(dataset, self._stamp())
 
-                for table, rows in self.store.export_experiment(key).items():
-                    rows.to_csv(backup / f"banco_{table}.csv", index=False)
-                source = self.validation_dir(dataset)
-                if source.exists():
-                    shutil.move(str(source), str(backup / "arquivos"))
-                self.store.delete_experiment(key)
+    def reset_all(self) -> List[str]:
+        """Zera a validação de todos os experimentos; retorna as pastas de backup."""
+        with self._lock:
+            stamp = self._stamp()
+            return [self._reset_experiment(dataset, stamp) for dataset in self.settings.experiments]
 
-                backups.append(str(backup))
-                logger.warning(f"{dataset}: validação reiniciada (backup em {backup})")
-            return backups
+    def _reset_experiment(self, dataset: str, stamp: str) -> str:
+        """Move arquivos e exporta o banco do experimento para `_backup/` e então o apaga."""
+        key = self.store_key(dataset)
+        date = self.settings.experiments[dataset]
+        backup = HumanValidationPipeline.validation_root(self.settings.results_dir) / self.BACKUP_DIR / f"{dataset}_{date}_{stamp}"
+        backup.mkdir(parents=True, exist_ok=True)
+
+        for table, rows in self.store.export_experiment(key).items():
+            rows.to_csv(backup / f"banco_{table}.csv", index=False)
+        source = self.validation_dir(dataset)
+        if source.exists():
+            shutil.move(str(source), str(backup / "arquivos"))
+        self.store.delete_experiment(key)
+
+        logger.warning(f"{dataset}: validação reiniciada (backup em {backup})")
+        return str(backup)
 
     # ------------------------------------------------------------- ciclo
     def close_due_rounds(self, now: Optional[datetime] = None) -> List[str]:
@@ -305,6 +404,7 @@ class RoundController:
                 response_source=DatabaseResponseSource(self.store, self.store_key(dataset)),
             )
             summary = estimation.run()
+            self._save_round_metrics(dataset, round_number, summary)
             self._write_workbook(dataset, round_number, summary)
         except Exception:
             self.store.reopen_round(self.store_key(dataset), round_number)
@@ -314,6 +414,10 @@ class RoundController:
         result = self.last_result(dataset, round_number)
         if self.automation()[self.AUTO_NEXT_KEY] and result and not result["todos_pararam"]:
             self._start_next_automatically(dataset)
+        try:
+            self._notify_round_closed(dataset, round_number)
+        except Exception as e:
+            logger.error(f"{dataset}: falha ao montar o aviso por email: {e}")
         return self.status(dataset)
 
     def _start_next_automatically(self, dataset: str) -> None:

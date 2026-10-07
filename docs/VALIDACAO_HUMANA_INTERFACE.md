@@ -49,13 +49,34 @@ o script. A interface sobe em `http://localhost:8001`.
 
 1. Rode o consenso da pasta do experimento (`run_consensus.py`) antes da 1ª rodada.
    Depois disso, não rode de novo: o registro da amostragem confere o sha256 do CSV.
-2. Em `/admin`, **Iniciar primeira rodada** (ou **Gerar próxima rodada**).
-3. Avaliadores respondem em `/avaliar`.
-4. Com os três completos, **Fechar rodada**: consolida por maioria, classifica os desfechos,
-   calcula concordância e intervalos, aplica o critério de parada e atualiza
-   `data/validacao_humana/<dataset>/<date>/validacao_consolidada_<dataset>.xlsx` (abas: respostas individuais,
-   consolidado por documento, resumo, histórico).
-5. Se algum grupo não parou, gere a próxima rodada (só os grupos pendentes são sorteados).
+2. Em `/admin`, **Iniciar primeira rodada**. Cada dataset tem as próprias rodadas.
+3. Avaliadores respondem em `/avaliar` (o relógio da rodada aparece para todos). Quem termina antes é
+   avisado de que pode aguardar os demais.
+4. Quando o último avaliador termina, todos têm 5 minutos para revisar (qualquer alteração reinicia o prazo).
+   Depois a rodada fecha sozinha (ou pelo botão **Fechar rodada**): consolida por maioria, classifica os
+   desfechos, calcula concordância e intervalos, aplica o critério de parada, guarda a duração e as métricas
+   da rodada (só a rodada e acumulado) e atualiza
+   `data/validacao_humana/<dataset>/<date>/validacao_consolidada_<dataset>.xlsx`.
+5. Se algum grupo não parou, a próxima rodada abre sozinha (só os grupos pendentes são sorteados) e você
+   recebe um email para avisar os avaliadores. As duas automações podem ser desligadas no bloco "Automação".
+
+O **Painel por dataset** no `/admin` mostra, para cada rodada fechada, duração, documentos e as métricas
+(só daquela rodada ou acumuladas até ela). Os dados ficam no banco (tabela `metricas_rodada`) e em
+`estimativas/metricas_por_rodada.csv`; nunca são somados entre datasets.
+
+## Aviso por email
+
+Ao fechar uma rodada, o app envia um email com a duração, o critério de parada por grupo e se a próxima
+rodada já foi aberta. Configure no `.env`:
+
+```
+HV_NOTIFY_EMAIL=<quem recebe>
+HV_SMTP_USER=<conta Gmail que envia>
+HV_SMTP_PASSWORD=<senha de app do Gmail>
+```
+
+A senha de app é criada em https://myaccount.google.com/apppasswords (exige verificação em duas etapas).
+Sem essas variáveis, o aviso fica desativado e só aparece no log.
 
 ## Deploy em uma VM (Oracle Always Free, Google e2-micro ou a VM existente)
 

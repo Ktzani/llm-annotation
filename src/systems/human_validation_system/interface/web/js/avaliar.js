@@ -1,7 +1,7 @@
 // Tela do avaliador: um documento por vez, duas etapas, revisão das próprias respostas.
 Session.require("avaliador");
 
-const state = { dataset: null, options: null, doc: null, editing: false };
+const state = { dataset: null, options: null, doc: null, editing: false, openedAt: null, windowMin: 5, poll: null };
 const $ = (id) => document.getElementById(id);
 
 function radio(name, value, label, extraClass = "") {
@@ -66,6 +66,55 @@ function hhmm(iso) {
   return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 }
 
+function elapsed(iso) {
+  const minutes = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 60000));
+  const h = Math.floor(minutes / 60);
+  return h ? `${h}h ${String(minutes % 60).padStart(2, "0")}min` : `${minutes}min`;
+}
+
+function tickClock() {
+  $("tempo").textContent = state.openedAt ? `Rodada aberta há ${elapsed(state.openedAt)} ·` : "";
+}
+
+function stopPolling() {
+  if (state.poll) clearInterval(state.poll);
+  state.poll = null;
+}
+
+// Concluído: consulta a cada 30 s para atualizar o aviso (outros terminaram, rodada fechou, nova rodada)
+function startPolling() {
+  stopPolling();
+  state.poll = setInterval(async () => {
+    try {
+      const next = await api("GET", `/api/avaliacao/${state.dataset}/proximo`);
+      if (next.concluido) showDone(next);
+      else { stopPolling(); await refreshDatasets(); }  // nova rodada aberta
+    } catch {
+      stopPolling();
+      state.openedAt = null;
+      tickClock();
+      $("revisao").textContent = "Esta rodada foi encerrada. Obrigado! Aguarde o aviso de que a próxima rodada começou.";
+    }
+  }, 30000);
+}
+
+function showDone(next) {
+  const w = state.windowMin;
+  let message;
+  if (next.todos_terminaram && next.revisao_ate) {
+    message = `Todos os avaliadores terminaram! A rodada fecha às ${hhmm(next.revisao_ate)}. Você ainda tem ${w} minutos `
+      + `para revisar em "Minhas respostas"; qualquer alteração reinicia esses ${w} minutos.`;
+  } else if (next.todos_terminaram) {
+    message = "Todos os avaliadores terminaram. A rodada será fechada em breve; até lá, você ainda pode revisar "
+      + "suas respostas em \"Minhas respostas\".";
+  } else {
+    message = "Você terminou sua parte desta rodada. Os outros avaliadores ainda estão respondendo: pode aguardar. "
+      + "Quando todos terminarem, a rodada será fechada e você será avisado(a) quando a próxima rodada começar. "
+      + "Enquanto isso, ainda pode revisar suas respostas em \"Minhas respostas\".";
+  }
+  $("revisao").textContent = message;
+}
+
 function showProgress(respondidos, total) {
   $("contagem").textContent = `${respondidos} de ${total} respondidos`;
   $("barra").style.width = total ? `${(100 * respondidos) / total}%` : "0%";
@@ -91,13 +140,13 @@ async function loadNext() {
   showProgress(next.respondidos, next.total);
   if (next.concluido) {
     state.doc = null;
-    $("revisao").textContent = next.revisao_ate
-      ? `Todos os avaliadores terminaram. Você pode revisar suas respostas em "Minhas respostas" até ${hhmm(next.revisao_ate)}; depois a rodada fecha automaticamente.`
-      : `Obrigado! Você ainda pode revisar suas respostas em "Minhas respostas" até a rodada fechar.`;
+    showDone(next);
     $("documento").classList.add("hidden");
     $("concluido").classList.remove("hidden");
     $("posicao").textContent = "Rodada concluída";
+    startPolling();
   } else {
+    stopPolling();
     showDocument(next.documento, false);
   }
 }
@@ -113,6 +162,7 @@ async function loadAnswers() {
 }
 
 async function openAnswer(idAnonimo) {
+  stopPolling();
   const doc = await api("GET", `/api/avaliacao/${state.dataset}/documentos/${encodeURIComponent(idAnonimo)}`);
   showDocument(doc, true);
 }
@@ -140,6 +190,10 @@ async function selectDataset(dataset, datasets) {
   state.dataset = dataset;
   document.querySelectorAll("#datasets button").forEach((b) => b.setAttribute("aria-selected", b.dataset.name === dataset));
   const info = datasets.find((d) => d.dataset === dataset);
+  state.openedAt = info.rodada_aberta_em;
+  state.windowMin = info.janela_revisao_minutos;
+  document.querySelectorAll(".janela-min").forEach((s) => (s.textContent = info.janela_revisao_minutos));
+  tickClock();
   if (!info.rodada_aberta) {
     $("area").classList.add("hidden");
     $("sem-rodada").textContent = "Não há rodada aberta para este dataset no momento.";
@@ -182,11 +236,17 @@ async function init() {
   });
   $("voltar").addEventListener("click", loadNext);
 
+  setInterval(tickClock, 30000);
+  await refreshDatasets();
+}
+
+async function refreshDatasets() {
   const datasets = await api("GET", "/api/avaliacao/datasets");
   $("datasets").replaceChildren(...datasets.map((d) =>
     el("button", { type: "button", "data-name": d.dataset, onclick: () => selectDataset(d.dataset, datasets) },
       d.dataset, d.rodada_aberta ? ` (${d.respondidos}/${d.total})` : " (sem rodada aberta)")));
-  const first = datasets.find((d) => d.rodada_aberta) || datasets[0];
+  const current = datasets.find((d) => d.dataset === state.dataset && d.rodada_aberta);
+  const first = current || datasets.find((d) => d.rodada_aberta) || datasets[0];
   if (first) await selectDataset(first.dataset, datasets);
 }
 

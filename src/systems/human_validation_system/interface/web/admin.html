@@ -33,7 +33,12 @@
     </section>
 
     <p class="error" id="erro" role="alert"></p>
-    <div class="grid" id="datasets"></div>
+    <div class="stack" id="datasets"></div>
+
+    <h2 class="section-title">Painel por dataset</h2>
+    <p class="muted">Cada linha mostra as métricas acumuladas desde a primeira rodada até a rodada indicada. Os datasets
+      são acompanhados separadamente, cada um com a sua própria sequência de rodadas.</p>
+    <div id="paineis"></div>
 
     <section class="card danger-zone">
       <h2>Reiniciar tudo</h2>
@@ -46,16 +51,16 @@
     <form method="dialog" id="reinicio-form">
       <h2 id="reinicio-titulo">Tem certeza?</h2>
       <div class="alert" role="alert">
-        <strong>Atenção: esta ação apaga o progresso de todos os datasets.</strong>
+        <strong id="reinicio-escopo">Atenção: esta ação apaga o progresso de todos os datasets.</strong>
         <ul>
           <li>Todas as rodadas (abertas e fechadas) e todas as respostas dos avaliadores.</li>
-          <li>Estimativas, histórico e planilhas consolidadas.</li>
+          <li>Estimativas, histórico, painel e planilha consolidada.</li>
           <li>Os avaliadores perdem o que já responderam na rodada atual.</li>
         </ul>
         Uma cópia de segurança será salva em <code>data/validacao_humana/_backup/</code>. Como o sorteio usa a mesma
         semente, a nova rodada 1 terá os mesmos documentos da anterior.
       </div>
-      <label for="reinicio-confirmacao">Digite <strong>REINICIAR</strong> para confirmar</label>
+      <label for="reinicio-confirmacao">Digite <strong id="reinicio-palavra">REINICIAR</strong> para confirmar</label>
       <input id="reinicio-confirmacao" autocomplete="off">
       <p class="error" id="reinicio-erro" role="alert"></p>
       <div class="actions">

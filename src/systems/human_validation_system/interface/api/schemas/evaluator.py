@@ -26,6 +26,9 @@ class DatasetProgressOut(BaseModel):
     rodada_aberta: bool
     respondidos: int
     total: int
+    # Para o relógio da rodada e as mensagens da janela de revisão
+    rodada_aberta_em: Optional[str] = None
+    janela_revisao_minutos: int
 
 
 class AnswerIn(BaseModel):
@@ -58,3 +61,5 @@ class NextDocumentOut(BaseModel):
     documento: Optional[DocumentOut] = None
     # Quando todos terminaram: até quando ainda dá para revisar (fechamento automático)
     revisao_ate: Optional[str] = None
+    # Os três avaliadores já responderam tudo (só o status, nunca as respostas deles)
+    todos_terminaram: bool = False

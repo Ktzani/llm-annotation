@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS rodadas (
     rodada INTEGER NOT NULL,
     estado TEXT NOT NULL CHECK (estado IN ('aberta', 'fechada')),
     aberta_em TEXT NOT NULL,
+    concluida_em TEXT,
     fechada_em TEXT,
     PRIMARY KEY (dataset, rodada)
 );
@@ -50,7 +51,29 @@ CREATE TABLE IF NOT EXISTS configuracoes (
     chave TEXT PRIMARY KEY,
     valor TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS metricas_rodada (
+    dataset TEXT NOT NULL,
+    rodada INTEGER NOT NULL,
+    escopo TEXT NOT NULL CHECK (escopo IN ('rodada', 'acumulado')),
+    grupo TEXT NOT NULL,
+    metrica TEXT NOT NULL,
+    n INTEGER,
+    theta REAL,
+    ic_inferior REAL,
+    ic_superior REAL,
+    moe REAL,
+    kappa_fleiss REAL,
+    acordo_unanime REAL,
+    acordo_par_a_par REAL,
+    status TEXT,
+    PRIMARY KEY (dataset, rodada, escopo, grupo, metrica)
+);
 """
+
+METRIC_FIELDS = (
+    "n", "theta", "ic_inferior", "ic_superior", "moe", "kappa_fleiss", "acordo_unanime", "acordo_par_a_par", "status",
+)
+EXPERIMENT_TABLES = ("rodadas", "documentos", "respostas", "metricas_rodada")
 
 ANSWER_FIELDS = ("rotulo_escolhido", "outro_rotulo_possivel", "qual_outro_rotulo")
 
@@ -68,6 +91,7 @@ class ResponseStore:
     - Respostas por avaliador, gravadas a cada envio (upsert)
     - Sessões de login (token -> usuário/papel)
     - Opções escolhidas pelo administrador na tela (ex.: automação)
+    - Métricas de cada rodada fechada (só a rodada e acumulado), para o painel
 
     Nunca armazena gabarito, grupo ou classe: só id_anonimo e texto.
     """
@@ -77,6 +101,9 @@ class ResponseStore:
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         with self._connect() as con:
             con.executescript(SCHEMA)
+            # Bancos criados antes da coluna concluida_em
+            if "concluida_em" not in {c[1] for c in con.execute("PRAGMA table_info(rodadas)")}:
+                con.execute("ALTER TABLE rodadas ADD COLUMN concluida_em TEXT")
         logger.debug(f"ResponseStore inicializado: {self.db_path}")
 
     @contextmanager
@@ -119,17 +146,52 @@ class ResponseStore:
     def publish_round(self, dataset: str, round_number: int, documents: Iterable[Tuple[str, str]]) -> None:
         """Abre a rodada com os documentos (id_anonimo, texto) na ordem dada."""
         with self._connect() as con:
-            con.execute("INSERT INTO rodadas VALUES (?, ?, 'aberta', ?, NULL)", (dataset, round_number, _now()))
+            con.execute(
+                "INSERT INTO rodadas (dataset, rodada, estado, aberta_em) VALUES (?, ?, 'aberta', ?)",
+                (dataset, round_number, _now()),
+            )
             con.executemany(
                 "INSERT INTO documentos VALUES (?, ?, ?, ?, ?)",
                 [(dataset, round_number, pos, id_anon, text) for pos, (id_anon, text) in enumerate(documents, start=1)],
             )
 
     def close_round(self, dataset: str, round_number: int) -> None:
+        """Fecha a rodada; concluida_em = última resposta (quando o último avaliador terminou)."""
+        concluded = self.last_answer_at(dataset, round_number)
         with self._connect() as con:
             con.execute(
-                "UPDATE rodadas SET estado = 'fechada', fechada_em = ? WHERE dataset = ? AND rodada = ?",
-                (_now(), dataset, round_number),
+                "UPDATE rodadas SET estado = 'fechada', fechada_em = ?, concluida_em = ? WHERE dataset = ? AND rodada = ?",
+                (_now(), concluded, dataset, round_number),
+            )
+
+    def rounds(self, dataset: str) -> List[Dict]:
+        """Todas as rodadas do experimento com datas e nº de documentos."""
+        with self._connect() as con:
+            rows = con.execute(
+                """SELECT r.rodada, r.estado, r.aberta_em, r.concluida_em, r.fechada_em,
+                          (SELECT COUNT(*) FROM documentos d WHERE d.dataset = r.dataset AND d.rodada = r.rodada) AS documentos
+                   FROM rodadas r WHERE r.dataset = ? ORDER BY r.rodada""",
+                (dataset,),
+            ).fetchall()
+        return [dict(r) for r in rows]
+
+    def save_round_metrics(self, dataset: str, round_number: int, scope: str, metrics: pd.DataFrame) -> None:
+        """Substitui as métricas da rodada no escopo ('rodada' ou 'acumulado')."""
+        rows = [
+            (dataset, round_number, scope, r["grupo"], r["metrica"],
+             *[None if pd.isna(r.get(f)) else (int(r[f]) if f == "n" else r[f]) for f in METRIC_FIELDS])
+            for _, r in metrics.iterrows()
+        ]
+        with self._connect() as con:
+            con.execute("DELETE FROM metricas_rodada WHERE dataset = ? AND rodada = ? AND escopo = ?",
+                        (dataset, round_number, scope))
+            con.executemany(f"INSERT INTO metricas_rodada VALUES ({', '.join('?' * (5 + len(METRIC_FIELDS)))})", rows)
+
+    def round_metrics(self, dataset: str) -> pd.DataFrame:
+        with self._connect() as con:
+            return pd.read_sql_query(
+                "SELECT * FROM metricas_rodada WHERE dataset = ? ORDER BY rodada, escopo, grupo, metrica",
+                con, params=(dataset,),
             )
 
     def reopen_round(self, dataset: str, round_number: int) -> None:
@@ -143,7 +205,7 @@ class ResponseStore:
         """Última rodada do dataset (aberta ou fechada)."""
         with self._connect() as con:
             row = con.execute(
-                "SELECT rodada, estado FROM rodadas WHERE dataset = ? ORDER BY rodada DESC LIMIT 1", (dataset,)
+                "SELECT rodada, estado, aberta_em FROM rodadas WHERE dataset = ? ORDER BY rodada DESC LIMIT 1", (dataset,)
             ).fetchone()
         return dict(row) if row else None
 
@@ -237,13 +299,13 @@ class ResponseStore:
         with self._connect() as con:
             return {
                 table: pd.read_sql_query(f"SELECT * FROM {table} WHERE dataset = ?", con, params=(dataset,))
-                for table in ("rodadas", "documentos", "respostas")
+                for table in EXPERIMENT_TABLES
             }
 
     def delete_experiment(self, dataset: str) -> None:
         """Apaga rodadas, documentos e respostas de um experimento."""
         with self._connect() as con:
-            for table in ("respostas", "documentos", "rodadas"):
+            for table in reversed(EXPERIMENT_TABLES):
                 con.execute(f"DELETE FROM {table} WHERE dataset = ?", (dataset,))
 
     def all_responses(self, dataset: str, up_to_round: int) -> pd.DataFrame:

@@ -80,6 +80,22 @@ def reset_all(body: ResetRequest, request: Request):
     return {"backups": _controller(request).reset_all()}
 
 
+@router.post("/{dataset}/reiniciar")
+def reset_dataset(dataset: str, body: ResetRequest, request: Request):
+    """Apaga rodadas, respostas, estimativas e planilha só deste dataset (com backup)."""
+    _check(request, dataset)
+    if body.confirmacao != dataset:
+        raise HTTPException(status_code=400, detail=f"Digite {dataset} para confirmar")
+    return {"backups": [_controller(request).reset_dataset(dataset)]}
+
+
+@router.get("/{dataset}/painel")
+def dashboard(dataset: str, request: Request):
+    """Rodadas fechadas do dataset com duração e métricas acumuladas até cada uma."""
+    _check(request, dataset)
+    return _controller(request).dashboard(dataset)
+
+
 @router.get("/{dataset}/planilha")
 def download_workbook(dataset: str, request: Request):
     _check(request, dataset)
