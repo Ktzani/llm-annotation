@@ -86,6 +86,47 @@ if [ "$ENABLE_ANNOTATION" = "1" ] || [ "$ENABLE_ANNOTATION" = "true" ]; then
         ollama pull "$model"
     done
 
+    # ---- Limita as threads de CPU por modelo ----------------
+    # Em container, o llama-server enxerga todos os nucleos do HOST
+    # (ex.: 255) e cria threads demais para a cota de CPU do container.
+    # A cota estoura, o kernel pausa as threads e a GPU fica ociosa
+    # esperando a CPU (visto no RunPod: CPU 97%, GPU 29%, anotacao 6x
+    # mais lenta). Com o modelo 100% na GPU, poucas threads bastam.
+    # Divide a cota real (cgroup) entre os modelos, reservando 2 vCPUs
+    # para a API. Grava PARAMETER num_thread no Modelfile (mesmo nome e
+    # mesmos pesos; nao altera as respostas).
+    # Override: OLLAMA_NUM_THREAD=<n>; OLLAMA_NUM_THREAD=0 desativa.
+    available_cpus() {
+        local quota="" period=""
+        if [ -r /sys/fs/cgroup/cpu.max ]; then
+            read -r quota period < /sys/fs/cgroup/cpu.max
+        elif [ -r /sys/fs/cgroup/cpu/cpu.cfs_quota_us ]; then
+            quota=$(cat /sys/fs/cgroup/cpu/cpu.cfs_quota_us)
+            period=$(cat /sys/fs/cgroup/cpu/cpu.cfs_period_us)
+        fi
+        if [ -n "$quota" ] && [ "$quota" != "max" ] && [ "$quota" -gt 0 ]; then
+            echo $(( quota / period ))
+        else
+            nproc
+        fi
+    }
+
+    NUM_MODELS=${#OLLAMA_MODELS_TO_PULL[@]}
+    AUTO_THREADS=$(( ($(available_cpus) - 2) / NUM_MODELS ))
+    [ "$AUTO_THREADS" -lt 1 ] && AUTO_THREADS=1
+    NUM_THREAD="${OLLAMA_NUM_THREAD:-$AUTO_THREADS}"
+
+    if [ "$NUM_THREAD" != "0" ]; then
+        echo "[entrypoint] num_thread=$NUM_THREAD por modelo ($(available_cpus) vCPUs / $NUM_MODELS modelos)"
+        for model in "${OLLAMA_MODELS_TO_PULL[@]}"; do
+            ollama show "$model" --modelfile | grep -v '^PARAMETER num_thread' > /tmp/Modelfile
+            echo "PARAMETER num_thread $NUM_THREAD" >> /tmp/Modelfile
+            ollama create "$model" -f /tmp/Modelfile > /dev/null
+        done
+    else
+        echo "[entrypoint] OLLAMA_NUM_THREAD=0 → num_thread padrao do Ollama"
+    fi
+
     # ---- Pre-carrega os modelos na VRAM ---------------------
     # POST em /api/generate sem prompt faz o load do modelo em
     # memoria. Com OLLAMA_KEEP_ALIVE=24h, eles ficam residentes.

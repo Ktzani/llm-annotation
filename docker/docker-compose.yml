@@ -42,6 +42,9 @@ services:
       OLLAMA_KEEP_ALIVE: "${OLLAMA_KEEP_ALIVE:-24h}"
       # Vazio = trinca default do docker-entrypoint.sh
       OLLAMA_ANNOTATION_MODELS: "${OLLAMA_ANNOTATION_MODELS:-}"
+      # Threads de CPU por modelo. Vazio = automatico (cota de CPU / nº de modelos);
+      # 0 = padrao do Ollama (todos os nucleos do host — lento em container com cota)
+      OLLAMA_NUM_THREAD: "${OLLAMA_NUM_THREAD:-}"
       # Saida do ollama; defina um arquivo para depurar
       OLLAMA_LOG: "${OLLAMA_LOG:-/dev/null}"
     
