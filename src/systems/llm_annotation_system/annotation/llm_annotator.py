@@ -8,6 +8,7 @@ from tqdm import tqdm
 from collections import Counter
 from loguru import logger
 import asyncio
+import os
 import threading
 import time
 
@@ -22,6 +23,11 @@ from src.config.prompts import BASE_ANNOTATION_PROMPT
 from src.utils.get_text_id_from_text import get_text_id_from_text
 
 _CHECKPOINT_WRITE_LOCK = threading.Lock()
+
+# Ambiente de execução gravado em cada linha do checkpoint (ex.: ANNOTATION_RUN_ENV=runpod)
+RUN_ENV_COLUMN = "run_env"
+LEGACY_RUN_ENV = "vm"
+RUN_ENV = os.getenv("ANNOTATION_RUN_ENV", LEGACY_RUN_ENV)
 
 class LLMAnnotator:
     """
@@ -333,10 +339,23 @@ class LLMAnnotator:
         if not file_path.exists():
             return set()
 
-        df_existing = pd.read_csv(file_path)
+        # round_trip: a migração regrava o arquivo sem perder dígitos dos floats
+        df_existing = pd.read_csv(file_path, float_precision="round_trip")
+        if RUN_ENV_COLUMN not in df_existing.columns:
+            self._add_run_env_column(df_existing, file_path)
+
         processed_ids = set(df_existing["text_id"].tolist())
-        logger.info(f"Checkpoint encontrado: {len(processed_ids)} textos já processados")
+        logger.info(f"Checkpoint encontrado: {len(processed_ids)} textos já processados | Ambiente atual: {RUN_ENV}")
         return processed_ids
+
+    @staticmethod
+    def _add_run_env_column(df_existing: pd.DataFrame, file_path: Path) -> None:
+        """Migra checkpoint antigo: marca as linhas existentes como LEGACY_RUN_ENV, na mesma posição das novas."""
+        position = df_existing.columns.get_loc("text_len") + 1 if "text_len" in df_existing.columns else len(df_existing.columns)
+        df_existing.insert(position, RUN_ENV_COLUMN, LEGACY_RUN_ENV)
+        with _CHECKPOINT_WRITE_LOCK:
+            df_existing.to_csv(file_path, index=False)
+        logger.warning(f"Checkpoint sem '{RUN_ENV_COLUMN}': {len(df_existing)} linhas marcadas como '{LEGACY_RUN_ENV}'")
 
     async def _warmup(self, model_strategy: ExecutionStrategy) -> None:
         """
@@ -386,7 +405,8 @@ class LLMAnnotator:
         text_results = {
             "text_id": get_text_id_from_text(text),
             "text": text,
-            "text_len": len(text)
+            "text_len": len(text),
+            RUN_ENV_COLUMN: RUN_ENV,
         }
         
         # ===============================
