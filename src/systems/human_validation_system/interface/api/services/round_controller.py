@@ -23,6 +23,7 @@ from src.systems.human_validation_system.estimation.pipeline import (
 )
 from src.systems.human_validation_system.estimation.situation_classifier import SituationClassifier
 from src.systems.human_validation_system.estimation.stopping_status import StoppingStatusReader
+from src.systems.human_validation_system.interface.api.services.consensus_file_manager import ConsensusFileManager
 from src.systems.human_validation_system.interface.api.services.consolidated_workbook import ConsolidatedWorkbookWriter
 from src.systems.human_validation_system.interface.api.services.database_response_source import DatabaseResponseSource
 from src.systems.human_validation_system.interface.api.services.email_notifier import EmailNotifier
@@ -54,6 +55,7 @@ class RoundController:
     - As duas automações podem ser ligadas/desligadas pelo administrador (salvas no banco)
     - Guardar as métricas acumuladas até cada rodada para o painel por dataset
     - Avisar o administrador por email quando uma rodada fecha
+    - Receber o CSV de consenso pela interface (bloqueado depois do 1º sorteio)
     - Reiniciar um dataset ou tudo, guardando antes uma cópia de segurança
     """
 
@@ -61,6 +63,7 @@ class RoundController:
         self.settings = settings
         self.store = store
         self.workbook_writer = ConsolidatedWorkbookWriter()
+        self.consensus = ConsensusFileManager(settings.results_dir)
         self.notifier = notifier or EmailNotifier(
             settings.notify_email, settings.smtp_host, settings.smtp_port, settings.smtp_user, settings.smtp_password
         )
@@ -184,11 +187,41 @@ class RoundController:
         last = self.store.last_answer_at(self.store_key(dataset), round_number)
         return datetime.fromisoformat(last) + timedelta(minutes=self.settings.review_window_minutes) if last else None
 
+    # ------------------------------------------------------------- CSV de consenso
+    def _sampled(self, dataset: str) -> Optional[SamplingLedger]:
+        """Registro da amostragem, se a rodada 1 já foi sorteada."""
+        ledger = SamplingLedger(self.validation_dir(dataset))
+        if not ledger.exists():
+            return None
+        ledger.load()
+        return ledger
+
+    def consensus_status(self, dataset: str) -> Dict:
+        return {
+            "data": self.settings.experiments[dataset],
+            "consenso_disponivel": self.consensus.exists(dataset, self.settings.experiments[dataset]),
+            "consenso_bloqueado": self._sampled(dataset) is not None,
+        }
+
+    def upload_consensus(self, dataset: str, content: bytes) -> Dict:
+        """Salva o CSV de consenso; depois do 1º sorteio, só aceita o MESMO arquivo (o registro confere o sha256)."""
+        self._check_dataset(dataset)
+        with self._lock:
+            ledger = self._sampled(dataset)
+            if ledger and ledger.data["source"]["sha256"] != self.consensus.sha256(content):
+                raise RoundStateError(
+                    "Este experimento já tem rodadas sorteadas com outro CSV. Para trocar os dados, "
+                    "configure outra data (novo experimento) ou reinicie este dataset."
+                )
+            return self.consensus.save(dataset, self.settings.experiments[dataset], content)
+
     def status(self, dataset: str) -> Dict:
         self._check_dataset(dataset)
         current = self.store.current_round(self.store_key(dataset))
         if current is None:
-            return {"dataset": dataset, "rodada": None, "estado": "sem_rodada", "pode_iniciar": True}
+            consensus = self.consensus_status(dataset)
+            return {"dataset": dataset, "rodada": None, "estado": "sem_rodada",
+                    "pode_iniciar": consensus["consenso_disponivel"], **consensus}
 
         round_number, state = current["rodada"], current["estado"]
         progress = self.progress(dataset, round_number)
@@ -212,6 +245,7 @@ class RoundController:
             "fecha_automaticamente_em": self._iso(self.review_deadline(dataset)),
             "resultado": result,
             "planilha_disponivel": self.workbook_path(dataset).exists(),
+            **self.consensus_status(dataset),
         }
 
     @staticmethod
@@ -355,6 +389,8 @@ class RoundController:
         self._check_dataset(dataset)
         if self.store.open_round(self.store_key(dataset)) is not None:
             raise RoundStateError("Já existe uma rodada aberta para este dataset")
+        if not self.consensus.exists(dataset, self.settings.experiments[dataset]):
+            raise RoundStateError(f"Envie o CSV de consenso de {dataset} antes de abrir a primeira rodada")
 
         current = self.store.current_round(self.store_key(dataset))
         published = current["rodada"] if current else 0

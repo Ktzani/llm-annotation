@@ -78,6 +78,38 @@ HV_SMTP_PASSWORD=<senha de app do Gmail>
 A senha de app é criada em https://myaccount.google.com/apppasswords (exige verificação em duas etapas).
 Sem essas variáveis, o aviso fica desativado e só aparece no log.
 
+## Deploy no Railway (recomendado)
+
+O `railway.toml` na raiz já aponta para `docker/Dockerfile.validacao` (imagem leve, fuso America/Sao_Paulo,
+uma única instância). Custo esperado: plano Hobby (US$5/mês com US$5 de uso incluídos) + volume.
+
+1. **Código no GitHub:** faça commit/push da branch com a interface (ex.: `feat/validacao-humana`).
+2. **Projeto:** em https://railway.com → *New Project* → *Deploy from GitHub repo* → escolha o repositório.
+   Em *Settings → Source*, selecione a branch.
+3. **Volume:** no serviço, *Create Volume* com mount path **`/app/data`** (guarda CSVs, SQLite, rodadas e planilhas).
+4. **Variáveis** (*Variables → Raw Editor*):
+   ```
+   HV_EXPERIMENTS=books:<date>,dblp:<date>
+   HV_RESULTS_DIR=/app/data/results
+   HV_ADMIN_CODE=<código do administrador>
+   HV_CODE_AVALIADOR_1=<código>
+   HV_CODE_AVALIADOR_2=<código>
+   HV_CODE_AVALIADOR_3=<código>
+   HV_NOTIFY_EMAIL=<quem recebe o aviso>
+   HV_SMTP_USER=<gmail que envia>
+   HV_SMTP_PASSWORD=<senha de app>
+   HV_INCREMENT_SIZE=20
+   ```
+5. **Endereço público:** *Settings → Networking → Generate Domain* → `https://<nome>.up.railway.app`.
+6. **Dados:** abra `/admin`, entre como Administrador e, em cada dataset, use **Enviar CSV de consenso…**
+   com o `dataset_consenso.csv` daquele experimento (gerado pelo `run_consensus.py` no seu PC).
+   Depois do sorteio da rodada 1 o CSV fica travado (o registro da amostragem confere o sha256).
+7. **Rodada 1:** clique em **Iniciar primeira rodada** em cada dataset e envie o link e o código de cada avaliador.
+
+**Trocar para os dados finais:** atualize as datas em `HV_EXPERIMENTS` (novo experimento, rodadas de teste
+não se misturam) e envie os novos CSVs pela tela. **Cópia de segurança:** baixe a planilha consolidada pelo
+`/admin` ao fim de cada rodada.
+
 ## Deploy em uma VM (Oracle Always Free, Google e2-micro ou a VM existente)
 
 1. Clone o repositório na VM e crie o `.env` com as variáveis acima.

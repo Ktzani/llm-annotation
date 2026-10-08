@@ -4,10 +4,12 @@ Rotas do administrador: acompanhamento, abertura/fechamento de rodadas e planilh
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from src.systems.human_validation_system.interface.api.core.auth import require_admin
+from src.systems.human_validation_system.interface.api.services.consensus_file_manager import InvalidConsensusError
 from src.systems.human_validation_system.interface.api.services.round_controller import RoundStateError
 
 router = APIRouter(prefix="/api/admin", tags=["Administração"], dependencies=[Depends(require_admin)])
@@ -87,6 +89,21 @@ def reset_dataset(dataset: str, body: ResetRequest, request: Request):
     if body.confirmacao != dataset:
         raise HTTPException(status_code=400, detail=f"Digite {dataset} para confirmar")
     return {"backups": [_controller(request).reset_dataset(dataset)]}
+
+
+@router.put("/{dataset}/consenso")
+async def upload_consensus(dataset: str, request: Request):
+    """Recebe o dataset_consenso.csv do experimento (corpo da requisição = conteúdo do arquivo)."""
+    _check(request, dataset)
+    content = await request.body()
+    if not content:
+        raise HTTPException(status_code=400, detail="Arquivo vazio")
+    try:
+        return await run_in_threadpool(_controller(request).upload_consensus, dataset, content)
+    except InvalidConsensusError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except RoundStateError as e:
+        raise HTTPException(status_code=409, detail=str(e))
 
 
 @router.get("/{dataset}/painel")

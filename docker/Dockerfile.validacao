@@ -1,11 +1,17 @@
 # ============================================================
 # Interface web da validação humana — imagem leve (sem GPU)
 # Só o necessário para amostragem, estimação e a API/telas.
+# Usada no Railway (railway.toml) e no docker-compose.validacao.yml.
 # ============================================================
 FROM python:3.11-slim
 
+# Horários da interface (abertura, "fecha às", durações) no fuso dos avaliadores
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    TZ=America/Sao_Paulo
+
+RUN apt-get update && apt-get install -y --no-install-recommends tzdata \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -21,10 +27,12 @@ RUN pip install --no-cache-dir \
         "python-dotenv>=1.0" \
         "pydantic>=2.0"
 
-# Dados (resultados + SQLite) entram por volume, nunca na imagem (.dockerignore)
+# Dados (CSV de consenso, SQLite, rodadas) ficam no volume /app/data, nunca na imagem (.dockerignore)
 COPY src ./src
 
 EXPOSE 8001
 
-CMD ["uvicorn", "src.systems.human_validation_system.interface.api.server:create_app_from_env", \
-     "--factory", "--host", "0.0.0.0", "--port", "8001"]
+# Um único processo: o fechamento automático e o SQLite assumem um só servidor.
+# PORT é definida pelo Railway; localmente vale 8001.
+CMD uvicorn src.systems.human_validation_system.interface.api.server:create_app_from_env \
+    --factory --host 0.0.0.0 --port ${PORT:-8001} --workers 1

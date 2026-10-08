@@ -126,6 +126,9 @@ legend { font-weight: 700; padding: 0 .25rem; }
 .answers li { display: flex; justify-content: space-between; gap: .5rem; padding: .35rem 0; border-bottom: 1px solid var(--border); font-size: .9rem; }
 
 /* administração */
+.consensus-upload { margin: .75rem 0; }
+.consensus-upload label.button { display: inline-block; font-weight: 400; cursor: pointer; }
+.consensus-upload input[type="file"] { display: none; }
 .stack { display: flex; flex-direction: column; gap: 1rem; }
 .stack table td, #paineis table td { padding: .5rem .6rem; }
 .section-title { margin-top: 2.5rem; }

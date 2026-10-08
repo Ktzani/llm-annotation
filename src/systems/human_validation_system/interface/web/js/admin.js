@@ -107,12 +107,47 @@ function resultBlock(result) {
       result.todos_pararam ? "Critério de parada atingido em todos os grupos." : "Ainda há grupos sem atingir o critério de parada."));
 }
 
+async function uploadConsensus(dataset, input) {
+  const file = input.files[0];
+  if (!file) return;
+  document.getElementById("erro").textContent = "";
+  busy.add(dataset);
+  await refresh();
+  try {
+    const response = await fetch(`/api/admin/${dataset}/consenso`, {
+      method: "PUT",
+      headers: { Authorization: `Bearer ${Session.get("token")}`, "Content-Type": "text/csv" },
+      body: file,
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.detail || "Falha ao enviar o arquivo");
+    window.alert(`CSV de consenso de ${dataset} enviado (${data.linhas} linhas).`);
+  } catch (e) {
+    document.getElementById("erro").textContent = `${dataset}: ${e.message}`;
+  } finally {
+    busy.delete(dataset);
+    await refresh();
+  }
+}
+
+function consensusBlock(s) {
+  if (s.consenso_bloqueado) return null;
+  const input = el("input", { type: "file", accept: ".csv", onchange: (e) => uploadConsensus(s.dataset, e.target) });
+  return el("div", { class: "consensus-upload" },
+    el("p", { class: s.consenso_disponivel ? "muted" : "go" },
+      s.consenso_disponivel
+        ? `CSV de consenso (${s.data}) carregado. Ainda pode ser substituído até a rodada 1 ser sorteada.`
+        : `Envie o dataset_consenso.csv do experimento ${s.data} para poder iniciar a rodada 1.`),
+    el("label", { class: "button" }, s.consenso_disponivel ? "Substituir CSV de consenso…" : "Enviar CSV de consenso…", input));
+}
+
 function datasetCard(s) {
   const working = busy.has(s.dataset);
   const card = el("section", { class: "card" },
     el("h2", {}, s.dataset, " ",
       s.rodada ? el("span", { class: `badge ${s.estado}` }, `rodada ${s.rodada} · ${s.estado}`) : el("span", { class: "badge" }, "sem rodada")));
 
+  card.append(...[consensusBlock(s)].filter(Boolean));
   if (s.estado === "aberta" && s.aberta_em) {
     card.append(el("p", { class: "muted" }, `Rodada aberta há ${since(s.aberta_em)} (desde ${when(s.aberta_em)}).`));
   } else if (s.estado === "fechada") {
