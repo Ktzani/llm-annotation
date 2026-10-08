@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -10,6 +10,13 @@ def _default_is_params() -> Dict[str, Any]:
     params = dict(INSTANCE_SELECTION_STRATEGIES[DEFAULT_IS_METHOD])
     params.pop("description", None)
     return params
+
+
+class FineTuningInstanceSelectionSweep(BaseModel):
+    """Curva de IS: um fine-tuning por valor de `param`, com os demais `params` fixos."""
+
+    param: str = Field(default="beta", description="Parâmetro do método variado na curva (ex.: 'beta').")
+    values: List[float] = Field(..., min_length=1, description="Valores de `param`, um fine-tuning por valor.")
 
 
 class FineTuningInstanceSelectionConfig(BaseModel):
@@ -32,6 +39,7 @@ class FineTuningInstanceSelectionConfig(BaseModel):
                 "enabled": True,
                 "method": "bio-is",
                 "params": {"beta": 0.25, "theta": 0.5},
+                "sweep": None,
             }
         }
     )
@@ -50,5 +58,12 @@ class FineTuningInstanceSelectionConfig(BaseModel):
         description=(
             "Parâmetros específicos do método selecionado "
             "(biO-IS: {'beta': 0.25, 'theta': 0.5})."
+        ),
+    )
+    sweep: Optional[FineTuningInstanceSelectionSweep] = Field(
+        default=None,
+        description=(
+            "Curva de IS: treina um modelo por valor de `sweep.param` (ex.: beta) com os demais `params` "
+            "fixos e salva retenção × macro-F1 em `curve.csv`. Vazio: um único fine-tuning com `params`."
         ),
     )

@@ -21,7 +21,8 @@
         "params": {
             "beta": 0.25,
             "theta": 0.5
-        }
+        },
+        "sweep": null
     },
 
     "model_name": "roberta-base",
