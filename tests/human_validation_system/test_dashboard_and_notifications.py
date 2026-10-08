@@ -155,3 +155,13 @@ def test_smtp_settings_from_env(monkeypatch):
     settings = InterfaceSettings.from_env({DATASET: DATE}, "data/results")
     assert settings.smtp_password == "abcdefghijklmnop"
     assert settings.notify_email == "admin@exemplo.com"
+
+
+def test_experiments_come_from_one_variable_per_dataset(monkeypatch):
+    monkeypatch.setenv("HV_EXPERIMENT_BOOKS", "2026-09-13_07-19-54")
+    monkeypatch.delenv("HV_EXPERIMENT_DBLP", raising=False)
+    monkeypatch.setenv("HV_EXPERIMENT_AGNEWS", "ignorado")  # fora de VALIDATION_DATASETS
+    assert InterfaceSettings.experiments_from_env() == {"books": "2026-09-13_07-19-54"}
+
+    monkeypatch.setenv("HV_EXPERIMENT_DBLP", "2026-09-13_18-46-30")
+    assert InterfaceSettings.experiments_from_env() == {"books": "2026-09-13_07-19-54", "dblp": "2026-09-13_18-46-30"}

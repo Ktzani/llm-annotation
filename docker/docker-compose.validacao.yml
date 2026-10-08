@@ -4,8 +4,8 @@
 # Subir:   docker compose -f docker/docker-compose.validacao.yml up -d --build
 # Logs:    docker compose -f docker/docker-compose.validacao.yml logs -f
 #
-# Configuração em ../.env (ver .env-example): HV_ADMIN_CODE, HV_CODE_AVALIADOR_1..3,
-# HV_EXPERIMENTS e HV_RESULTS_DIR=/app/data/results.
+# Configuração em ../.env (ver .env-example): HV_ADMIN_CODE, HV_EVALUATOR_1_CODE..3,
+# HV_EXPERIMENT_BOOKS, HV_EXPERIMENT_DBLP e HV_RESULTS_DIR=/app/data/results.
 # O SQLite (validacao_humana.db) e os resultados ficam em ../data (volume persistente).
 # =============================================================
 name: validacao-humana

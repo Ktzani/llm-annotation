@@ -4,7 +4,7 @@ Entry point: VALIDAÇÃO HUMANA (amostragem incremental por rodadas e estimaçã
 Modos (`mode` no main):
     "interface"   Sobe a interface web (avaliadores + acompanhamento do administrador);
                   respostas no SQLite, rodadas abertas/fechadas pela tela /admin.
-                  Códigos de acesso no .env (HV_ADMIN_CODE, HV_CODE_AVALIADOR_1..3).
+                  Códigos de acesso no .env (HV_ADMIN_CODE, HV_EVALUATOR_1_CODE..3).
     "rodada"      Gera em `data/validacao_humana/<dataset>/<date>/` o guia do
                   avaliador e, para a rodada pedida, as planilhas cegas (uma por
                   avaliador) e o gabarito interno.
@@ -58,7 +58,8 @@ from src.systems.human_validation_system.pipeline import (
 def run_interface(experiments: dict, increment_size: int) -> None:
     load_dotenv()
     # reload exige a fábrica por import: a configuração estática segue para ela via ambiente
-    os.environ["HV_EXPERIMENTS"] = ",".join(f"{d}:{date}" for d, date in experiments.items())
+    for dataset, date in experiments.items():
+        os.environ[InterfaceSettings.experiment_variable(dataset)] = date
     os.environ["HV_RESULTS_DIR"] = DEFAULT_RESULTS_DIR
     os.environ["HV_INCREMENT_SIZE"] = str(increment_size)
     settings = InterfaceSettings.from_env()  # valida códigos do .env antes de subir
@@ -93,8 +94,8 @@ def main() -> None:
     # Configuração estática
     mode = "interface"  # "interface" | "rodada" | "estimativa"
     experiments = {
-        "books": "2026-04-09_13-21-37",
-        "dblp": "2026-04-09_14-05-21",
+        "books": "2026-09-13_07-19-54",
+        "dblp": "2026-09-13_18-46-30",
     }
     round_number = None  # None = próxima rodada; k = regenera a rodada k
     increment_size = 20  # documentos por grupo nas rodadas após a 1ª

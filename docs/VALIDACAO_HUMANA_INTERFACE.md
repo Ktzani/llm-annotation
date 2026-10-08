@@ -30,11 +30,12 @@ tests/human_validation_system/
 
 ```
 HV_ADMIN_CODE=<código do administrador>
-HV_CODE_AVALIADOR_1=<código>
-HV_CODE_AVALIADOR_2=<código>
-HV_CODE_AVALIADOR_3=<código>
+HV_EVALUATOR_1_CODE=<código>
+HV_EVALUATOR_2_CODE=<código>
+HV_EVALUATOR_3_CODE=<código>
 # só para Docker/servidor (localmente ficam no main do run_human_validation.py)
-HV_EXPERIMENTS=books:<date>,dblp:<date>
+HV_EXPERIMENT_BOOKS=<date>
+HV_EXPERIMENT_DBLP=<date>
 HV_RESULTS_DIR=/app/data/results
 ```
 
@@ -89,12 +90,13 @@ uma única instância). Custo esperado: plano Hobby (US$5/mês com US$5 de uso i
 3. **Volume:** no serviço, *Create Volume* com mount path **`/app/data`** (guarda CSVs, SQLite, rodadas e planilhas).
 4. **Variáveis** (*Variables → Raw Editor*):
    ```
-   HV_EXPERIMENTS=books:<date>,dblp:<date>
+   HV_EXPERIMENT_BOOKS=<date>
+   HV_EXPERIMENT_DBLP=<date>
    HV_RESULTS_DIR=/app/data/results
    HV_ADMIN_CODE=<código do administrador>
-   HV_CODE_AVALIADOR_1=<código>
-   HV_CODE_AVALIADOR_2=<código>
-   HV_CODE_AVALIADOR_3=<código>
+   HV_EVALUATOR_1_CODE=<código>
+   HV_EVALUATOR_2_CODE=<código>
+   HV_EVALUATOR_3_CODE=<código>
    HV_NOTIFY_EMAIL=<quem recebe o aviso>
    HV_SMTP_USER=<gmail que envia>
    HV_SMTP_PASSWORD=<senha de app>
@@ -106,7 +108,7 @@ uma única instância). Custo esperado: plano Hobby (US$5/mês com US$5 de uso i
    Depois do sorteio da rodada 1 o CSV fica travado (o registro da amostragem confere o sha256).
 7. **Rodada 1:** clique em **Iniciar primeira rodada** em cada dataset e envie o link e o código de cada avaliador.
 
-**Trocar para os dados finais:** atualize as datas em `HV_EXPERIMENTS` (novo experimento, rodadas de teste
+**Trocar para os dados finais:** atualize as datas em `HV_EXPERIMENT_BOOKS` / `HV_EXPERIMENT_DBLP` (novo experimento, rodadas de teste
 não se misturam) e envie os novos CSVs pela tela. **Cópia de segurança:** baixe a planilha consolidada pelo
 `/admin` ao fim de cada rodada.
 

@@ -13,6 +13,7 @@ from src.config.human_validation import (
     INCREMENT_SIZE,
     INTERFACE_DB_NAME,
     REVIEW_WINDOW_MINUTES,
+    VALIDATION_DATASETS,
     SMTP_DEFAULT_HOST,
     SMTP_DEFAULT_PORT,
 )
@@ -70,14 +71,19 @@ class InterfaceSettings:
 
     @staticmethod
     def code_variable(evaluator: str) -> str:
-        """Variável do .env com o código do avaliador (ex.: HV_CODE_AVALIADOR_1)."""
-        return f"HV_CODE_{evaluator.upper()}"
+        """Variável do .env com o código do avaliador, pela posição em EVALUATORS (ex.: HV_EVALUATOR_1_CODE)."""
+        return f"HV_EVALUATOR_{EVALUATORS.index(evaluator) + 1}_CODE"
 
     @staticmethod
-    def parse_pairs(raw: str) -> Dict[str, str]:
-        """'a:1,b:2' -> {'a': '1', 'b': '2'}."""
-        pairs = (item.split(":", 1) for item in raw.split(",") if item.strip())
-        return {k.strip(): v.strip() for k, v in pairs}
+    def experiment_variable(dataset: str) -> str:
+        """Variável do .env com a data do experimento (ex.: HV_EXPERIMENT_BOOKS)."""
+        return f"HV_EXPERIMENT_{dataset.upper()}"
+
+    @classmethod
+    def experiments_from_env(cls) -> Dict[str, str]:
+        """Datasets de VALIDATION_DATASETS que têm data definida no ambiente."""
+        dates = {d: os.getenv(cls.experiment_variable(d), "").strip() for d in VALIDATION_DATASETS}
+        return {d: date for d, date in dates.items() if date}
 
     @classmethod
     def from_env(
@@ -88,7 +94,7 @@ class InterfaceSettings:
     ) -> "InterfaceSettings":
         """Lê HV_* do ambiente; argumentos explícitos têm prioridade."""
         return cls(
-            experiments=experiments or cls.parse_pairs(os.getenv("HV_EXPERIMENTS", "")),
+            experiments=experiments or cls.experiments_from_env(),
             results_dir=results_dir or os.getenv("HV_RESULTS_DIR", "data/results"),
             evaluator_codes={e: os.getenv(cls.code_variable(e), "") for e in EVALUATORS},
             admin_code=os.getenv("HV_ADMIN_CODE", ""),

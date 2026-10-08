@@ -59,6 +59,10 @@ INSUFFICIENT_INFO_OPTION = "não é possível decidir com este texto"
 # INTERFACE WEB
 # =============================================================================
 
+# Datasets conduzidos pela interface; a data de cada experimento vem do .env
+# (HV_EXPERIMENT_<DATASET>, ex.: HV_EXPERIMENT_BOOKS=2026-09-13_07-19-54)
+VALIDATION_DATASETS = ["books", "dblp"]
+
 # Banco SQLite da interface (respostas, rodadas e sessões), em data/validacao_humana/
 INTERFACE_DB_NAME = "validacao_humana.db"
 # Ao fechar uma rodada, abre a próxima sozinha se algum grupo ainda não parou
@@ -74,7 +78,7 @@ INTERFACE_HOST = "0.0.0.0"
 INTERFACE_PORT = 8001
 # Códigos de acesso vêm do .env (nunca do repositório):
 #   HV_ADMIN_CODE=<código do administrador>
-#   HV_CODE_AVALIADOR_1=<código>  (uma variável por avaliador: HV_CODE_<NOME EM MAIÚSCULAS>)
+#   HV_EVALUATOR_1_CODE=<código>  (uma variável por avaliador, na ordem de EVALUATORS)
 ADMIN_USER = "admin"
 
 # Prefixo do id_anonimo (fallback: duas primeiras letras do dataset)

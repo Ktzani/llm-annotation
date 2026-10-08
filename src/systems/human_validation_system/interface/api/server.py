@@ -90,5 +90,5 @@ def create_app_from_env() -> FastAPI:
     load_dotenv()
     settings = InterfaceSettings.from_env()
     if not settings.experiments:
-        raise RuntimeError("HV_EXPERIMENTS não configurado (ex.: books:2026-04-09_13-21-37,dblp:...)")
+        raise RuntimeError("Nenhum experimento configurado (ex.: HV_EXPERIMENT_BOOKS=2026-09-13_07-19-54)")
     return create_app(settings)
