@@ -32,13 +32,17 @@ from src.utils.get_text_id_from_text import get_text_id_from_text
 from src.systems.fine_tune_system.fine_tune.supervised_fine_tuner import SupervisedFineTuner
 from src.systems.fine_tune_system.fine_tune.fine_tune_factory import FineTunerFactory
 from src.systems.llm_annotation_system.perspectivism.pipeline import PerspectivismConfig, PerspectivismPipeline
+from src.systems.llm_annotation_system.perspectivism.perspectivism_dataset_builder import PerspectivismDatasetBuilder
+from src.systems.llm_annotation_system.soft_labels.soft_label_dataset_builder import SoftLabelDatasetBuilder
 from src.systems.llm_annotation_system.consensus.pipeline import ConsensusConfig, ConsensusPipeline
 
 from src.systems.fine_tune_system.core.hf_tokenizer import HFTokenizer
 from src.systems.fine_tune_system.core.model_factory import ModelFactory
 from src.systems.fine_tune_system.core.run_versioner import FineTuningRunVersioner
 
-from src.systems.fine_tune_system.training.trainer_builder import TrainerBuilder
+from src.systems.fine_tune_system.training.trainer_builder import SoftLabelTrainerBuilder, TrainerBuilder
+from src.systems.fine_tune_system.training.calibration import PREDICTIONS_FILE
+from src.systems.fine_tune_system.training.calibration_by_agreement import CalibrationByAgreement
 from src.systems.fine_tune_system.training.metrics import MetricsComputer
 from src.systems.fine_tune_system.training.label_schema import LabelSchema
 from src.systems.fine_tune_system.training.splits_aligner import CVSplitAligner
@@ -130,6 +134,10 @@ class FineTuningConfig:
 
 class FineTuningPipeline:
     """Pipeline principal para fine-tuning"""
+
+    # Regimes de treino (RQ6): majoritário, majoritário replicado, perspectivista e soft labels
+    REPLICATION_FACTOR = 3  # majoritário replicado: uma cópia por LLM anotadora
+    DUPLICATE_ID_MODES = {"aggregated_replicated", "perspectivism"}
     
     def __init__(self, config: FineTuningConfig):
         self.config = config
@@ -242,16 +250,13 @@ class FineTuningPipeline:
             },
         }
 
-    def load_aggregated_data(self) -> tuple[pd.DataFrame, pd.DataFrame]:
+    @cached_property
+    def consensus_data(self) -> pd.DataFrame:
         """
-        Carrega dados anotados no modo AGREGADO (consenso / voto majoritário).
-
-        Espelha o perspectivismo: reutiliza o dataset de consenso já calculado
-        (`consensus/dataset_consenso.csv`, gerado por `src/run_consensus.py`) ou,
-        se ainda não existir, calcula o consenso na hora via `ConsensusPipeline`.
+        Dataset de consenso (`consensus/dataset_consenso.csv`, gerado por
+        `src/run_consensus.py`) ou, se ainda não existir, calculado na hora via
+        `ConsensusPipeline`.
         """
-        logger.info("Carregando dados anotados (modo AGREGADO)...")
-
         consensus_path = ConsensusPipeline.dataset_path(self.results_dataset_path)
 
         if consensus_path.exists():
@@ -267,8 +272,12 @@ class FineTuningPipeline:
             consensus_pipeline = ConsensusPipeline(consensus_config)
             result_consensus = consensus_pipeline.run()
             df = result_consensus["df_with_consensus"]
-            
+        return df
 
+    def load_aggregated_data(self) -> pd.DataFrame:
+        """Carrega dados anotados no modo AGREGADO (consenso / voto majoritário)."""
+        logger.info("Carregando dados anotados (modo AGREGADO)...")
+        df = self.consensus_data.copy()
         logger.info(f"Anotado: {len(df)} exemplos")
 
         df["text"] = df["text"].str.strip()
@@ -428,7 +437,7 @@ class FineTuningPipeline:
                 max_length=self.config.max_length
             ),
             model_factory=ModelFactory,
-            trainer_builder=TrainerBuilder,
+            trainer_builder=self.trainer_builder,
             metrics_computer=MetricsComputer(),
         )
 
@@ -438,6 +447,7 @@ class FineTuningPipeline:
         )
 
         result = fine_tuner.best_val_metrics()
+        fine_tuner.save_predictions(eval_ds, output_dir / PREDICTIONS_FILE)
         
         logger.success(f"Fine-tuning concluído: {experiment_name}")
         logger.info(f"Accuracy: {result['eval_accuracy']:.4f}, F1 Macro: {result['eval_f1_macro']:.4f}")
@@ -467,7 +477,7 @@ class FineTuningPipeline:
                 max_length=self.config.max_length
             ),
             model_factory=ModelFactory,
-            trainer_builder=TrainerBuilder,
+            trainer_builder=self.trainer_builder,
             metrics_computer=MetricsComputer(),
         )
 
@@ -484,11 +494,46 @@ class FineTuningPipeline:
 
         return results
     
+    def load_replicated_data(self) -> pd.DataFrame:
+        """Majoritário replicado: o rótulo majoritário de cada texto repetido REPLICATION_FACTOR vezes (controle da repetição)"""
+        df_annotations = self.load_aggregated_data()
+        logger.info(f"Majoritário replicado: {len(df_annotations)} textos × {self.REPLICATION_FACTOR}")
+        return pd.concat([df_annotations] * self.REPLICATION_FACTOR, ignore_index=True)
+
+    def load_soft_label_data(self) -> pd.DataFrame:
+        """Soft labels: uma linha por texto com a distribuição dos votos válidos das LLMs"""
+        df_annotations = SoftLabelDatasetBuilder(self.config.dataset_name).build(self.consensus_data)
+        return self.remove_problematic_instances(df_annotations)
+
+    @cached_property
+    def vote_columns(self) -> list[str]:
+        """Colunas com o voto de cada LLM (`<modelo>_consensus`) no dataset de consenso"""
+        return PerspectivismDatasetBuilder(self.config.dataset_name).detect_llm_label_columns(self.consensus_data)
+
+    def remove_invalid_vote_instances(self, df_annotations: pd.DataFrame) -> pd.DataFrame:
+        """Remove os textos em que alguma LLM votou inválido (-1), em todos os regimes (mesmo conjunto de textos)"""
+        consensus = self.consensus_data
+        invalid = consensus.loc[(consensus[self.vote_columns] == -1).any(axis=1), "text"]
+        invalid_ids = set(invalid.astype(str).str.strip().apply(get_text_id_from_text))
+
+        before = df_annotations["text_id"].nunique()
+        df_annotations = df_annotations[~df_annotations["text_id"].isin(invalid_ids)].reset_index(drop=True)
+        logger.info(f"Removidos {before - df_annotations['text_id'].nunique()} textos com voto inválido (-1) de alguma LLM")
+        return df_annotations
+
     def load_annotations(self) -> pd.DataFrame:
-        """Carrega o conjunto anotado de treino conforme o training_mode (agregado ou perspectivismo)"""
-        if self.config.training_mode == "perspectivism":
-            return self.load_perspectivism_data()
-        return self.load_aggregated_data()
+        """Carrega o conjunto anotado de treino conforme o training_mode (regimes da RQ6)"""
+        loaders = {
+            "aggregated": self.load_aggregated_data,
+            "aggregated_replicated": self.load_replicated_data,
+            "perspectivism": self.load_perspectivism_data,
+            "soft_labels": self.load_soft_label_data,
+        }
+        return self.remove_invalid_vote_instances(loaders[self.config.training_mode]())
+
+    @property
+    def trainer_builder(self) -> type[TrainerBuilder]:
+        return SoftLabelTrainerBuilder if self.config.training_mode == "soft_labels" else TrainerBuilder
 
     @staticmethod
     def _save_json(path: Path, data: dict) -> None:
@@ -572,22 +617,22 @@ class FineTuningPipeline:
         max_parallel_folds: int,
     ) -> dict:
         """Alinha os folds com o conjunto de treino, treina e salva os resultados em output_dir"""
-        is_perspectivism = self.config.training_mode == "perspectivism"
-        label_tag = "perspectivism" if is_perspectivism else "consensus_llm"
+        training_mode = self.config.training_mode
+        label_tag = training_mode
+
+        # Soft labels: o rótulo de treino passa a ser a distribuição dos votos (avaliação segue com o benchmark label)
+        if training_mode == "soft_labels":
+            df_annotations = df_annotations.assign(label=df_annotations["soft_label"]).drop(columns="soft_label")
 
         cv_aligned_annotaded_splits = self.align_datasets_splits(
             cv_splits_hf,
             df_annotations,
-            allow_duplicate_ids=is_perspectivism,
+            allow_duplicate_ids=training_mode in self.DUPLICATE_ID_MODES,
         )
 
         # Executar fine-tuning
         logger.info("\n" + "=" * 60)
-        logger.info(
-            "Fine-tuning com PERSPECTIVISMO (uma linha por LLM)"
-            if is_perspectivism
-            else "Fine-tuning com CONSENSO LLM"
-        )
+        logger.info(f"Fine-tuning — regime '{training_mode}'")
         logger.info("=" * 60)
 
         if run_type == "single":
@@ -612,8 +657,12 @@ class FineTuningPipeline:
         else:
             raise ValueError(f"Tipo de execução desconhecido: {run_type}")
 
+        # Calibração e desempenho por padrão de concordância das LLMs (3x0 × 2x1)
+        results["calibration_by_agreement"] = CalibrationByAgreement.from_consensus(self.consensus_data, self.vote_columns).evaluate(output_dir)
+        self._save_json(output_dir / "calibration_by_agreement.json", results["calibration_by_agreement"])
+
         # Salvar resultados (sufixo por modo para não sobrescrever o agregado)
-        results_suffix = "_perspectivism" if is_perspectivism else ""
+        results_suffix = "" if training_mode == "aggregated" else f"_{training_mode}"
         output_path = output_dir / f"{self.config.model_name}{results_suffix}_fine_tuning_results.json"
         self._save_json(output_path, results)
         logger.success(f"\nResultados salvos em: {output_path}")

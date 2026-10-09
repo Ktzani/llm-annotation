@@ -4,6 +4,8 @@ import evaluate
 
 from datasets import Dataset
 
+from src.systems.fine_tune_system.training.calibration import brier_score, expected_calibration_error, softmax
+
 class MetricsComputer:
     def __init__(self):
         self.accuracy = evaluate.load("accuracy")
@@ -12,6 +14,7 @@ class MetricsComputer:
     def __call__(self, eval_pred: Dataset):
         logits, labels = eval_pred
         preds = np.argmax(logits, axis=1)
+        probs = softmax(logits)
 
         return {
             "accuracy": self.accuracy.compute(
@@ -22,5 +25,7 @@ class MetricsComputer:
                 predictions=preds,
                 references=labels,
                 average="macro"
-            )["f1"]
+            )["f1"],
+            "ece": expected_calibration_error(probs, labels),
+            "brier": brier_score(probs, labels),
         }
