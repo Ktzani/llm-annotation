@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from typing import List, Dict, Optional
 import numpy as np
 from datasets import Dataset
@@ -8,6 +9,7 @@ import torch
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
 from src.systems.fine_tune_system.fine_tune.fine_tune_factory import FineTunerFactory
+from src.systems.fine_tune_system.training.calibration import PREDICTIONS_FILE
 
 class CrossValidator:
     def __init__(self, fine_tuner_factory: FineTunerFactory, max_parallel_folds: int = 4):
@@ -101,6 +103,7 @@ class CrossValidator:
             "fold": fold,
             "val_metrics": fine_tuner.best_val_metrics(),
         }
+        fine_tuner.save_predictions(val_ds, Path(fine_tuner.training_args.output_dir) / PREDICTIONS_FILE)
 
         logger.info(f"✅ Fold {fold} concluído")
 

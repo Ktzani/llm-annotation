@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional, Any
+from typing import Any, Literal, Optional
 from datetime import datetime
 
 from src.api.schemas.fine_tuning.dataset import FineTuningDatasetConfig
@@ -42,12 +42,13 @@ class FineTuningRequest(BaseModel):
         description="Tipo de execução: 'cross-validation' ou 'single' (teste rápido)",
     )
 
-    training_mode: str = Field(
+    training_mode: Literal["aggregated", "aggregated_replicated", "perspectivism", "soft_labels"] = Field(
         default="aggregated",
         description=(
-            "Estratégia de rotulagem do treino: 'aggregated' (voto majoritário/"
-            "consenso agregado em `resolved_annotation`) ou 'perspectivism' (uma "
-            "linha por anotação de LLM — preserva o desacordo entre anotadores)."
+            "Regime de rotulagem do treino: 'aggregated' (voto majoritário, uma linha por texto), "
+            "'aggregated_replicated' (voto majoritário repetido 3× — controle da repetição), "
+            "'perspectivism' (uma linha por anotação de LLM) ou 'soft_labels' (uma linha por texto "
+            "com a distribuição dos votos). Textos com voto inválido (-1) de alguma LLM ficam de fora em todos."
         ),
     )
 
