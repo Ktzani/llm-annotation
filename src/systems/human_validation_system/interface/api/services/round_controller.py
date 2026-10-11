@@ -26,6 +26,7 @@ from src.systems.human_validation_system.estimation.stopping_status import Stopp
 from src.systems.human_validation_system.interface.api.services.consensus_file_manager import ConsensusFileManager
 from src.systems.human_validation_system.interface.api.services.consolidated_workbook import ConsolidatedWorkbookWriter
 from src.systems.human_validation_system.interface.api.services.database_response_source import DatabaseResponseSource
+from src.systems.human_validation_system.interface.api.services.display_text_cleaner import DisplayTextCleaner
 from src.systems.human_validation_system.interface.api.services.email_notifier import EmailNotifier
 from src.systems.human_validation_system.interface.api.services.response_store import ResponseStore
 from src.systems.human_validation_system.interface.api.core.settings import InterfaceSettings
@@ -64,6 +65,7 @@ class RoundController:
         self.store = store
         self.workbook_writer = ConsolidatedWorkbookWriter()
         self.consensus = ConsensusFileManager(settings.results_dir)
+        self.text_cleaner = DisplayTextCleaner()
         self.notifier = notifier or EmailNotifier(
             settings.notify_email, settings.smtp_host, settings.smtp_port, settings.smtp_user, settings.smtp_password
         )
@@ -111,7 +113,7 @@ class RoundController:
         path = self.validation_dir(dataset) / "exemplos_guia.csv"
         if path.exists():
             for _, row in pd.read_csv(path).iterrows():
-                text = " ".join(str(row["text"]).split())
+                text = " ".join(self.text_cleaner.clean(str(row["text"])).split())
                 if len(text) > EXAMPLE_MAX_CHARS:
                     text = text[:EXAMPLE_MAX_CHARS].rstrip() + "…"
                 examples[meanings[str(int(row["ground_truth"]))]].append(text)

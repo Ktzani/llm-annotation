@@ -30,6 +30,11 @@ def _controller(request: Request):
     return request.app.state.controller
 
 
+def _for_display(request: Request, doc: dict) -> dict:
+    """Texto como o avaliador vê (sem a descrição duplicada do books); os dados não mudam."""
+    return {**doc, "texto": _controller(request).text_cleaner.clean(doc["texto"])}
+
+
 def _open_round(request: Request, dataset: str) -> Tuple[str, int]:
     """Chave do experimento no banco e número da rodada aberta."""
     if dataset not in request.app.state.settings.experiments:
@@ -91,7 +96,7 @@ def next_document(dataset: str, request: Request, user: str = Depends(require_ev
             todos_terminaram=everyone_done,
         )
     return NextDocumentOut(
-        concluido=False, respondidos=answered, total=total, documento=DocumentOut(**doc, total=total)
+        concluido=False, respondidos=answered, total=total, documento=DocumentOut(**_for_display(request, doc), total=total)
     )
 
 
@@ -110,7 +115,7 @@ def get_document(dataset: str, id_anonimo: str, request: Request, user: str = De
         raise HTTPException(status_code=404, detail="Documento não pertence à rodada aberta")
     answer = store.get_response(key, round_number, user, id_anonimo)
     return DocumentOut(
-        **doc,
+        **_for_display(request, doc),
         total=store.round_size(key, round_number),
         resposta=AnswerOut(id_anonimo=id_anonimo, posicao=doc["posicao"], **answer) if answer else None,
     )
