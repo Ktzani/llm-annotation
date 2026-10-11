@@ -13,12 +13,16 @@ class SoftLabelTrainer(Trainer):
 
     def compute_loss(self, model, inputs, return_outputs=False, num_items_in_batch=None):
         labels = inputs.get("labels")
-        if labels is None or not labels.is_floating_point():
+        if labels is None:
             return super().compute_loss(model, inputs, return_outputs, num_items_in_batch)
 
         outputs = model(**{k: v for k, v in inputs.items() if k != "labels"})
         log_probs = F.log_softmax(outputs.logits, dim=-1)
-        loss = -(labels.to(log_probs.dtype) * log_probs).sum(dim=-1).mean()
+        # Distribuição (batch, classes) no treino; rótulo inteiro (batch,) na avaliação, decidido pela forma e não pelo dtype
+        if labels.dim() == 2:
+            loss = -(labels.to(log_probs.dtype) * log_probs).sum(dim=-1).mean()
+        else:
+            loss = F.nll_loss(log_probs, labels.long())
         return (loss, outputs) if return_outputs else loss
 
 

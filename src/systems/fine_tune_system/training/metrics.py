@@ -13,6 +13,7 @@ class MetricsComputer:
 
     def __call__(self, eval_pred: Dataset):
         logits, labels = eval_pred
+        labels = np.asarray(labels).astype(int)
         preds = np.argmax(logits, axis=1)
         probs = softmax(logits)
 
