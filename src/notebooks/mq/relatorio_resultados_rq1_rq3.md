@@ -15,7 +15,7 @@
 | Books | `books/2026-09-13_07-19-54` | `v1_roberta-base_aggregated` | `v2_roberta-base_aggregated_bio-is` | `books/two_phase/2026-09-18_17-03-05` |
 | DBLP | `dblp/2026-09-13_18-46-30` | `v1_roberta-base_aggregated` | `v2_roberta-base_aggregated_bio-is` | `dblp/two_phase/2026-09-18_17-03-44` |
 
-- **Benchmark por fold:** `data/results/mq/Roberta - Catizani.xlsx`, aba `effect-fold` (`mac0…mac9`). Médias: Movie Review 89,04, AGNews 91,73, Books 87,21 e DBLP 81,44.
+- **Benchmark por fold:** `data/results/mq/Roberta - Catizani.xlsx`, aba `effect-fold` (`mac0…mac9`). Médias: Movie Review 89,04, AGNews 91,73, Books 87,21 e DBLP 81,44. As três primeiras batem com o RoBERTa publicado por Cunha et al. (2025); AGNews não bate (publicado: 94,2), ver §2.4.
 - **Métrica principal:** macro-F1. A acurácia vem em paralelo. Todos os valores estão em pontos percentuais (pp).
 - **Comparação de sistemas = comparação pareada por fold:**
   - Calcula-se dᵢ = Aᵢ − Bᵢ em cada fold; a conclusão vem do **IC 95% (t de Student) da média de dᵢ**: se o IC contém 0, os sistemas são equivalentes.
@@ -30,6 +30,21 @@
 - **Métricas por modelo:** acurácia e macro-F1 sobre as predições válidas (≠ -1). A taxa de inválidas é reportada à parte; é a convenção do `evaluate_model_metrics`.
 
 **Pendência:** a curva β da RQ2 ainda não foi executada (ver §3.6).
+
+## Resumo geral: fine-tuning do RoBERTa-base
+
+Macro-F1 médio entre os folds, com a meia-largura do IC 95% entre parênteses (t de Student). Em todas as colunas, a avaliação é sempre contra os benchmark labels do conjunto de teste. Os testes e os ICs das diferenças estão nas §2.5, §3.3 e §3.4.
+
+| Dataset | Classes | Folds | κ de Fleiss (3 LLMs) | Anotação humana (benchmark) | Consolidada sem filtro | Consolidada com filtro (biO-IS) |
+|---|---|---|---|---|---|---|
+| Movie Review | 2 | 10 | 0,842 | 89,04 (0,67) | 88,98 (0,70) | 88,32 (0,49) |
+| AGNews | 4 | 5 | 0,907 | 91,73 (0,23)¹ | 87,19 (0,17) | 87,73 (0,42) |
+| Books | 8 | 10 | 0,744 | 87,21 (0,58) | 72,31 (0,69) | 72,09 (0,49) |
+| DBLP | 10 | 10 | 0,738 | 81,44 (0,53) | 61,51 (0,45) | 61,19 (0,41) |
+
+O κ de Fleiss mede a concordância entre os três anotadores sobre todos os textos do dataset, com a resposta inválida (-1) tratada como categoria própria (detalhes na §2.2).
+
+¹ Calculado sobre os folds da aba `effect-fold`. O valor publicado por Cunha et al. (2025) para o RoBERTa no AGNews é 94,2 (0,2) (ver §2.4). Nos outros três datasets, os folds reproduzem o valor publicado.
 
 ## 2. RQ1: anotação consolidada × anotação humana
 
@@ -78,7 +93,33 @@ Qualidade do consenso por padrão de concordância (macro-F1 / acurácia):
 - **Discordância total:** são 22, 339, 809 e 1.054 casos 1x1x1 (0,2% a 2,8% dos textos). A fração de 2x1 sobe de cerca de 10% (2 e 4 classes) para cerca de 29% (8 e 10 classes).
 - **Qualidade por padrão:** nos 2x1 o macro-F1 cai entre 24 e 29 pp em relação aos 3x0, em todos os datasets. Esse dado também serve para a RQ5.
 
-### 2.4 Fine-tuning: consolidada × benchmark, pareado por fold
+### 2.4 Fine-tuning: média entre folds com IC 95% (formato do benchmark)
+
+Macro-F1 médio entre os folds e, entre parênteses, a meia-largura do IC 95% (t de Student), no mesmo formato da Tabela 2 de Cunha et al. (2025). As colunas de anotação LLM e a coluna "benchmark por fold" foram calculadas sobre os folds; as duas colunas do benchmark publicado foram copiadas dos artigos.
+
+| Dataset | Folds | Benchmark RoBERTa publicado (Cunha et al., 2025) | Benchmark por fold (`effect-fold`) | Consolidada sem filtro | Consolidada com biO-IS | Benchmark + biO-IS publicado (humano) |
+|---|---|---|---|---|---|---|
+| Movie Review | 10 | 89,0 (0,7) | 89,04 (0,67) | 88,98 (0,70) | 88,32 (0,49) | 88,3 (0,4) |
+| AGNews | 5 | **94,2 (0,2)** | **91,73 (0,23)** | 87,19 (0,17) | 87,73 (0,42) | 94,0 (0,2) |
+| Books | 10 | 87,2 (0,6) | 87,21 (0,58) | 72,31 (0,69) | 72,09 (0,49) | 86,5 (0,6) |
+| DBLP | 10 | 81,4 (0,5) | 81,44 (0,53) | 61,51 (0,45) | 61,19 (0,41) | 80,5 (0,6) |
+
+Acurácia das consolidadas (o benchmark publica só macro-F1):
+
+| Dataset | Sem filtro | Com biO-IS |
+|---|---|---|
+| Movie Review | 88,98 (0,70) | 88,32 (0,49) |
+| AGNews | 87,33 (0,18) | 87,80 (0,40) |
+| Books | 71,12 (0,72) | 70,82 (0,54) |
+| DBLP | 63,79 (0,24) | 63,57 (0,44) |
+
+**AGNews: os folds da planilha não reproduzem o valor publicado.**
+- Em Movie Review, Books e DBLP, a média e o IC calculados sobre os folds da aba `effect-fold` coincidem com a Tabela 2 de Cunha et al. (2025).
+- Em AGNews, a mesma aba dá 91,73 (0,23), mas o RoBERTa publicado é 94,2 (0,2). O valor por fold fica perto do LSVM (91,8) e do LR (91,5) da mesma tabela, não do RoBERTa.
+- A comparação pareada do AGNews em §2.5 e §3.4 usa esses folds e deve ser tratada como **provisória** até que os 5 valores por fold do RoBERTa publicado sejam confirmados. O repositório público (`waashk/atcBench`) não traz os resultados por fold.
+- Mesmo sem pareamento, a conclusão não muda: com 94,2 (0,2) contra 87,19 (0,17) sem filtro, os ICs ficam a cerca de 7 pp de distância.
+
+### 2.5 Fine-tuning: consolidada × benchmark, pareado por fold
 
 | Dataset | Folds | Benchmark (F1, IC95) | Consolidada (F1, IC95) | Δ = bench − cons. (IC95) | IC Bonferroni | p Bonf. | p BH | Conclusão (IC95) |
 |---|---|---|---|---|---|---|---|---|
@@ -93,7 +134,7 @@ Qualidade do consenso por padrão de concordância (macro-F1 / acurácia):
 **Leitura para o texto (RQ1)**
 - **Movie Review (2 classes):** a anotação consolidada é **estatisticamente equivalente** ao benchmark. A diferença pareada é de +0,07 pp com IC [−0,58; +0,71], que contém o zero (p corrigido = 1,0).
 - **Demais datasets:** o benchmark é superior. O gap cresce com a granularidade:
-  - +4,5 pp no AGNews (4 classes);
+  - +4,5 pp no AGNews (4 classes) com os folds da planilha, ou cerca de 7,0 pp contra o valor publicado de 94,2 (ver §2.4);
   - +14,9 pp em Books (8 classes);
   - +19,9 pp em DBLP (10 classes).
   - Todos esses gaps têm p < 10⁻⁴ após a correção.
@@ -112,7 +153,12 @@ A entrada da biO-IS é o `dataset_consenso.csv` sem os 1x1x1. Por isso "Entrada"
 | Books | 32.785 | 33,6% | 2.824 | 8.196 | 2,9:1 | 49,1% | 22,2% |
 | DBLP | 36.999 | 32,6% | 2.817 | 9.249 | 3,3:1 | 64,7% | 26,6% |
 
-"Erro" é a fração do grupo em que o rótulo consolidado diverge do benchmark label.
+**Como ler as colunas de erro.** Cada coluna de erro é uma **taxa dentro do próprio grupo**: o número de instâncias do grupo cujo rótulo consolidado diverge do benchmark label, dividido pelo tamanho do grupo. São denominadores diferentes, então essas porcentagens **não se somam** e não devem fechar 100%. No Movie Review:
+- **Erro entre ruidosas = 18,8%:** das 1.294 instâncias removidas como ruído, 243 estavam erradas e 1.051 (81,2%) estavam certas.
+- **Erro entre redundantes = 5,0%:** das 2.659 removidas como redundantes, 134 estavam erradas e 2.525 (95,0%) estavam certas.
+- **Erro nas mantidas = 8,17%** (§3.2): das 6.686 que seguem para o treino, 546 estão erradas.
+
+A pergunta "para onde vão os erros?" é respondida pela segunda tabela da §3.2, que divide o total de erros da entrada entre os três destinos e soma 100%.
 
 ### 3.2 A filtragem limpa o conjunto que sobra?
 
@@ -122,6 +168,21 @@ A entrada da biO-IS é o `dataset_consenso.csv` sem os 1x1x1. Por isso "Entrada"
 | AGNews | 13,05% | 14,10% | 12,65% | −0,40 | 30,0% | 85,9% | 88,5% | 37,9% / 94,1% | 0,942 |
 | Books | 28,16% | 29,08% | 27,69% | −0,47 | 34,7% | 70,9% | 67,2% | 33,1% / 78,9% | 0,828 |
 | DBLP | 35,22% | 35,49% | 35,09% | −0,13 | 32,9% | 64,5% | 68,6% | 33,8% / 79,2% | 0,784 |
+
+Assim como na §3.1, as colunas "Erro na entrada", "Erro nas removidas" e "Erro nas mantidas" são taxas dentro de cada grupo e não se somam. "Δ erro mantido" é a diferença, em pp, entre o erro nas mantidas e o erro na entrada. Ela mostra quanto o conjunto de treino ficou mais limpo.
+
+**Para onde vão os erros.** A tabela abaixo usa outro denominador: o **total de erros da entrada**. Cada erro tem exatamente um destino (removido como ruído, removido como redundância ou mantido no treino), então cada linha soma 100%:
+
+| Dataset | Erros na entrada | Removidos como ruído | Removidos como redundância | Ficam no conjunto mantido |
+|---|---|---|---|---|
+| Movie Review | 923 (8,68% da entrada) | 243 (26,3%) | 134 (14,5%) | 546 (59,2%) |
+| AGNews | 16.613 (13,05%) | 1.851 (11,1%) | 3.130 (18,8%) | 11.632 (70,0%) |
+| Books | 9.231 (28,16%) | 1.386 (15,0%) | 1.819 (19,7%) | 6.026 (65,3%) |
+| DBLP | 13.031 (35,22%) | 1.823 (14,0%) | 2.459 (18,9%) | 8.749 (67,1%) |
+
+- **Erros capturados:** ruído + redundância formam os "Erros capturados" da tabela anterior (30,0% a 40,8%). Por exemplo, no Movie Review são 26,3% + 14,5% = 40,8%.
+- **Erros que ficam:** a maior parte dos erros (59% a 70%) permanece no conjunto mantido.
+- **Por que a taxa quase não muda:** o filtro também remove muitas instâncias corretas, então o conjunto encolhe junto com os erros. No Movie Review saem 377 erros (243 + 134) mas também 3.576 acertos, e a taxa de erro do treino só passa de 8,68% para 8,17%.
 
 Erro por tipo de remoção e padrão de concordância:
 
