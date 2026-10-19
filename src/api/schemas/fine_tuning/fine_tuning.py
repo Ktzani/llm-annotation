@@ -37,6 +37,15 @@ class FineTuningRequest(BaseModel):
         ),
     )
 
+    resume_from: Optional[str] = Field(
+        default=None,
+        description=(
+            "Pasta da execução em finetuning/ a retomar dos checkpoints (ex.: 'v4_roberta-base'). "
+            "Cada fold continua do último checkpoint salvo. None (default) cria uma nova vN_."
+        ),
+        examples=[None, "v4_roberta-base"],
+    )
+
     run_type: str = Field(
         default="cross-validation",
         description="Tipo de execução: 'cross-validation' ou 'single' (teste rápido)",

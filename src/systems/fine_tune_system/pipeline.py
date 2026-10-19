@@ -112,6 +112,7 @@ class FineTuningConfig:
         self.request = req
         self.model_name = req.model_name
         self.run_name = req.run_name
+        self.resume_from = req.resume_from
         self.run_type = req.run_type
         self.training_mode = req.training_mode
         self.max_parallel_folds = req.max_parallel_folds
@@ -149,7 +150,10 @@ class FineTuningPipeline:
     @cached_property
     def fine_tune_output_dir(self) -> Path:
         """Cria a pasta versionada da execução (vN_<nome>) no primeiro acesso e salva a config usada"""
-        run_name = self.config.run_name or FineTuningRunVersioner.default_run_name(
+        if self.config.resume_from:
+            return self.versioner.resume_run_dir(self.config.resume_from)
+
+        run_name =self.config.run_name or FineTuningRunVersioner.default_run_name(
             model_name=self.config.model_name,
             training_mode=self.config.training_mode,
             run_type=self.config.run_type,
@@ -535,6 +539,11 @@ class FineTuningPipeline:
     def trainer_builder(self) -> type[TrainerBuilder]:
         return SoftLabelTrainerBuilder if self.config.training_mode == "soft_labels" else TrainerBuilder
 
+    def _results_path(self, output_dir: Path) -> Path:
+        """Arquivo de resultados do treino (sufixo por modo para não sobrescrever o agregado)"""
+        results_suffix = "" if self.config.training_mode == "aggregated" else f"_{self.config.training_mode}"
+        return output_dir / f"{self.config.model_name}{results_suffix}_fine_tuning_results.json"
+
     @staticmethod
     def _save_json(path: Path, data: dict) -> None:
         with open(path, "w", encoding="utf-8") as f:
@@ -620,6 +629,13 @@ class FineTuningPipeline:
         training_mode = self.config.training_mode
         label_tag = training_mode
 
+        # Retomada: treino já concluído (ex.: ponto anterior da curva) é lido do disco em vez de refeito
+        output_path = self._results_path(output_dir)
+        if output_path.exists():
+            logger.info(f"Resultados já existentes, treino pulado: {output_path}")
+            with open(output_path, encoding="utf-8") as f:
+                return json.load(f)
+
         # Soft labels: o rótulo de treino passa a ser a distribuição dos votos (avaliação segue com o benchmark label)
         if training_mode == "soft_labels":
             df_annotations = df_annotations.assign(label=df_annotations["soft_label"]).drop(columns="soft_label")
@@ -661,9 +677,6 @@ class FineTuningPipeline:
         results["calibration_by_agreement"] = CalibrationByAgreement.from_consensus(self.consensus_data, self.vote_columns).evaluate(output_dir)
         self._save_json(output_dir / "calibration_by_agreement.json", results["calibration_by_agreement"])
 
-        # Salvar resultados (sufixo por modo para não sobrescrever o agregado)
-        results_suffix = "" if training_mode == "aggregated" else f"_{training_mode}"
-        output_path = output_dir / f"{self.config.model_name}{results_suffix}_fine_tuning_results.json"
         self._save_json(output_path, results)
         logger.success(f"\nResultados salvos em: {output_path}")
 

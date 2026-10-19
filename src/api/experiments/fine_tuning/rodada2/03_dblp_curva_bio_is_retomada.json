@@ -1,0 +1,35 @@
+{
+    "dataset": {
+        "dataset_name": "dblp",
+        "cache_dir": "data/.cache",
+        "results_dir": "data/results",
+        "specific_date": "2026-09-13_18-46-30"
+    },
+    "hyperparams": {
+        "learning_rate": 0.00005,
+        "num_epochs": 20,
+        "train_batch_size": 64,
+        "eval_batch_size": 128,
+        "weight_decay": 0.01,
+        "max_length": 256,
+        "seed": 42
+    },
+    "instance_selection": {
+        "enabled": true,
+        "method": "bio-is",
+        "params": {
+            "beta": 0.25,
+            "theta": 0.5
+        },
+        "sweep": {
+            "param": "beta",
+            "values": [0.35, 0.45, 0.55, 0.65]
+        }
+    },
+    "model_name": "roberta-base",
+    "run_name": "roberta-base_bio-is_curva-beta",
+    "run_type": "cross-validation",
+    "training_mode": "aggregated",
+    "max_parallel_folds": 5,
+    "resume_from": "v4_roberta-base_bio-is_curva-beta"
+}

@@ -11,6 +11,7 @@ from src.systems.fine_tune_system.core.model_factory import ModelFactory
 from src.systems.fine_tune_system.training.trainer_builder import TrainerBuilder
 from src.systems.fine_tune_system.training.metrics import MetricsComputer
 from src.systems.fine_tune_system.training.calibration import softmax
+from src.systems.fine_tune_system.training.checkpoint_resume import CheckpointResume
 from src.systems.fine_tune_system.training.label_schema import LabelSchema
 
 from src.systems.fine_tune_system.fine_tune.fine_tuner import FineTuner
@@ -72,7 +73,12 @@ class SupervisedFineTuner(FineTuner):
             eval_ds=eval_ds
         )
 
-        self._trainer.train()
+        # Retoma do último checkpoint do fold se houver (execução interrompida); senão treina do zero
+        last_checkpoint = CheckpointResume.last_checkpoint(self.training_args.output_dir)
+        if last_checkpoint:
+            CheckpointResume.allow_local_torch_load()
+        self._trainer.add_callback(CheckpointResume())
+        self._trainer.train(resume_from_checkpoint=last_checkpoint)
 
     def save_predictions(self, eval_ds: Dataset, path: Path) -> Path:
         """Salva, com o melhor modelo, as probabilidades por instância do conjunto de avaliação (text_id, label, prob_<k>)"""

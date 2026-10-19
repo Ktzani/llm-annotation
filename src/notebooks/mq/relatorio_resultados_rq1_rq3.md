@@ -26,6 +26,8 @@
   - 1x1x1 é a discordância total (três rótulos distintos, contando -1 como rótulo). Esses textos ficam **fora** das métricas do consenso, como faz o fine-tuning.
   - O `sumario_experimento.json` do pipeline, ao contrário, mantém os 1x1x1 com o rótulo do DeepSeek (desempate do `Counter`). Os dois valores aparecem lado a lado na Tabela 2.2.
 - **O que vai para o fine-tuning:** além dos 1x1x1, o treino descarta todo texto em que algum modelo deu resposta inválida (`remove_invalid_vote_instances`). A coluna "Aptos ao treino" da Tabela 2.3 reflete as duas remoções.
+  - Essa segunda remoção entrou no código em 2026-10-08, **depois** das execuções sem filtro e com biO-IS (β = 0,25) desta tabela. Essas execuções treinaram com os textos de voto inválido; só ficaram fora os 1x1x1.
+  - Daqui em diante, toda execução nova (pontos da curva β da §3.6 e regimes da RQ6) já sai com a remoção. Ver a §3.6 para o efeito na curva.
 - **κ de Fleiss** recalculado com -1 como categoria própria. O cálculo do pipeline descarta os votos -1 mas mantém n = 3 na fórmula, o que gera uma diferença pequena (≤ 0,004).
 - **Métricas por modelo:** acurácia e macro-F1 sobre as predições válidas (≠ -1). A taxa de inválidas é reportada à parte; é a convenção do `evaluate_model_metrics`.
 
@@ -245,6 +247,18 @@ Ainda não foi executada. O código existe, mas a execução não.
   - Os jobs `src/api/experiments/fine_tuning/rodada2/*_curva_bio_is.json`, com β ∈ {0,35; 0,45; 0,55; 0,65} e θ = 0,5.
   - Os pontos β = 0 (sem filtro) e β = 0,25 já estão nas Tabelas 3.3.
 - **Ponto de atenção:** a remoção redundante só sorteia entre os acertos do classificador fraco (`beta_saturated`). Em Movie Review, onde o classificador fraco acerta cerca de 76%, β alto pode saturar.
+- **Base de treino dos pontos (decisão aceita):** os pontos novos (β = 0,35 a 0,65) rodam com a remoção dos textos de voto inválido (§0), e o sem filtro e o β = 0,25 rodaram sem ela. Os pontos antigos treinam, portanto, com alguns textos a mais:
+
+  | Dataset | Textos a mais nos pontos antigos | % dos textos |
+  |---|---|---|
+  | Movie Review | 85 | 0,80% |
+  | AGNews | 262 | 0,21% |
+  | Books | 168 | 0,50% |
+  | DBLP | 131 | 0,34% |
+
+  - Quase todos os votos inválidos são do DeepSeek-R1; a única exceção é 1 texto do Llama 3.1 em Movie Review.
+  - A diferença foi considerada pequena demais para re-rodar o sem filtro e o β = 0,25. Ela deve ser citada como limitação ao apresentar a curva.
+  - A avaliação não muda: o conjunto de teste de cada fold continua sendo o do benchmark completo, com esses textos incluídos.
 - **Comparação:** quando a curva sair, cada ponto deve ser pareado por fold contra o sem filtro. A classe `SupervisionComparison` ignora as execuções de curva de propósito, então isso exige um contraste novo.
 
 ## 4. RQ3: restrição do espaço de rótulos (Books e DBLP)

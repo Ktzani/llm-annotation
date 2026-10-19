@@ -65,6 +65,14 @@ class FineTuningRunVersioner:
             except FileExistsError:
                 continue
 
+    def resume_run_dir(self, run_dir_name: str) -> Path:
+        """Pasta de uma execução existente a retomar (mantém o config.json original)"""
+        run_dir = self.finetuning_dir / run_dir_name
+        if not run_dir.is_dir():
+            raise FileNotFoundError(f"Execução a retomar não encontrada: {run_dir}")
+        logger.info(f"Retomando o fine-tuning: {run_dir.name}")
+        return run_dir
+
     def save_config(self, run_dir: Path, config: Dict[str, Any]) -> Path:
         """Salva a configuração usada na execução"""
         config_path = Path(run_dir) / self.CONFIG_FILE
