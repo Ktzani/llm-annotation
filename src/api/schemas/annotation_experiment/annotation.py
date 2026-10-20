@@ -1,3 +1,5 @@
+from typing import Dict, List, Optional
+
 from pydantic import BaseModel, Field, field_validator
 from src.systems.llm_annotation_system.annotation.execution_estrategy import ExecutionStrategy
 from src.systems.llm_annotation_system.core.model_variants import AlternativeParamsSelection, ModelVariantResolver
@@ -63,3 +65,24 @@ class AnnotationConfig(BaseModel):
             "0 significa desativado."
         )
     )
+
+    few_shot_examples: Optional[List[Dict[str, str]]] = Field(
+        default=None,
+        description=(
+            "Exemplos rotulados do prompt_type='few_shot', na ordem em que aparecem no prompt. "
+            "Cada item é {\"text\": <texto>, \"category\": <código ou nome da classe>}. "
+            "Os mesmos exemplos valem para todos os modelos e textos."
+        ),
+        examples=[[{"text": "Cobrança duplicada no cartão", "category": "0"},
+                   {"text": "O sistema não abre", "category": "suporte técnico"}]],
+    )
+
+    @field_validator("few_shot_examples")
+    @classmethod
+    def _validate_examples(cls, value):
+        """Cada exemplo precisa de 'text' e 'category'"""
+        for i, example in enumerate(value or []):
+            faltando = {"text", "category"} - set(example)
+            if faltando:
+                raise ValueError(f"few_shot_examples[{i}]: campo(s) {sorted(faltando)} ausente(s)")
+        return value

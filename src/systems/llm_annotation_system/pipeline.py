@@ -92,6 +92,7 @@ class AnnotationConfig:
         self.rep_strategy = exp.annotation.rep_strategy
         self.max_concurrent_texts = exp.annotation.max_concurrent_texts
         self.keep_alive = exp.annotation.keep_alive
+        self.few_shot_examples = exp.annotation.few_shot_examples
         self.use_cache = exp.cache.enabled
         self.cache_dir = exp.cache.dir
         self.intermediate = exp.results.intermediate
@@ -121,6 +122,7 @@ class AnnotationPipeline:
                 cache_dir=self.config.cache_dir,
                 results_dir=self.config.results_dir,
                 prompt_template=self.prompt_template,
+                examples=self.config.few_shot_examples,
                 use_cache=self.config.use_cache,
                 use_alternative_params=self.config.use_alternative_params,
                 keep_alive=self.config.keep_alive,

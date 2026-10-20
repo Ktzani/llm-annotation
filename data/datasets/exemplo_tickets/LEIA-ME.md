@@ -53,13 +53,14 @@ preciso editar código nem reiniciar a API.
 
 ## Como rodar a anotação
 
-O experimento pronto está em `src/api/experiments/annotation/exemplo_dataset_local.json`.
+Os experimentos prontos estão em `src/api/experiments/annotation/generalista/`
+(`basico.json`, `completo.json`, `few_shot.json`).
 O único campo que muda em relação a um dataset do HF é `"dataset_name": "exemplo_tickets"`.
 
 **Via script:** em `src/run_annotation.py`, troque
 ```python
 run_type = "dataset"
-experiment = "exemplo_dataset_local"
+experiment = "generalista/basico"
 ```
 e rode `poetry run python -m src.run_annotation`.
 

@@ -137,8 +137,9 @@ Datasets que não estão (ou não podem estar) no HuggingFace Hub são registrad
 pasta em `data/datasets/<nome>/` com um manifesto `dataset.json`. A pasta `data/` fica
 fora do git e é montada no Docker (`/app/data`), então dados proprietários não vão para
 o repositório. A exceção é o exemplo versionado `data/datasets/exemplo_tickets/`, que traz
-um `LEIA-ME.md` com o passo a passo e é usado pelo experimento
-`src/api/experiments/annotation/exemplo_dataset_local.json`. O nome da pasta é o `dataset_name` usado em qualquer experimento
+um `LEIA-ME.md` com o passo a passo e é usado pelos experimentos de
+`src/api/experiments/annotation/generalista/` (básico, completo e few-shot, com um
+`LEIA-ME.md` explicando cada campo e os tipos de prompt). O nome da pasta é o `dataset_name` usado em qualquer experimento
 (anotação, 2 fases, consenso, fine-tuning), sem precisar editar código nem reiniciar a API.
 
 ```

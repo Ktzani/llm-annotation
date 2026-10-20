@@ -1,0 +1,42 @@
+{
+    "dataset_name": "exemplo_tickets",
+    "dataset_config": {
+        "sample_size": 10,
+        "random_state": 42
+    },
+    "models": [
+        "qwen3-8b",
+        "llama3.1-8b",
+        "deepseek-r1-8b"
+    ],
+    "prompt_type": "few_shot",
+    "custom_prompt": "",
+    "annotation": {
+        "num_repetitions_per_llm": 1,
+        "model_strategy": "parallel",
+        "rep_strategy": "sequential",
+        "max_concurrent_texts": 5,
+        "few_shot_examples": [
+            {
+                "text": "A cobrança da mensalidade veio duplicada neste mês, preciso do estorno.",
+                "category": "0"
+            },
+            {
+                "text": "O sistema trava na tela de login desde a última atualização.",
+                "category": "suporte técnico"
+            },
+            {
+                "text": "Gostaria de um orçamento para ampliar o plano para 50 usuários.",
+                "category": "comercial"
+            }
+        ]
+    },
+    "cache": {
+        "enabled": false,
+        "dir": "data/.cache"
+    },
+    "results": {
+        "intermediate": 50,
+        "dir": "data/results"
+    }
+}

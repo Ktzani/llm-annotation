@@ -8,6 +8,6 @@
         "2": "comercial"
     },
     "prompt": "Support ticket",
-    "description": "Exemplo: tickets de atendimento classificados por área (financeiro, suporte técnico, comercial)",
+    "description": "Tickets de atendimento classificados por área (financeiro, suporte técnico, comercial)",
     "read_kwargs": {"sep": ";"}
 }

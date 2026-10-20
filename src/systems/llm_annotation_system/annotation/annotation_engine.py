@@ -205,27 +205,45 @@ class AnnotationEngine:
             Template formatado (com ``{text}`` ainda como placeholder)
         """
         self._categories_indexed = self._get_categories_indexed()
-        categories_str = self._render_categories_str()
+        description = DATASETS.get(self.dataset_name, {}).get("prompt", "Text")
 
-        # Few-shot
-        if examples and prompt_template == FEW_SHOT_PROMPT:
-            examples_str = "\n\n".join([
-                f"Text: {ex['text']}\nCategory: {ex['category']}"
-                for ex in examples
-            ])
-            return prompt_template.format(
-                examples=examples_str,
-                text="{text}",
-                categories=categories_str
+        format_kwargs = {
+            "description": description,
+            "description_lower": description.lower(),
+            "text": "{text}",
+            "categories": self._render_categories_str(),
+        }
+
+        if prompt_template == FEW_SHOT_PROMPT:
+            format_kwargs["examples"] = self._render_examples(examples)
+
+        return prompt_template.format(**format_kwargs)
+
+    def _render_examples(self, examples: Optional[List[Dict]]) -> str:
+        """Renderiza os exemplos do few-shot com o código da classe — o formato pedido na resposta"""
+        if not examples:
+            raise ValueError(
+                "prompt_type='few_shot' exige 'annotation.few_shot_examples' no experimento "
+                "(lista de {\"text\": ..., \"category\": ...})"
             )
 
-        description = DATASETS.get(self.dataset_name, {}).get("prompt", "Text")
-        return prompt_template.format(
-            description=description,
-            description_lower=description.lower(),
-            text="{text}",
-            categories=categories_str
-        )
+        name_to_code = {
+            str(label).strip().lower(): code
+            for code, label in self._categories_indexed.items()
+        }
+
+        rendered = []
+        for example in examples:
+            category = str(example["category"]).strip()
+            code = category if category in self._categories_indexed else name_to_code.get(category.lower())
+            if code is None:
+                raise ValueError(
+                    f"Classe '{example['category']}' dos few_shot_examples não existe no dataset "
+                    f"'{self.dataset_name}'. Classes: {self._categories_indexed}"
+                )
+            rendered.append(f"Text: {example['text']}\nCategory: {code}")
+
+        return "\n\n".join(rendered)
 
     def _get_categories_indexed(self) -> Dict[str, str]:
         """

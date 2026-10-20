@@ -1,0 +1,28 @@
+{
+    "dataset_name": "exemplo_tickets",
+    "dataset_config": {
+        "sample_size": 10,
+        "random_state": 42
+    },
+    "models": [
+        "qwen3-8b",
+        "llama3.1-8b",
+        "deepseek-r1-8b"
+    ],
+    "prompt_type": "simpler",
+    "custom_prompt": "Você é um analista de atendimento com experiência em triagem de chamados.\n\nClassifique o {description_lower} abaixo em UMA das categorias listadas.\n\n{description}: {text}\n\nCategorias disponíveis:\n{categories}\n\nRegras:\n- Responda APENAS com o número da categoria.\n- Não explique a escolha.\n- Em caso de dúvida, escolha a categoria do assunto predominante.\n\nCategoria (apenas o número):",
+    "annotation": {
+        "num_repetitions_per_llm": 1,
+        "model_strategy": "parallel",
+        "rep_strategy": "sequential",
+        "max_concurrent_texts": 5
+    },
+    "cache": {
+        "enabled": false,
+        "dir": "data/.cache"
+    },
+    "results": {
+        "intermediate": 50,
+        "dir": "data/results"
+    }
+}

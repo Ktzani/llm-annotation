@@ -111,6 +111,24 @@ class AnnotationRequest(BaseModel):
         ModelVariantResolver(self.annotation.use_alternative_params).resolve(self.models)
         return self
 
+    @model_validator(mode="after")
+    def _validate_few_shot(self) -> "AnnotationRequest":
+        """O prompt few-shot precisa dos exemplos (e o filtro de classes exige zero-shot)"""
+        if self.prompt_type != PromptType.FEW_SHOT or self.custom_prompt:
+            return self
+
+        if not self.annotation.few_shot_examples:
+            raise ValueError(
+                "prompt_type='few_shot' exige 'annotation.few_shot_examples' "
+                "(lista de {\"text\": ..., \"category\": ...})"
+            )
+        if self.class_filter.enabled:
+            raise ValueError(
+                "prompt_type='few_shot' é incompatível com class_filter.enabled=true: "
+                "a anotação em 2 fases exige o LLM zero-shot"
+            )
+        return self
+
 
 
 class AnnotationStatus(BaseModel):

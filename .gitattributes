@@ -1,0 +1,2 @@
+# Scripts shell sempre com LF (rodam no Linux: Docker e pod RunPod), mesmo com core.autocrlf=true no Windows
+*.sh text eol=lf

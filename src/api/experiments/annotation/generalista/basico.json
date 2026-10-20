@@ -3,8 +3,7 @@
     "dataset_config": {
         "split": null,
         "combine_splits": null,
-        "hf_file": null,
-        "sample_size": null,
+        "sample_size": 10,
         "random_state": 42,
         "remove_texts": true
     },
@@ -25,10 +24,10 @@
     },
     "cache": {
         "enabled": false,
-        "dir": "C:\\Users\\gabri\\Documents\\GitHub\\llm-annotation\\data\\.cache"
+        "dir": "data/.cache"
     },
     "results": {
         "intermediate": 5,
-        "dir": "C:\\Users\\gabri\\Documents\\GitHub\\llm-annotation\\data\\results"
+        "dir": "data/results"
     }
 }
