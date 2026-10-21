@@ -9,9 +9,6 @@
         "gemma4-12b",
         "deepseek-r1-8b"
     ],
-    "keep_columns": [
-        "message_id"
-    ],
     "class_prompts_file": "class_prompts.json",
     "custom_prompt": null,
     "annotation": {
