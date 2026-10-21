@@ -5,6 +5,7 @@ Binary Annotation Engine - Motor da anotação binária (uma pergunta sim/não p
 from typing import Dict, List
 from loguru import logger
 import re
+import time
 
 from src.systems.llm_annotation_system.core.llm_provider import LLMProvider
 from src.systems.llm_annotation_system.core.cache_manager import CacheManager
@@ -55,7 +56,11 @@ class BinaryAnnotationEngine(AnnotationEngine):
             chain = self.llm_provider.create_chain(llm=llm, template=template)
 
         try:
+            t0 = time.perf_counter()
             response = await self._ainvoke_chain(chain, text, template)
+            t1 = time.perf_counter()
+            print(f"{model}: langchain: {round(t1 - t0, 2)}")
+            
             return self.response_processor.extract_label_and_confidence(response)
         except Exception as e:
             # Degrada para resposta inválida (-1) em vez de quebrar o run inteiro
