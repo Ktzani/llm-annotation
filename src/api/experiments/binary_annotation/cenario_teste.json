@@ -22,7 +22,7 @@
         "dir": "data/.cache"
     },
     "results": {
-        "intermediate": 100,
+        "intermediate": 2,
         "dir": "data/results"
     }
 }
