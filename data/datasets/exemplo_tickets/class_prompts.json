@@ -1,0 +1,17 @@
+{
+    "0": {
+        "description": "Assuntos de cobrança e pagamento: boletos, faturas, valores cobrados, cobranças duplicadas, estornos e reembolsos.",
+        "examples": [
+            "Cliente reclama de cobrança em duplicidade e pede estorno.",
+            "Cliente pede a segunda via do boleto."
+        ]
+    },
+    "suporte técnico": {
+        "description": "Problemas de funcionamento do sistema: erros, travamentos, lentidão, falhas de login ou de integração.",
+        "examples": [
+            {"text": "O sistema trava na tela de login desde a última atualização.", "answer": "SIM"},
+            {"text": "Fui cobrado duas vezes no cartão este mês.", "answer": "NAO"}
+        ]
+    },
+    "2": "Você é um analista de atendimento.\n\nTicket: {text}\n\nEste ticket é um assunto comercial (orçamento, contratação, ampliação ou mudança de plano, proposta de venda)?\n\nResponda somente com o JSON {\"resposta\": \"SIM\"} ou {\"resposta\": \"NAO\"}."
+}

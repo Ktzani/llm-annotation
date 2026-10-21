@@ -28,10 +28,12 @@ logger.add(
 )
 
 from src.systems.llm_annotation_system.consensus.pipeline import ConsensusConfig, ConsensusPipeline
+from src.systems.llm_annotation_system.consensus.pipeline_binary import BinaryConsensusPipeline
 
 
 def main() -> None:
     # Configuração estática
+    mode = "multiclass"  # "multiclass" ou "binary" (anotação sim/não por classe: specific_date dentro de binary/)
     dataset_name = "books"
     specific_date = "latest" 
     consensus_threshold = 0.8
@@ -44,7 +46,7 @@ def main() -> None:
         consensus_strategy=consensus_strategy,
     )
 
-    consensus_pipeline = ConsensusPipeline(config)
+    consensus_pipeline = BinaryConsensusPipeline(config) if mode == "binary" else ConsensusPipeline(config)
     result = consensus_pipeline.run()
 
     df = result["df_with_consensus"]

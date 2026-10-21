@@ -12,14 +12,22 @@ logger.add(
 )
 
 from src.systems.llm_annotation_system.pipeline import AnnotationPipeline, AnnotationConfig
+from src.systems.llm_annotation_system.pipeline_binary import BinaryAnnotationPipeline, BinaryAnnotationConfig
 
 
 async def main():
+    mode = "multiclass" # "multiclass" (uma classe por texto) ou "binary" (sim/não por classe, experimentos em experiments/binary_annotation/)
     run_type = "single_text" # "single_text" para rodar um texto específico, "dataset" para rodar tudo
     experiment = "local_experiment"
-    config_path = Path("src/api/experiments") / "annotation" / f"{experiment}.json"
+    experiments_dir = "binary_annotation" if mode == "binary" else "annotation"
+    config_path = Path("src/api/experiments") / experiments_dir / f"{experiment}.json"
     if not config_path.exists():
         logger.error(f"Configuração de experimento não encontrada: {config_path}")
+        return
+
+    if mode == "binary":
+        pipeline = BinaryAnnotationPipeline(BinaryAnnotationConfig(experiment_config=str(config_path)))
+        await pipeline.run(run_type=run_type, single_index=0)
         return
 
     config = AnnotationConfig(

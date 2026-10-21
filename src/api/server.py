@@ -3,6 +3,7 @@ from fastapi import FastAPI
 
 from src.api.core.config import setup_logger, setup_cors
 from src.api.routes.annotation import router as annotation_router
+from src.api.routes.binary_annotation import router as binary_annotation_router
 from src.api.routes.datasets import router as datasets_router
 from src.api.routes.health import router as health_router
 from src.api.routes.fine_tuning import router as fine_tuning_router
@@ -19,6 +20,7 @@ app = FastAPI(
 setup_cors(app)
 
 app.include_router(annotation_router)
+app.include_router(binary_annotation_router)
 app.include_router(consensus_router)
 app.include_router(fine_tuning_router)
 app.include_router(datasets_router)
@@ -35,6 +37,8 @@ async def root():
             "GET /annotation/{annotation_id}": "Obter status da anotação",
             "GET /annotation": "Listar todas as anotações",
             "POST /annotation/{annotation_id}/cancel": "Cancelar anotação em execução",
+            "POST /binary-annotation": "Criar nova anotação binária (sim/não por classe); status e cancelamento pelas rotas /annotation",
+            "POST /binary-annotation/consensus": "Aplicar consenso sobre uma anotação binária; status pela rota /consensus",
             "POST /fine-tuning": "Iniciar job de fine-tuning",
             "GET /fine-tuning/{job_id}": "Obter status do job de fine-tuning",
             "POST /fine-tuning/{job_id}/cancel": "Cancelar job de fine-tuning em execução",

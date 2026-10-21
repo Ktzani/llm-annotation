@@ -1,0 +1,31 @@
+{
+    "dataset_name": "CENARIO_ORIGINAL_13",
+    "dataset_config": {
+        "sample_size": null,
+        "random_state": 42
+    },
+    "models": [
+        "qwen3-8b",
+        "gemma4-12b",
+        "deepseek-r1-8b"
+    ],
+    "keep_columns": [
+        "message_id"
+    ],
+    "class_prompts_file": "class_prompts.json",
+    "custom_prompt": null,
+    "annotation": {
+        "use_alternative_params": false,
+        "model_strategy": "parallel",
+        "class_strategy": "parallel",
+        "max_concurrent_classes": 5,
+        "keep_alive": "24h"
+    },
+    "cache": {
+        "dir": "data/.cache"
+    },
+    "results": {
+        "intermediate": 100,
+        "dir": "data/results"
+    }
+}

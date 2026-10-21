@@ -21,10 +21,27 @@ def load_hf_dataset(
     cache_dir: str,
     dataset_global_config: DatasetConfig,
     dataset_specific_config: Optional[Dict] = None
-    
+
 ) -> Tuple[List[str], List[str], Optional[List[str]]]:
     """
     Carrega um dataset (HF ou local) usando as configurações globais + específicas.
+    """
+    texts, categories, ground_truth, _ = load_hf_dataset_with_columns(
+        dataset_name, cache_dir, dataset_global_config, dataset_specific_config
+    )
+    return texts, categories, ground_truth
+
+
+def load_hf_dataset_with_columns(
+    dataset_name: str,
+    cache_dir: str,
+    dataset_global_config: DatasetConfig,
+    dataset_specific_config: Optional[Dict] = None,
+    extra_columns: Optional[List[str]] = None,
+) -> Tuple[List[str], List[str], Optional[List[str]], Optional[pd.DataFrame]]:
+    """
+    Igual ao load_hf_dataset; com extra_columns, devolve também essas colunas do dataset
+    (as que existirem), linha a linha alinhadas aos textos.
     """
     # ------------------------------
     # 1. Buscar config do dataset
@@ -177,7 +194,20 @@ def load_hf_dataset(
             ground_truth = dataset[label_column]
             logger.info(f"Ground truth carregado da coluna '{label_column}'")
 
-        return texts, categories, ground_truth
+        # ================================================================
+        # COLUNAS EXTRAS (SE PEDIDAS E EXISTIREM)
+        # ================================================================
+        extra = None
+        if extra_columns:
+            present = [col for col in extra_columns if col in dataset.column_names]
+            missing = [col for col in extra_columns if col not in dataset.column_names]
+            if missing:
+                logger.warning(f"Colunas extras ausentes no dataset (ignoradas): {missing}")
+            if present:
+                extra = dataset.select_columns(present).to_pandas()
+                logger.info(f"Colunas extras carregadas: {present}")
+
+        return texts, categories, ground_truth, extra
 
     except Exception as e:
         logger.error(f"Erro ao carregar dataset: {e}")

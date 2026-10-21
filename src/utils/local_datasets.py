@@ -14,6 +14,7 @@ from loguru import logger
 from src.config.datasets_collected import DATASETS, LABEL_MEANINGS
 
 MANIFEST_NAME = "dataset.json"
+CLASS_PROMPTS_NAME = "class_prompts.json"  # prompts da anotação binária, não é arquivo de dados
 DEFAULT_DATA_STEM = "data"
 
 # Ordem de preferência ao resolver um arquivo sem extensão
@@ -272,7 +273,7 @@ def _find_default_file(base_dir: Path) -> Path:
 def _data_files(base_dir: Path) -> List[str]:
     return sorted(
         p.name for p in base_dir.iterdir()
-        if p.is_file() and p.suffix.lower() in SUPPORTED_EXTENSIONS and p.name != MANIFEST_NAME
+        if p.is_file() and p.suffix.lower() in SUPPORTED_EXTENSIONS and p.name not in (MANIFEST_NAME, CLASS_PROMPTS_NAME)
     )
 
 
