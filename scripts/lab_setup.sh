@@ -220,5 +220,3 @@ curl -s localhost:8000/health; echo
 # -------------------------------------------------------------
 step "Pronto"
 echo "Logs:   tmux attach -t api   |   tmux attach -t ollama   (sair: Ctrl+B depois D)"
-echo "Dados:  copie cada cenário para $REPO_DIR/data/datasets/<CENARIO>/ (dataset.json, dados, class_prompts.json)"
-echo "Rodar:  cd $REPO_DIR && curl -X POST localhost:8000/binary-annotation/ -H 'Content-Type: application/json' -d @src/api/experiments/binary_annotation/cenario_teste.json"
