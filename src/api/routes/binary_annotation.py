@@ -11,7 +11,7 @@ from src.api.services.binary_consensus_runner import run_binary_consensus_backgr
 
 from loguru import logger
 
-router = APIRouter(prefix="/annotation", tags=["Annotation"])
+router = APIRouter(prefix="/binary-annotation", tags=["Annotation"])
 
 @router.post("/", response_model=AnnotationStatus)
 async def create_binary_annotation(config: BinaryAnnotationRequest):
