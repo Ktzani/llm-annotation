@@ -165,14 +165,16 @@ if ! tmux has-session -t ollama 2> /dev/null && curl -sf localhost:11434/api/tag
     fi
 fi
 
-if [ ! -x "$OLLAMA_BIN" ]; then
-    mkdir -p "$OLLAMA_DIR"
-    url=https://ollama.com/download/ollama-linux-amd64
-    if curl -fsI "$url.tar.zst" > /dev/null 2>&1; then
-        curl -fL --progress-bar "$url.tar.zst" | zstd -d | tar -xf - -C "$OLLAMA_DIR"
-    else
-        curl -fL --progress-bar "$url.tgz" | tar -xzf - -C "$OLLAMA_DIR"
-    fi
+# Instalação completa = binário + llama-server (o processo que roda os modelos)
+if [ ! -x "$OLLAMA_BIN" ] || [ ! -x "$OLLAMA_DIR/lib/ollama/llama-server" ]; then
+    tmux kill-session -t ollama 2> /dev/null || true
+    rm -rf "$OLLAMA_DIR" && mkdir -p "$OLLAMA_DIR"
+    # Baixa inteiro e confere antes de extrair: um download interrompido no pipe deixava a instalação pela metade
+    curl -fL --progress-bar https://ollama.com/download/ollama-linux-amd64.tar.zst -o /tmp/ollama.$$.tar.zst
+    zstd -tq /tmp/ollama.$$.tar.zst || die "download do Ollama corrompido — rode o script de novo"
+    zstd -dc /tmp/ollama.$$.tar.zst | tar -xf - -C "$OLLAMA_DIR"
+    rm -f /tmp/ollama.$$.tar.zst
+    [ -x "$OLLAMA_DIR/lib/ollama/llama-server" ] || die "llama-server ausente em $OLLAMA_DIR/lib/ollama após a extração"
 fi
 "$OLLAMA_BIN" --version
 
