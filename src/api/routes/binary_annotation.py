@@ -5,7 +5,8 @@ from datetime import datetime
 from src.api.core.state import annotation_jobs, consensus_jobs, job_runner
 from src.api.schemas.annotation_experiment.experiment import AnnotationStatus
 from src.api.schemas.binary_annotation_experiment.experiment import BinaryAnnotationRequest
-from src.api.schemas.consensus.consensus import ConsensusRequest, ConsensusStatus
+from src.api.schemas.consensus.consensus import ConsensusStatus
+from src.api.schemas.consensus.binary_consensus import BinaryConsensusRequest
 from src.api.services.binary_annotation_runner import run_binary_annotation_background
 from src.api.services.binary_consensus_runner import run_binary_consensus_background
 
@@ -39,11 +40,11 @@ async def create_binary_annotation(config: BinaryAnnotationRequest):
 
 @router.post("/consensus", response_model=ConsensusStatus)
 async def create_binary_consensus_job(
-    config: ConsensusRequest,
+    config: BinaryConsensusRequest,
     background_tasks: BackgroundTasks,
 ):
     """
-    Aplica o consenso existente sobre uma anotação binária já feita (mesmo corpo do POST /consensus).
+    Aplica o consenso existente sobre uma anotação binária já feita (corpo do POST /consensus, sem `categories`).
 
     `specific_date` é a data da execução em `<results_dir>/<dataset>/binary/` (ou 'latest').
     Além dos artefatos do /consensus, gera `binary_labels.csv`: o consenso como planilha texto × classe.

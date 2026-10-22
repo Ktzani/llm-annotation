@@ -99,7 +99,27 @@ class BinaryAnnotationPipeline(AnnotationPipeline):
         df_rows = df_extra if df_extra is not None else pd.DataFrame(index=range(len(texts)))
         self.df_rows = df_rows.assign(text_id=text_ids)
 
-        logger.info(f"Textos a anotar: {len(texts)} ({len(set(text_ids))} únicos) | Categorias: {categories} | GT: {'Sim' if df_ground_truth is not None else 'Não'}")
+        if run_type == "single_text":
+            logger.warning(f"Modo: anotação única | Textos carregados: {len(texts)} | Categorias: {categories} | GT: {'Sim' if df_ground_truth is not None else 'Não'}")
+            return texts, categories, df_ground_truth
+
+        # As planilhas continuam com todas as linhas (df_rows): só a lista a anotar perde os textos já anotados
+        if remove_annotated:
+            annotated_path = (
+                Path(self.config.results_dir)
+                / self.config.dataset_name
+                / BinaryLLMAnnotator.RESULTS_SUBDIR
+                / "intermediate.csv"
+            )
+            if annotated_path.exists():
+                annotated_ids = set(pd.read_csv(annotated_path, usecols=["text_id"])["text_id"])
+                before = len(texts)
+                texts = [t for t, text_id in zip(texts, text_ids) if text_id not in annotated_ids]
+                logger.info(f"Removidos {before - len(texts)} textos já anotados (as planilhas mantêm as {len(self.df_rows)} linhas do dataset)")
+            else:
+                logger.warning(f"Checkpoint não encontrado: {annotated_path}")
+
+        logger.info(f"Textos a anotar: {len(texts)} ({len({get_text_id_from_text(t) for t in texts})} únicos) | Categorias: {categories} | GT: {'Sim' if df_ground_truth is not None else 'Não'}")
         return texts, categories, df_ground_truth
 
     def _get_annotator(self, categories: list) -> BinaryLLMAnnotator:
@@ -182,7 +202,6 @@ class BinaryAnnotationPipeline(AnnotationPipeline):
         output_dir.mkdir(parents=True, exist_ok=True)
 
         df_items.to_csv(output_dir / "annotations.csv", index=False)
-        self.df_rows.to_csv(output_dir / "dataset_rows.csv", index=False)
         for model in annotator.models:
             df_model = self.labels_builder.labels_by_text(df_items, column=f"{model}_consensus")
             self.labels_builder.expand_to_rows(df_model, self.df_rows).to_csv(output_dir / f"binary_labels_{model}.csv", index=False)
@@ -214,11 +233,10 @@ class BinaryAnnotationPipeline(AnnotationPipeline):
         logger.info("Iniciando pipeline de anotação binária")
         logger.info("=" * 60)
 
-        # O checkpoint binário já pula as perguntas respondidas; remove_texts olharia o checkpoint multiclasse
-        if self.config.dataset_config.remove_texts:
-            logger.info("remove_texts ignorado: o checkpoint binário já pula as perguntas respondidas")
-
-        texts, categories, df_ground_truth = self.load_texts(remove_annotated=False, run_type=run_type)
+        texts, categories, df_ground_truth = self.load_texts(
+            remove_annotated=self.config.dataset_config.remove_texts or False,
+            run_type=run_type
+        )
 
         if run_type == "single_text":
             await self.run_single_text(texts, df_ground_truth, categories, index=single_index)

@@ -2,7 +2,8 @@
     "dataset_name": "exemplo_tickets",
     "dataset_config": {
         "sample_size": 10,
-        "random_state": 42
+        "random_state": 42,
+        "remove_texts": true
     },
     "models": [
         "qwen3-8b",

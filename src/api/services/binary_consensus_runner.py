@@ -5,7 +5,7 @@ import pandas as pd
 from loguru import logger
 
 from src.api.core.state import consensus_jobs
-from src.api.schemas.consensus.consensus import ConsensusRequest
+from src.api.schemas.consensus.binary_consensus import BinaryConsensusRequest
 from src.api.services.consensus_runner import _jsonify
 from src.systems.llm_annotation_system.consensus.pipeline import ConsensusConfig, ConsensusPipeline
 from src.systems.llm_annotation_system.consensus.pipeline_binary import BinaryConsensusPipeline
@@ -13,7 +13,7 @@ from src.systems.llm_annotation_system.consensus.pipeline_binary import BinaryCo
 
 async def run_binary_consensus_background(
     job_id: str,
-    config: ConsensusRequest,
+    config: BinaryConsensusRequest,
 ) -> None:
     """Mesmo fluxo do run_consensus_background, sobre uma execução da anotação binária (binary/<data>)."""
     try:
@@ -27,7 +27,6 @@ async def run_binary_consensus_background(
             specific_date=config.specific_date,
             consensus_threshold=config.consensus_threshold,
             consensus_strategy=config.consensus_strategy,
-            categories=config.categories,
         )
 
         consensus_jobs[job_id].progress = 0.1

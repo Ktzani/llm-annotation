@@ -21,7 +21,7 @@ Rodar: `POST /binary-annotation` com o conteúdo do arquivo no corpo, ou `mode =
 O job entra no mesmo registro da anotação: status em `GET /annotation/{id}` e cancelamento em
 `POST /annotation/{id}/cancel`, como na anotação multiclasse.
 
-Consenso: `POST /binary-annotation/consensus` com o mesmo corpo do `POST /consensus`
+Consenso: `POST /binary-annotation/consensus` com o corpo do `POST /consensus` sem `categories`
 (`dataset_name`, `results_dir`, `specific_date` = a data da execução dentro de `binary/` ou `"latest"`,
 `consensus_threshold`, `consensus_strategy`). Status em `GET /consensus/{id}`. Pelo script:
 `mode = "binary"` em `src/run_consensus.py`.
@@ -76,6 +76,7 @@ Cada classe aceita uma de duas formas:
 ## Os campos do experimento
 
 ```jsonc
+"dataset_config": { "sample_size": null, "random_state": 42, "remove_texts": true },  // como na multiclasse
 "keep_columns": ["message_id"],              // colunas do dataset levadas ao binary_labels.csv (ausentes: aviso)
 "class_prompts_file": "class_prompts.json",  // relativo a data/datasets/<dataset_name>/ ou absoluto
 "annotation": {
@@ -101,7 +102,6 @@ Não há repetições por modelo nem cache de respostas: o `intermediate.csv` gu
 └── <data>/
     ├── binary_labels_<modelo>.csv   ← anotação: uma por modelo, uma coluna por classe (1, 0 ou -1)
     ├── annotations.csv              ← anotação: um item por (texto, classe) com {modelo}_consensus, entrada do consenso
-    ├── dataset_rows.csv             ← anotação: as linhas do dataset (keep_columns + text_id)
     ├── prompts.json                 ← anotação: prompt usado em cada classe
     ├── class_metrics.csv            ← anotação, só com ground truth: precisão/recall/F1 de cada modelo por classe
     ├── binary_labels.csv            ← consenso: uma coluna por classe com o resolved_annotation do consenso
@@ -116,7 +116,9 @@ Não há repetições por modelo nem cache de respostas: o `intermediate.csv` gu
 - No consenso, cada item é o par mensagem × classe (o `text_id` do `annotations.csv` é
   `<text_id>:<classe>`). Com 3 modelos e o padrão (`majority_vote`, limiar 0,8), vence a resposta da
   maioria; no empate (uma de cada), o consenso existente fica com a primeira e marca o item como problemático.
-- Rodar o mesmo dataset de novo retoma do `intermediate.csv`: só as perguntas que faltam são feitas
-  (inclusive para um modelo novo adicionado ao experimento).
+- Rodar o mesmo dataset de novo retoma do `intermediate.csv`. Com `remove_texts: true` (como na
+  multiclasse), os textos que já estão no checkpoint saem da lista antes de anotar ("Removidos N textos
+  já anotados"); as planilhas continuam com todas as linhas do dataset. Com `false`, o checkpoint ainda
+  pula as perguntas já respondidas e só faz as que faltam (ex.: um modelo novo adicionado ao experimento).
 - Sem ground truth, as métricas são puladas e o resto sai igual. Com ground truth, o do item é 1 quando
   a classe é a verdadeira do texto, e a validação do consenso compara contra isso.

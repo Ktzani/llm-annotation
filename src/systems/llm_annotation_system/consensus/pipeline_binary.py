@@ -20,7 +20,7 @@ class BinaryConsensusPipeline:
     """
 
     LABELS_FILE = "binary_labels.csv"
-    ROWS_FILE = "dataset_rows.csv"
+    MODEL_LABELS_PATTERN = "binary_labels_*.csv"
 
     def __init__(self, config: ConsensusConfig):
         config.specific_date = self._binary_date(config)
@@ -43,13 +43,18 @@ class BinaryConsensusPipeline:
     def labels_path(self) -> Path:
         return self.consensus.results_dataset_path / self.LABELS_FILE
 
+    def _dataset_rows(self) -> pd.DataFrame:
+        """Linhas do dataset (keep_columns + text_id) tiradas da planilha de um modelo: mesmas linhas, mesma ordem"""
+        model_sheet = sorted(self.consensus.results_dataset_path.glob(self.MODEL_LABELS_PATTERN))[0]
+        columns = pd.read_csv(model_sheet, nrows=0).columns.tolist()
+        return pd.read_csv(model_sheet, usecols=columns[:columns.index("text_id") + 1])
+
     def run(self) -> dict:
         """Roda o consenso existente (um item por texto × classe) e salva o consenso como planilha texto × classe"""
         result = self.consensus.run()
 
         df_labels = self.labels_builder.labels_by_text(result["df_with_consensus"], column="resolved_annotation")
-        df_rows = pd.read_csv(self.consensus.results_dataset_path / self.ROWS_FILE)
-        self.labels_builder.expand_to_rows(df_labels, df_rows).to_csv(self.labels_path, index=False)
+        self.labels_builder.expand_to_rows(df_labels, self._dataset_rows()).to_csv(self.labels_path, index=False)
         logger.success(f"✓ Planilha do consenso salva em: {self.labels_path}")
 
         return result

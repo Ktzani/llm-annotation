@@ -18,7 +18,7 @@
 # Uso:
 #   bash lab_setup.sh                        # modo anotação (padrão)
 #   MODO=finetuning bash lab_setup.sh        # API sem o Ollama na GPU
-#   Opcionais: BASE_DIR=~/llm  BRANCH=experimentacao-kenia  GPU=0  API_PORT=8001
+#   Opcionais: BASE_DIR=~/llm  BRANCH=experimentacao-kenia  GPU=0  API_PORT=8001  OLLAMA_VERSION=0.17.1
 #              OLLAMA_CONTEXT_LENGTH=6000  OLLAMA_NUM_PARALLEL=15  OLLAMA_NUM_THREAD=<n>
 # =============================================================
 set -e
@@ -35,6 +35,8 @@ CONTEXT_LENGTH="${OLLAMA_CONTEXT_LENGTH:-6000}"
 MODO="${MODO:-anotacao}"
 GPU="${GPU:-0}"
 API_PORT="${API_PORT:-8001}"
+# Versão fixa: no 0.40.x o think=false não desliga o raciocínio do deepseek-r1 (no 0.17.1 desliga: 8 tokens)
+OLLAMA_VERSION="${OLLAMA_VERSION:-0.17.1}"
 OLLAMA_DIR="$BASE_DIR/ollama"
 OLLAMA_BIN="$OLLAMA_DIR/bin/ollama"
 
@@ -168,16 +170,16 @@ if ! tmux has-session -t ollama 2> /dev/null && curl -sf localhost:11434/api/tag
     fi
 fi
 
-# Instalação completa = binário + llama-server (o processo que roda os modelos)
-if [ ! -x "$OLLAMA_BIN" ] || [ ! -x "$OLLAMA_DIR/lib/ollama/llama-server" ]; then
+# Marcador gravado só ao fim de uma extração completa: instalação pela metade ou de outra versão é refeita
+if [ ! -f "$OLLAMA_DIR/.instalado-$OLLAMA_VERSION" ]; then
     tmux kill-session -t ollama 2> /dev/null || true
     rm -rf "$OLLAMA_DIR" && mkdir -p "$OLLAMA_DIR"
     # Baixa inteiro e confere antes de extrair: um download interrompido no pipe deixava a instalação pela metade
-    curl -fL --progress-bar https://ollama.com/download/ollama-linux-amd64.tar.zst -o /tmp/ollama.$$.tar.zst
+    curl -fL --progress-bar "https://ollama.com/download/ollama-linux-amd64.tar.zst?version=$OLLAMA_VERSION" -o /tmp/ollama.$$.tar.zst
     zstd -tq /tmp/ollama.$$.tar.zst || die "download do Ollama corrompido — rode o script de novo"
     zstd -dc /tmp/ollama.$$.tar.zst | tar -xf - -C "$OLLAMA_DIR"
     rm -f /tmp/ollama.$$.tar.zst
-    [ -x "$OLLAMA_DIR/lib/ollama/llama-server" ] || die "llama-server ausente em $OLLAMA_DIR/lib/ollama após a extração"
+    touch "$OLLAMA_DIR/.instalado-$OLLAMA_VERSION"
 fi
 "$OLLAMA_BIN" --version
 

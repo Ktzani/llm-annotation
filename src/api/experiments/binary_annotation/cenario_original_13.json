@@ -2,7 +2,8 @@
     "dataset_name": "CENARIO_ORIGINAL_13",
     "dataset_config": {
         "sample_size": null,
-        "random_state": 42
+        "random_state": 42,
+        "remove_texts": true
     },
     "models": [
         "qwen3-8b",
