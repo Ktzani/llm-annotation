@@ -273,8 +273,8 @@ LLM_CONFIGS = {
     "deepseek-r1-8b": {
         "provider": "ollama",
         "model_name": "deepseek-r1:8b",
-        "description": "DeepSeek R1 8B - Raciocínio muito acima da média",
-        "params": {},
+        "description": "DeepSeek R1 8B - Raciocínio muito acima da média (thinking desligado)",
+        "params": {"reasoning": False},
         "alternative_params": {
             "alt1": {"temperature": 0, "num_predict": 4096},
             "alt2": {"temperature": 0.5, "num_predict": 4096},  # mais criativo
@@ -382,8 +382,8 @@ LLM_CONFIGS = {
     "qwen3-8b": {
         "provider": "ollama",
         "model_name": "qwen3:8b",
-        "description": "Qwen 3 8B - Novo modelo com melhorias significativas",
-        "params": {},
+        "description": "Qwen 3 8B - Novo modelo com melhorias significativas (thinking desligado)",
+        "params": {"reasoning": False},
         "alternative_params": {
             "alt1": {"temperature": 0.2, "num_predict": 4096},
             "alt2": {"temperature": 0.4, "num_predict": 4096},

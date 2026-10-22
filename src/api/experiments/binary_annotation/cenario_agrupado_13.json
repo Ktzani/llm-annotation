@@ -6,7 +6,7 @@
     },
     "models": [
         "qwen3-8b",
-        "gemma4-12b",
+        "mistral-7b",
         "deepseek-r1-8b"
     ],
     "keep_columns": [

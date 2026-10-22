@@ -60,8 +60,16 @@ Cada classe aceita uma de duas formas:
   Um marcador desconhecido (ex.: `{message}`) para a execução com erro. Outras chaves, como o JSON do
   formato de saída, ficam como texto.
 - `answer` dos exemplos: `SIM`/`NAO`, `sim`/`não` ou `yes`/`no`. Entram no prompt como escritos.
-- A resposta da LLM é lida pela primeira palavra `sim/não/yes/no` fora do `<think>`, então
-  `{"resposta": "SIM"}` vira 1 e `{"resposta": "NAO"}` vira 0. Qualquer outra coisa vira inválida (`-1`).
+- Leitura da resposta da LLM (o raciocínio em `<think>`/`<thinking>`/`<reasoning>` é ignorado, mesmo
+  sem a tag de abertura ou cortado no meio):
+  1. o campo de resposta, com ou sem JSON, markdown e texto em volta: `{"resposta": "SIM"}`,
+     `{'resposta': 'nao'}`, `{"resposta": true}`, `Resposta: SIM`, `**Resposta final:** NÃO`,
+     `A resposta é SIM`, `{"answer": "yes"}`. Sem `resposta`/`answer`, vale `rotulo`/`decisão`/`label`...
+     só se o valor for sim/não. Valores diferentes no mesmo texto (ex.: `"SIM" ou "NAO"`) → `-1`;
+  2. sem campo, só uma resposta curta e isolada no começo: `SIM`, `**Não.**`, `Sim, ...`, `SIM - ...`;
+  3. qualquer outra coisa → `-1` (ex.: `talvez`, `N/A`, `Não há indícios...`, `No chat...`). Melhor
+     inválida do que chutada: "no" e "não" aparecem demais no meio de frases em português.
+  Valores aceitos: SIM/S/yes/true/verdadeiro/1 e NÃO/NAO/N/no/false/falso/0, sem diferenciar maiúsculas.
 
 ---
 

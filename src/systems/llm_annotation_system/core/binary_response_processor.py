@@ -16,26 +16,70 @@ class BinaryResponseProcessor(ResponseProcessor):
     Responsabilidades: extrair a resposta (1 = sim, 0 = não, -1 = inválida), sua confiança e o P(sim)
     """
 
-    YES = ("yes", "sim", "true")
-    NO = ("no", "não", "nao", "false")
+    YES = ("sim", "yes", "true", "verdadeiro", "s", "y", "1")
+    NO = ("não", "nao", "no", "false", "falso", "n", "0")
 
-    _THINK = re.compile(r"<think>.*?</think>", re.DOTALL | re.IGNORECASE)
-    _ANSWER = re.compile(r"\b(yes|sim|true|no|não|nao|false)\b", re.IGNORECASE)
+    # Raciocínio: tudo até o último fechamento e qualquer bloco aberto sem fechamento (cortado) fica de fora
+    _THINK_CLOSE = re.compile(r"</(?:think|thinking|reasoning)>", re.IGNORECASE)
+    _THINK_OPEN = re.compile(r"<(?:think|thinking|reasoning)>.*", re.DOTALL | re.IGNORECASE)
+    _UNICODE_ESCAPE = re.compile(r"\\u([0-9a-fA-F]{4})")
+
+    # Chave + separador + valor: {"resposta": "SIM"}, Resposta: SIM, **Resposta final:** NAO, a resposta é SIM
+    _KEY_VALUE = (
+        r"""(?<!\w)[\\"'“”*]*(?:KEYS)(?:[\s_]*final)?[\\"'“”*]*\s*(?::|=|é|is|->|→)"""
+        r"""\s*[\\"'“”*]*\s*([^"'“”,;}\]\n\\]*)"""
+    )
+    _ANSWER_FIELD = re.compile(_KEY_VALUE.replace("KEYS", "resposta|answer|response"), re.IGNORECASE)
+    _OTHER_FIELD = re.compile(
+        _KEY_VALUE.replace("KEYS", "r[oó]tulo|label|decis[aã]o|veredito|verdict|resultado|result|classifica[cç][aã]o"),
+        re.IGNORECASE,
+    )
+    # Sem campo: só uma resposta curta e isolada no começo ("SIM", "**Não.**", "Sim, ...", "SIM - ...")
+    _ALONE = re.compile(r"""^\W*(\w+)[ \t*_`"'“”.!?)\]}]*(?:$|[,;:\n—–-])""")
+    _VALUE_TRIM = " \t*_`.!?\"'“”"
+
+    # Palavras inteiras procuradas nos logprobs (letras soltas casariam com pedaços de outros tokens)
+    _CONFIDENCE_WORDS = {1: ("yes", "sim", "true"), 0: ("no", "não", "nao", "false")}
 
     @classmethod
     def parse_answer(cls, response: Optional[str]) -> int:
-        """Primeira resposta sim/não do texto (fora do <think>): 1, 0 ou -1"""
+        """Resposta do campo de resposta (JSON ou "Resposta: X") ou, sem ele, uma resposta curta e isolada: 1, 0 ou -1"""
         if response is None:
             return -1
 
-        text = cls._THINK.sub("", str(response)).strip().lower()
-        if text in ("1", "0"):
-            return int(text)
+        text = cls._THINK_CLOSE.split(str(response))[-1]
+        text = cls._THINK_OPEN.sub("", text)
+        text = cls._UNICODE_ESCAPE.sub(lambda m: chr(int(m.group(1), 16)), text).strip()
 
-        match = cls._ANSWER.search(text)
-        if match is None:
-            return -1
-        return 1 if match.group(1) in cls.YES else 0
+        label = cls._field_label(text)
+        if label is not None:
+            return label
+
+        alone = cls._ALONE.match(text)
+        return cls._to_label(alone.group(1)) if alone else -1
+
+    @classmethod
+    def _field_label(cls, text: str) -> Optional[int]:
+        """Rótulo pelos campos de resposta; None quando o texto não tem nenhum"""
+        labels = [cls._to_label(value) for value in cls._ANSWER_FIELD.findall(text)]
+        if not labels:
+            # Outras chaves só valem com valor sim/não ("rotulo": "ABORTO" é só eco do rótulo)
+            labels = [label for label in map(cls._to_label, cls._OTHER_FIELD.findall(text)) if label != -1]
+        if not labels:
+            return None
+
+        # Valores diferentes (ex.: o modelo repetiu o formato "SIM ou NAO") são ambíguos
+        return labels[0] if len(set(labels)) == 1 else -1
+
+    @classmethod
+    def _to_label(cls, token: str) -> int:
+        """sim/yes/true → 1, não/no/false → 0, outra coisa (ex.: "talvez", "N/A") → -1"""
+        token = token.strip(cls._VALUE_TRIM).lower()
+        if token in cls.YES:
+            return 1
+        if token in cls.NO:
+            return 0
+        return -1
 
     def extract_label_and_confidence(self, response, valid_categories=None):
         content = response.get("content", "")
@@ -51,7 +95,7 @@ class BinaryResponseProcessor(ResponseProcessor):
         if not logprobs or label == -1:
             return None
 
-        words = self.YES if label == 1 else self.NO
+        words = self._CONFIDENCE_WORDS[label]
         inside_think = False
         try:
             for token_info in logprobs:
