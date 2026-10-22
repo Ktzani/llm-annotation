@@ -15,7 +15,7 @@
         "use_alternative_params": false,
         "model_strategy": "parallel",
         "class_strategy": "parallel",
-        "max_concurrent_classes": 5,
+        "max_concurrent_classes": 15,
         "keep_alive": "24h"
     },
     "cache": {

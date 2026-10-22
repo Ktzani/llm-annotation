@@ -9,16 +9,17 @@
 #   - Ollama extraído em $BASE_DIR/ollama, sem serviço systemd; se já houver
 #     um Ollama do sistema na porta 11434 (a que a aplicação usa), o script
 #     para com instruções em vez de criar conflito
-#   - VRAM de 48 GB: OLLAMA_NUM_PARALLEL=5 (= max_concurrent_classes da
-#     anotação binária) com contexto 12288; ver o passo 7 se não couber
+#   - VRAM de 48 GB: OLLAMA_NUM_PARALLEL=15 (= max_concurrent_classes da
+#     anotação binária) com contexto 6000 (modelos sem reasoning; maior
+#     prompt dos cenários ~2700 tokens); ver o passo 7 se não couber
 #
 # Idempotente: refaz todos os passos; o que já existe é conferido e mantido.
 #
 # Uso:
 #   bash lab_setup.sh                        # modo anotação (padrão)
 #   MODO=finetuning bash lab_setup.sh        # API sem o Ollama na GPU
-#   Opcionais: BASE_DIR=~/llm  BRANCH=experimentacao-kenia  GPU=0
-#              OLLAMA_CONTEXT_LENGTH=12288  OLLAMA_NUM_PARALLEL=5  OLLAMA_NUM_THREAD=<n>
+#   Opcionais: BASE_DIR=~/llm  BRANCH=experimentacao-kenia  GPU=0  API_PORT=8001
+#              OLLAMA_CONTEXT_LENGTH=6000  OLLAMA_NUM_PARALLEL=15  OLLAMA_NUM_THREAD=<n>
 # =============================================================
 set -e
 
@@ -29,10 +30,11 @@ BRANCH="${BRANCH:-experimentacao-kenia}"
 PYTHON_VERSION=3.11.9
 POETRY_VERSION=2.2.1
 MODELS=(qwen3:8b mistral:7b deepseek-r1:8b)
-NUM_PARALLEL="${OLLAMA_NUM_PARALLEL:-5}"
-CONTEXT_LENGTH="${OLLAMA_CONTEXT_LENGTH:-12288}"
+NUM_PARALLEL="${OLLAMA_NUM_PARALLEL:-15}"
+CONTEXT_LENGTH="${OLLAMA_CONTEXT_LENGTH:-6000}"
 MODO="${MODO:-anotacao}"
 GPU="${GPU:-0}"
+API_PORT="${API_PORT:-8001}"
 OLLAMA_DIR="$BASE_DIR/ollama"
 OLLAMA_BIN="$OLLAMA_DIR/bin/ollama"
 
@@ -109,6 +111,7 @@ export OLLAMA_FLASH_ATTENTION=1
 export OLLAMA_KV_CACHE_TYPE=q8_0
 export OLLAMA_CONTEXT_LENGTH=$CONTEXT_LENGTH
 export OLLAMA_KEEP_ALIVE=24h
+export OLLAMA_MAX_LOADED_MODELS=3
 export OLLAMA_MODELS=$BASE_DIR/ollama-models
 # Coluna run_env do checkpoint de anotação
 export ANNOTATION_RUN_ENV=lab
@@ -215,9 +218,9 @@ step "8. API (uvicorn no tmux 'api')"
 OMP_THREADS=$(( CPUS / 5 ))
 [ "$OMP_THREADS" -lt 1 ] && OMP_THREADS=1
 tmux kill-session -t api 2> /dev/null || true
-tmux new-session -d -s api "cd $REPO_DIR && source $BASE_DIR/env.sh && OMP_NUM_THREADS=$OMP_THREADS TOKENIZERS_PARALLELISM=false CUDA_VISIBLE_DEVICES=$GPU .venv/bin/python -m uvicorn src.api.server:app --host 0.0.0.0 --port 8000 --reload --reload-dir src; exec bash"
-for _ in $(seq 1 120); do curl -sf localhost:8000/health > /dev/null && break; sleep 1; done
-curl -s localhost:8000/health; echo
+tmux new-session -d -s api "cd $REPO_DIR && source $BASE_DIR/env.sh && OMP_NUM_THREADS=$OMP_THREADS TOKENIZERS_PARALLELISM=false CUDA_VISIBLE_DEVICES=$GPU .venv/bin/python -m uvicorn src.api.server:app --host 0.0.0.0 --port $API_PORT --reload --reload-dir src; exec bash"
+for _ in $(seq 1 120); do curl -sf localhost:$API_PORT/health > /dev/null && break; sleep 1; done
+curl -s localhost:$API_PORT/health; echo
 
 # -------------------------------------------------------------
 step "Pronto"
