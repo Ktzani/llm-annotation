@@ -6,10 +6,11 @@ import shutil
 import pytest
 from fastapi.testclient import TestClient
 
+from src.config.human_validation import INCREMENT_SIZE, INITIAL_ROUND_SIZE
 from src.systems.human_validation_system.interface.api.core.settings import InterfaceSettings
 from src.systems.human_validation_system.interface.api.server import create_app
 from src.systems.human_validation_system.interface.api.services.email_notifier import EmailNotifier
-from tests.human_validation_system.conftest import ADMIN_CODE, CODES, DATASET, DATE, answer_all, login
+from tests.human_validation_system.conftest import ADMIN_CODE, CODES, EVALUATORS_MAP, DATASET, DATE, answer_all, login
 
 OTHER = "dblp"
 
@@ -56,7 +57,7 @@ def test_round_duration_is_saved_when_closing(client, admin, evaluators, notifie
     run_round(client, admin, evaluators)
     panel = client.get(f"/api/admin/{DATASET}/painel", headers=admin).json()
     closed = panel["rodadas"][0]
-    assert closed["rodada"] == 1 and closed["documentos"] == 90
+    assert closed["rodada"] == 1 and closed["documentos"] == 3 * INITIAL_ROUND_SIZE
     assert closed["concluida_em"] is not None and closed["fechada_em"] is not None
     assert closed["duracao_segundos"] >= 0
 
@@ -95,14 +96,14 @@ def test_dashboard_metrics_are_always_cumulative(client, admin, evaluators, noti
                     and m["grupo"] == group and m["metrica"] == "acerto_referencia")
 
     assert "escopo" not in metrics[0]
-    assert n(1) == 30 and n(2) == 50  # 30 da rodada 1 + 20 da rodada 2
+    assert n(1) == INITIAL_ROUND_SIZE and n(2) == INITIAL_ROUND_SIZE + INCREMENT_SIZE  # acumulado
     path = client.app.state.controller.validation_dir(DATASET) / "estimativas" / "metricas_por_rodada.csv"
     assert path.exists()
 
 
 def test_dashboard_is_per_dataset_and_rounds_are_independent(results_dir, tmp_path):
     shutil.copytree(results_dir / DATASET, results_dir / OTHER)
-    settings = InterfaceSettings({DATASET: DATE, OTHER: DATE}, str(results_dir), CODES, ADMIN_CODE)
+    settings = InterfaceSettings({DATASET: DATE, OTHER: DATE}, str(results_dir), CODES, ADMIN_CODE, evaluators_by_dataset=EVALUATORS_MAP)
     client = TestClient(create_app(settings))
     client.app.state.controller.notifier = FakeNotifier()
     admin = login(client, "admin", ADMIN_CODE)
@@ -149,8 +150,9 @@ def test_smtp_settings_from_env(monkeypatch):
     monkeypatch.setenv("HV_NOTIFY_EMAIL", "admin@exemplo.com")
     monkeypatch.setenv("HV_SMTP_USER", "remetente@gmail.com")
     monkeypatch.setenv("HV_SMTP_PASSWORD", "abcd efgh ijkl mnop")
-    for user, code in CODES.items():
-        monkeypatch.setenv(InterfaceSettings.code_variable(user), code)
+    from src.config.human_validation import EVALUATORS
+    for user in EVALUATORS:
+        monkeypatch.setenv(InterfaceSettings.code_variable(user), "x")
     monkeypatch.setenv("HV_ADMIN_CODE", ADMIN_CODE)
     settings = InterfaceSettings.from_env({DATASET: DATE}, "data/results")
     assert settings.smtp_password == "abcdefghijklmnop"

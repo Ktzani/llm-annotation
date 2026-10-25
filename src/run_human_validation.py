@@ -4,7 +4,7 @@ Entry point: VALIDAÇÃO HUMANA (amostragem incremental por rodadas e estimaçã
 Modos (`mode` no main):
     "interface"   Sobe a interface web (avaliadores + acompanhamento do administrador);
                   respostas no SQLite, rodadas abertas/fechadas pela tela /admin.
-                  Códigos de acesso no .env (HV_ADMIN_CODE, HV_EVALUATOR_1_CODE..3).
+                  Códigos de acesso no .env (HV_ADMIN_CODE, HV_EVALUATOR_<LOGIN>_CODE).
     "rodada"      Gera em `data/validacao_humana/<dataset>/<date>/` o guia do
                   avaliador e, para a rodada pedida, as planilhas cegas (uma por
                   avaliador) e o gabarito interno.
@@ -98,7 +98,7 @@ def main() -> None:
         "dblp": "2026-09-13_18-46-30",
     }
     round_number = None  # None = próxima rodada; k = regenera a rodada k
-    increment_size = 20  # documentos por grupo nas rodadas após a 1ª
+    increment_size = 10  # documentos por grupo nas rodadas após a 1ª
 
     if mode == "interface":
         run_interface(experiments, increment_size)

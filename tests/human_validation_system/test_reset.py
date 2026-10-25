@@ -49,10 +49,10 @@ def test_dataset_reset_only_touches_that_dataset(results_dir):
 
     from src.systems.human_validation_system.interface.api.core.settings import InterfaceSettings
     from src.systems.human_validation_system.interface.api.server import create_app
-    from tests.human_validation_system.conftest import ADMIN_CODE, CODES, DATE, login
+    from tests.human_validation_system.conftest import ADMIN_CODE, CODES, EVALUATORS_MAP, DATE, login
 
     shutil.copytree(results_dir / DATASET, results_dir / "dblp")
-    client = TestClient(create_app(InterfaceSettings({DATASET: DATE, "dblp": DATE}, str(results_dir), CODES, ADMIN_CODE)))
+    client = TestClient(create_app(InterfaceSettings({DATASET: DATE, "dblp": DATE}, str(results_dir), CODES, ADMIN_CODE, evaluators_by_dataset=EVALUATORS_MAP)))
     admin = login(client, "admin", ADMIN_CODE)
     evaluator = login(client, "avaliador_1", CODES["avaliador_1"])
     for dataset in (DATASET, "dblp"):

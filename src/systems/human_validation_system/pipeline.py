@@ -34,7 +34,7 @@ from loguru import logger
 from src.config.datasets_collected import LABEL_MEANINGS
 from src.config.human_validation import (
     CLASS_DEFINITIONS,
-    EVALUATORS,
+    EVALUATORS_BY_DATASET,
     EXAMPLE_LENGTH_QUANTILE,
     EXAMPLE_MAX_CHARS,
     EXAMPLES_PER_CLASS,
@@ -86,7 +86,7 @@ class HumanValidationConfig:
         self.initial_size = initial_size
         self.increment_size = increment_size
         self.min_per_class = min_per_class
-        self.evaluators = evaluators or EVALUATORS
+        self.evaluators = evaluators or EVALUATORS_BY_DATASET[dataset_name]
         self.examples_per_class = examples_per_class
         self.overwrite_guide = overwrite_guide
         # Não sorteia grupos com status `parar` na última estimativa

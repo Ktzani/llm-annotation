@@ -35,10 +35,20 @@ def _for_display(request: Request, doc: dict) -> dict:
     return {**doc, "texto": _controller(request).text_cleaner.clean(doc["texto"])}
 
 
-def _open_round(request: Request, dataset: str) -> Tuple[str, int]:
-    """Chave do experimento no banco e número da rodada aberta."""
-    if dataset not in request.app.state.settings.experiments:
+def _my_datasets(request: Request, user: str) -> List[str]:
+    """Datasets em que o avaliador participa (cada um avalia só o seu)."""
+    settings = request.app.state.settings
+    return [d for d in settings.experiments if user in settings.evaluators_for(d)]
+
+
+def _check_access(request: Request, dataset: str, user: str) -> None:
+    if dataset not in _my_datasets(request, user):
         raise HTTPException(status_code=404, detail="Dataset não encontrado")
+
+
+def _open_round(request: Request, dataset: str, user: str) -> Tuple[str, int]:
+    """Chave do experimento no banco e número da rodada aberta."""
+    _check_access(request, dataset, user)
     key = _controller(request).store_key(dataset)
     round_number = request.app.state.store.open_round(key)
     if round_number is None:
@@ -50,7 +60,7 @@ def _open_round(request: Request, dataset: str) -> Tuple[str, int]:
 def list_datasets(request: Request, user: str = Depends(require_evaluator)):
     store = request.app.state.store
     out = []
-    for dataset in request.app.state.settings.experiments:
+    for dataset in _my_datasets(request, user):
         key = _controller(request).store_key(dataset)
         current = store.current_round(key)
         is_open = bool(current and current["estado"] == "aberta")
@@ -72,6 +82,7 @@ def list_datasets(request: Request, user: str = Depends(require_evaluator)):
 
 @router.get("/{dataset}/opcoes", response_model=OptionsOut)
 def options(dataset: str, request: Request, user: str = Depends(require_evaluator)):
+    _check_access(request, dataset, user)
     try:
         guide = _controller(request).guide(dataset)
     except KeyError:
@@ -81,7 +92,7 @@ def options(dataset: str, request: Request, user: str = Depends(require_evaluato
 
 @router.get("/{dataset}/proximo", response_model=NextDocumentOut)
 def next_document(dataset: str, request: Request, user: str = Depends(require_evaluator)):
-    key, round_number = _open_round(request, dataset)
+    key, round_number = _open_round(request, dataset, user)
     store = request.app.state.store
     total = store.round_size(key, round_number)
     answered = store.progress(key, round_number, [user])[user]
@@ -102,13 +113,13 @@ def next_document(dataset: str, request: Request, user: str = Depends(require_ev
 
 @router.get("/{dataset}/respostas", response_model=List[AnswerOut])
 def my_answers(dataset: str, request: Request, user: str = Depends(require_evaluator)):
-    key, round_number = _open_round(request, dataset)
+    key, round_number = _open_round(request, dataset, user)
     return request.app.state.store.evaluator_responses(key, round_number, user)
 
 
 @router.get("/{dataset}/documentos/{id_anonimo}", response_model=DocumentOut)
 def get_document(dataset: str, id_anonimo: str, request: Request, user: str = Depends(require_evaluator)):
-    key, round_number = _open_round(request, dataset)
+    key, round_number = _open_round(request, dataset, user)
     store = request.app.state.store
     doc = store.get_document(key, round_number, id_anonimo)
     if doc is None:
@@ -123,7 +134,7 @@ def get_document(dataset: str, id_anonimo: str, request: Request, user: str = De
 
 @router.put("/{dataset}/respostas/{id_anonimo}", response_model=AnswerOut)
 def save_answer(dataset: str, id_anonimo: str, body: AnswerIn, request: Request, user: str = Depends(require_evaluator)):
-    key, round_number = _open_round(request, dataset)
+    key, round_number = _open_round(request, dataset, user)
     store = request.app.state.store
     doc = store.get_document(key, round_number, id_anonimo)
     if doc is None:

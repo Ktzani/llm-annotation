@@ -77,10 +77,10 @@ async function download(dataset) {
   URL.revokeObjectURL(url);
 }
 
-function progressBlock(progress) {
-  return Object.entries(progress).map(([name, p]) =>
+function progressBlock(progress, names = {}) {
+  return Object.entries(progress).map(([login, p]) =>
     el("div", { class: "evaluator" },
-      el("div", { class: "row" }, el("span", {}, name), el("span", {}, `${p.respondidos}/${p.total} · faltam ${p.faltam}`)),
+      el("div", { class: "row" }, el("span", {}, names[login] ? `${names[login]} (${login})` : login), el("span", {}, `${p.respondidos}/${p.total} · faltam ${p.faltam}`)),
       el("div", { class: "progress" }, el("span", { style: `width:${p.total ? (100 * p.respondidos) / p.total : 0}%` })),
     ));
 }
@@ -153,7 +153,7 @@ function datasetCard(s) {
   } else if (s.estado === "fechada") {
     card.append(el("p", { class: "muted" }, `Rodada ${s.rodada} durou ${duration(s.duracao_segundos)}.`));
   }
-  if (s.progresso) card.append(...progressBlock(s.progresso));
+  if (s.progresso) card.append(...progressBlock(s.progresso, s.nomes));
 
   const actions = el("div", { class: "actions" });
   if (s.estado === "aberta") {

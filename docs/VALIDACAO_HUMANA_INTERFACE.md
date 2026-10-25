@@ -30,9 +30,13 @@ tests/human_validation_system/
 
 ```
 HV_ADMIN_CODE=<código do administrador>
-HV_EVALUATOR_1_CODE=<código>
-HV_EVALUATOR_2_CODE=<código>
-HV_EVALUATOR_3_CODE=<código>
+# um código por login anônimo de EVALUATORS_BY_DATASET (nomes reais só no /admin, via EVALUATOR_NAMES)
+HV_EVALUATOR_BOOKS_1_CODE=<código>
+HV_EVALUATOR_BOOKS_2_CODE=<código>
+HV_EVALUATOR_BOOKS_3_CODE=<código>
+HV_EVALUATOR_DBLP_1_CODE=<código>
+HV_EVALUATOR_DBLP_2_CODE=<código>
+HV_EVALUATOR_DBLP_3_CODE=<código>
 # só para Docker/servidor (localmente ficam no main do run_human_validation.py)
 HV_EXPERIMENT_BOOKS=<date>
 HV_EXPERIMENT_DBLP=<date>
@@ -94,13 +98,16 @@ uma única instância). Custo esperado: plano Hobby (US$5/mês com US$5 de uso i
    HV_EXPERIMENT_DBLP=<date>
    HV_RESULTS_DIR=/app/data/results
    HV_ADMIN_CODE=<código do administrador>
-   HV_EVALUATOR_1_CODE=<código>
-   HV_EVALUATOR_2_CODE=<código>
-   HV_EVALUATOR_3_CODE=<código>
+   HV_EVALUATOR_BOOKS_1_CODE=<código>
+   HV_EVALUATOR_BOOKS_2_CODE=<código>
+   HV_EVALUATOR_BOOKS_3_CODE=<código>
+   HV_EVALUATOR_DBLP_1_CODE=<código>
+   HV_EVALUATOR_DBLP_2_CODE=<código>
+   HV_EVALUATOR_DBLP_3_CODE=<código>
    HV_NOTIFY_EMAIL=<quem recebe o aviso>
    HV_SMTP_USER=<gmail que envia>
    HV_SMTP_PASSWORD=<senha de app>
-   HV_INCREMENT_SIZE=20
+   HV_INCREMENT_SIZE=10
    ```
 5. **Endereço público:** *Settings → Networking → Generate Domain* → `https://<nome>.up.railway.app`.
 6. **Dados:** abra `/admin`, entre como Administrador e, em cada dataset, use **Enviar CSV de consenso…**

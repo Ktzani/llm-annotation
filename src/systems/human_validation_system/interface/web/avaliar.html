@@ -38,10 +38,13 @@
 
       <h3>Antes de começar</h3>
       <ul>
-        <li>Consulte o <strong>Guia</strong> ao lado do texto: ele traz a descrição e exemplos de cada rótulo.
-          Use sempre o nome do rótulo exatamente como aparece nas opções.</li>
+        <li><strong>Avalie só pelo que está escrito no texto</strong>, e não pelo que você já sabe sobre o livro ou
+          o artigo. Se não der para decidir apenas com o texto, use "Não é possível decidir com este texto".</li>
+        <li>Consulte o <strong>Guia</strong> ao lado do texto: ele traz a descrição e exemplos de cada rótulo, além de
+          avisos importantes. Use sempre o nome do rótulo exatamente como aparece nas opções.</li>
         <li>Avalie de forma <strong>independente</strong>: não converse com os outros avaliadores sobre os textos.</li>
         <li>Cada resposta é salva ao clicar em "Salvar e próximo". Você pode sair e continuar depois de onde parou.</li>
+        <li>Para rever uma resposta, use "← Anterior" ou clique no número do documento, embaixo do texto.</li>
         <li>Você pode revisar as suas respostas em "Minhas respostas" enquanto a rodada estiver aberta.</li>
         <li><strong>Se terminar antes dos outros, pode aguardar:</strong> a rodada só fecha quando todos terminarem.
           Você será avisado(a) pessoalmente quando a próxima rodada começar.</li>
@@ -102,6 +105,7 @@
               </fieldset>
 
               <div class="actions">
+                <button type="button" id="anterior">← Anterior</button>
                 <button class="primary" type="submit" id="salvar">Salvar e próximo</button>
                 <button type="button" class="hidden" id="voltar">Voltar ao próximo pendente</button>
                 <span class="notice" id="aviso" role="status"></span>
@@ -109,12 +113,18 @@
               <p class="error" id="erro" role="alert"></p>
             </form>
           </section>
+
+          <section class="card">
+            <p class="muted dots-legend">Clique num número já respondido para revisá-lo.</p>
+            <nav class="dots" id="bolinhas" aria-label="Documentos da rodada"></nav>
+          </section>
         </main>
 
         <aside class="side">
           <section class="card">
             <h2>Guia</h2>
             <p class="muted">Use sempre o nome do rótulo exatamente como aparece nas opções. A descrição é só um apoio.</p>
+            <ul class="guide-notes" id="avisos"></ul>
             <div id="guia"></div>
           </section>
           <section class="card">

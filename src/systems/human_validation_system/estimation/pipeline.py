@@ -6,7 +6,7 @@ avaliadores por maioria, classifica cada documento nas quatro situações do RQ4
 (SituationClassifier) e estima, por grupo de concordância, cada métrica com o
 estimador estratificado por classe (pesos N_h do `amostragem.json`) e IC de
 Wald. O grupo pode parar quando a métrica principal tem MoE <= ε e ao menos
-INITIAL_ROUND_SIZE documentos válidos (regra do TLC, Merlo et al., CIKM'25).
+MIN_SAMPLE_FOR_STOPPING documentos válidos (regra do TLC, Merlo et al., CIKM'25).
 Como a MoE é verificada a cada rodada (parada sequencial), a cobertura real do
 IC fica um pouco abaixo da nominal; vale registrar isso ao reportar.
 
@@ -27,9 +27,9 @@ from src.config.datasets_collected import LABEL_MEANINGS
 from src.config.human_validation import (
     CONFIDENCE_LEVEL,
     ESTIMATION_METRICS,
-    EVALUATORS,
-    INITIAL_ROUND_SIZE,
+    EVALUATORS_BY_DATASET,
     INSUFFICIENT_INFO_OPTION,
+    MIN_SAMPLE_FOR_STOPPING,
     MOE_THRESHOLD,
     PRIMARY_METRIC,
     VARIANCE_PSEUDO_COUNT,
@@ -63,13 +63,13 @@ class HumanValidationEstimationConfig:
         moe_threshold: float = MOE_THRESHOLD,
         confidence_level: float = CONFIDENCE_LEVEL,
         primary_metric: str = PRIMARY_METRIC,
-        min_sample: int = INITIAL_ROUND_SIZE,
+        min_sample: int = MIN_SAMPLE_FOR_STOPPING,
         pseudo_count: float = VARIANCE_PSEUDO_COUNT,
     ):
         self.dataset_name = dataset_name
         self.specific_date = specific_date
         self.results_dir = results_dir
-        self.evaluators = evaluators or EVALUATORS
+        self.evaluators = evaluators or EVALUATORS_BY_DATASET[dataset_name]
         self.moe_threshold = moe_threshold
         self.confidence_level = confidence_level
         self.primary_metric = primary_metric

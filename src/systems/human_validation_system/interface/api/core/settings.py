@@ -3,13 +3,14 @@ Interface Settings - Configuração da interface web da validação humana
 """
 import os
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 from loguru import logger
 
 from src.config.human_validation import (
     AUTO_START_NEXT_ROUND,
     EVALUATORS,
+    EVALUATORS_BY_DATASET,
     INCREMENT_SIZE,
     INTERFACE_DB_NAME,
     REVIEW_WINDOW_MINUTES,
@@ -26,7 +27,7 @@ class InterfaceSettings:
 
     Responsabilidades:
     - Definir quais experimentos (dataset -> data) a interface conduz
-    - Guardar os códigos de acesso de avaliadores e administrador (vindos do .env)
+    - Guardar os avaliadores de cada dataset e os códigos de acesso (vindos do .env)
     - Resolver o caminho do banco SQLite (padrão: `data/validacao_humana/validacao_humana.db`)
     - Guardar destinatário e credenciais SMTP do aviso por email (vindos do .env)
     """
@@ -46,17 +47,24 @@ class InterfaceSettings:
         smtp_port: int = SMTP_DEFAULT_PORT,
         smtp_user: Optional[str] = None,
         smtp_password: Optional[str] = None,
+        evaluators_by_dataset: Optional[Dict[str, List[str]]] = None,
     ):
         if not admin_code:
             raise ValueError("Código do administrador ausente (HV_ADMIN_CODE)")
-        missing = [self.code_variable(e) for e in EVALUATORS if not evaluator_codes.get(e)]
+        mapping = evaluators_by_dataset or EVALUATORS_BY_DATASET
+        unmapped = [d for d in experiments if d not in mapping]
+        if unmapped:
+            raise ValueError(f"Datasets sem avaliadores definidos em EVALUATORS_BY_DATASET: {unmapped}")
+        # Só os avaliadores dos experimentos conduzidos precisam de código
+        self.evaluators_by_dataset = {d: list(mapping[d]) for d in experiments}
+        self.evaluators = list(dict.fromkeys(e for names in self.evaluators_by_dataset.values() for e in names))
+        missing = [self.code_variable(e) for e in self.evaluators if not evaluator_codes.get(e)]
         if missing:
             raise ValueError(f"Códigos de acesso ausentes no .env: {missing}")
 
         self.experiments = experiments
         self.results_dir = str(results_dir)
-        self.evaluators = list(EVALUATORS)
-        self.evaluator_codes = {e: evaluator_codes[e] for e in EVALUATORS}
+        self.evaluator_codes = {e: evaluator_codes[e] for e in self.evaluators}
         self.admin_code = admin_code
         self.db_path = Path(db_path) if db_path else HumanValidationPipeline.validation_root(results_dir) / INTERFACE_DB_NAME
         self.increment_size = increment_size
@@ -69,10 +77,14 @@ class InterfaceSettings:
         self.smtp_password = smtp_password
         logger.debug(f"InterfaceSettings: {list(experiments)} | banco em {self.db_path}")
 
+    def evaluators_for(self, dataset: str) -> List[str]:
+        """Os 3 avaliadores do dataset."""
+        return self.evaluators_by_dataset[dataset]
+
     @staticmethod
     def code_variable(evaluator: str) -> str:
-        """Variável do .env com o código do avaliador, pela posição em EVALUATORS (ex.: HV_EVALUATOR_1_CODE)."""
-        return f"HV_EVALUATOR_{EVALUATORS.index(evaluator) + 1}_CODE"
+        """Variável do .env com o código do avaliador (ex.: HV_EVALUATOR_BOOKS_1_CODE)."""
+        return f"HV_EVALUATOR_{evaluator.upper()}_CODE"
 
     @staticmethod
     def experiment_variable(dataset: str) -> str:

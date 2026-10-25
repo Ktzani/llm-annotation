@@ -10,7 +10,7 @@ HUMAN_VALIDATION_SEED = 42
 
 # Documentos por grupo de concordância na 1ª rodada e em cada rodada seguinte
 INITIAL_ROUND_SIZE = 30
-INCREMENT_SIZE = 20
+INCREMENT_SIZE = 10
 
 # Mínimo por classe na 1ª rodada (o estimador de variância estratificado exige n_h >= 2)
 MIN_PER_CLASS_FIRST_ROUND = 2
@@ -18,6 +18,9 @@ MIN_PER_CLASS_FIRST_ROUND = 2
 # =============================================================================
 # ESTIMAÇÃO (critério de parada)
 # =============================================================================
+
+# n mínimo por grupo antes de checar a parada (regra do TLC, Merlo et al., CIKM'25)
+MIN_SAMPLE_FOR_STOPPING = 30
 
 # Para quando a MoE do IC de Wald da métrica principal fica <= MOE_THRESHOLD
 MOE_THRESHOLD = 0.05
@@ -50,7 +53,18 @@ AGREEMENT_GROUPS = {
 # MATERIAIS
 # =============================================================================
 
-EVALUATORS = ["avaliador_1", "avaliador_2", "avaliador_3"]
+# Avaliadores de cada dataset (3 por dataset; a maioria é calculada entre eles); logins anônimos
+EVALUATORS_BY_DATASET = {
+    "books": ["books_1", "books_2", "books_3"],
+    "dblp": ["dblp_1", "dblp_2", "dblp_3"],
+}
+# Quem é quem: aparece só na tela do administrador
+EVALUATOR_NAMES = {
+    "books_1": "Serufo", "books_2": "Botelho", "books_3": "Gestefane",
+    "dblp_1": "Kenia", "dblp_2": "Liziane", "dblp_3": "Luciano",
+}
+# Todos os avaliadores (login e códigos de acesso)
+EVALUATORS = [name for names in EVALUATORS_BY_DATASET.values() for name in names]
 
 # Opção extra de rotulo_escolhido para texto sem informação suficiente / fora da taxonomia
 INSUFFICIENT_INFO_OPTION = "não é possível decidir com este texto"
@@ -58,6 +72,24 @@ INSUFFICIENT_INFO_OPTION = "não é possível decidir com este texto"
 # =============================================================================
 # INTERFACE WEB
 # =============================================================================
+
+# Avisos do guia mostrados ao avaliador (vieram do feedback do piloto)
+GUIDE_NOTES = {
+    "books": [
+        "Avalie só pelo que está escrito no texto. Se você só reconheceria o rótulo por já conhecer o livro, "
+        "use \"não é possível decidir com este texto\".",
+        "Marcações como \"#2\", \"vol. 3\" ou \"(série, #1)\" indicam livros de uma série e aparecem em qualquer "
+        "gênero; sozinhas, não indicam quadrinhos.",
+        "\"romance\" aqui é o gênero de histórias de amor, e não \"romance\" no sentido de livro de ficção.",
+        "Muitos livros combinam gêneros (por exemplo, mistério para jovens). Escolha o que melhor descreve o texto "
+        "na etapa 1 e indique o outro na etapa 2.",
+    ],
+    "dblp": [
+        "Avalie só pelo que está escrito no texto (título e resumo), e não pelo que você sabe sobre o artigo ou o evento.",
+        "Se o artigo cruza áreas (por exemplo, visão computacional e computação gráfica), escolha a área principal na "
+        "etapa 1 e indique a outra na etapa 2.",
+    ],
+}
 
 # Datasets conduzidos pela interface; a data de cada experimento vem do .env
 # (HV_EXPERIMENT_<DATASET>, ex.: HV_EXPERIMENT_BOOKS=2026-09-13_07-19-54)
@@ -78,7 +110,7 @@ INTERFACE_HOST = "0.0.0.0"
 INTERFACE_PORT = 8001
 # Códigos de acesso vêm do .env (nunca do repositório):
 #   HV_ADMIN_CODE=<código do administrador>
-#   HV_EVALUATOR_1_CODE=<código>  (uma variável por avaliador, na ordem de EVALUATORS)
+#   HV_EVALUATOR_<LOGIN>_CODE=<código>  (uma variável por avaliador, ex.: HV_EVALUATOR_BOOKS_1_CODE)
 ADMIN_USER = "admin"
 
 # Prefixo do id_anonimo (fallback: duas primeiras letras do dataset)
@@ -94,12 +126,14 @@ EXAMPLE_MAX_CHARS = 500
 CLASS_DEFINITIONS = {
     "books": {
         "0": "Livros infantis: histórias, contos ou livros ilustrados voltados a crianças, com linguagem simples.",
-        "1": "Quadrinhos, graphic novels e mangás: obras narradas por arte sequencial (desenhos e balões).",
+        "1": "Quadrinhos, graphic novels e mangás: obras narradas por arte sequencial (desenhos e balões). "
+             "Só escolha quando o texto indicar esse formato; número de volume ou de série sozinho não indica quadrinhos.",
         "2": "Fantasia e sobrenatural: mundos mágicos, criaturas míticas, vampiros, lobisomens, bruxas ou poderes sobrenaturais.",
         "3": "História e biografia: não ficção sobre fatos históricos ou sobre a vida de pessoas reais (biografias, memórias).",
         "4": "Crime, mistério e suspense: investigações, crimes, detetives, conspirações e tramas de tensão.",
         "5": "Poesia: coletâneas de poemas ou obras escritas em verso.",
-        "6": "Romance: histórias centradas no relacionamento amoroso entre personagens.",
+        "6": "Romance como gênero romântico (love story): a trama gira em torno de um relacionamento amoroso. "
+             "Não confundir com \"romance\" no sentido de livro de ficção em geral.",
         "7": "Jovem adulto: ficção voltada a adolescentes, com protagonistas jovens e temas de amadurecimento.",
     },
     "dblp": {

@@ -3,6 +3,7 @@ Ciclo da rodada: não fecha com avaliador incompleto, ordem igual para os três,
 """
 import pytest
 
+from src.config.human_validation import INITIAL_ROUND_SIZE
 from src.systems.human_validation_system.interface.api.services.round_controller import RoundIncompleteError
 from tests.human_validation_system.conftest import DATASET, answer_all
 
@@ -79,7 +80,7 @@ def test_same_order_for_all_evaluators(client, admin, evaluators):
     client.post(f"/api/admin/{DATASET}/rodadas", headers=admin)
     orders = [answer_all(client, headers) for headers in evaluators.values()]
     assert orders[0] == orders[1] == orders[2]
-    assert len(orders[0]) == 90
+    assert len(orders[0]) == 3 * INITIAL_ROUND_SIZE
 
 
 def test_evaluator_can_revise_own_answer_while_open(client, admin, evaluators):
@@ -115,13 +116,13 @@ def test_other_experiment_date_does_not_share_rounds(client, admin, results_dir)
 
     from src.systems.human_validation_system.interface.api.core.settings import InterfaceSettings
     from src.systems.human_validation_system.interface.api.server import create_app
-    from tests.human_validation_system.conftest import ADMIN_CODE, CODES, DATE, login
+    from tests.human_validation_system.conftest import ADMIN_CODE, CODES, EVALUATORS_MAP, DATE, login
 
     client.post(f"/api/admin/{DATASET}/rodadas", headers=admin)
     shutil.copytree(results_dir / DATASET / DATE / "consensus", results_dir / DATASET / "outra_data" / "consensus")
 
     settings = client.app.state.settings
-    other = TestClient(create_app(InterfaceSettings({DATASET: "outra_data"}, str(results_dir), CODES, ADMIN_CODE, settings.db_path)))
+    other = TestClient(create_app(InterfaceSettings({DATASET: "outra_data"}, str(results_dir), CODES, ADMIN_CODE, settings.db_path, evaluators_by_dataset=EVALUATORS_MAP)))
     status = other.get("/api/admin/status", headers=login(other, "admin", ADMIN_CODE)).json()[0]
     assert status["estado"] == "sem_rodada"
 

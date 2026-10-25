@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 
 from src.systems.human_validation_system.interface.api.core.settings import InterfaceSettings
 from src.systems.human_validation_system.interface.api.server import create_app
-from tests.human_validation_system.conftest import ADMIN_CODE, CODES, DATASET, DATE, answer_all, login
+from tests.human_validation_system.conftest import ADMIN_CODE, CODES, EVALUATORS_MAP, DATASET, DATE, answer_all, login
 
 
 def complete_round(client, admin, evaluators):
@@ -47,7 +47,7 @@ def test_disabling_auto_close_never_closes_by_itself(client, admin, evaluators):
 def test_choice_survives_server_restart(client, admin):
     client.put("/api/admin/automacao", json={"proxima_automatica": False, "fechamento_automatico": False}, headers=admin)
     settings = client.app.state.settings
-    restarted = TestClient(create_app(InterfaceSettings({DATASET: DATE}, settings.results_dir, CODES, ADMIN_CODE, settings.db_path)))
+    restarted = TestClient(create_app(InterfaceSettings({DATASET: DATE}, settings.results_dir, CODES, ADMIN_CODE, settings.db_path, evaluators_by_dataset=EVALUATORS_MAP)))
     automation = restarted.get("/api/admin/automacao", headers=login(restarted, "admin", ADMIN_CODE)).json()
     assert automation["proxima_automatica"] is False
     assert automation["fechamento_automatico"] is False

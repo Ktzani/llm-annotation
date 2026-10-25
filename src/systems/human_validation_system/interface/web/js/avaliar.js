@@ -1,7 +1,10 @@
 // Tela do avaliador: um documento por vez, duas etapas, revisão das próprias respostas.
 Session.require("avaliador");
 
-const state = { dataset: null, options: null, doc: null, editing: false, openedAt: null, windowMin: 5, poll: null };
+const state = {
+  dataset: null, options: null, doc: null, editing: false, openedAt: null, windowMin: 5, poll: null,
+  answered: new Map(), total: 0,  // posição → id_anonimo das respostas já enviadas
+};
 const $ = (id) => document.getElementById(id);
 
 function radio(name, value, label, extraClass = "") {
@@ -21,6 +24,7 @@ function renderOptions() {
   $("indecidivel").replaceChildren(radio("rotulo", opcao_indecidivel, undecidableLabel, "undecidable"));
   $("sim-nao").replaceChildren(...sim_nao.map((v) => radio("outro", v, v)));
 
+  $("avisos").replaceChildren(...(state.options.avisos || []).map((a) => el("li", {}, a)));
   $("guia").replaceChildren(
     ...classes.map((c) =>
       el("details", {},
@@ -115,7 +119,28 @@ function showDone(next) {
   $("revisao").textContent = message;
 }
 
+// Bolinhas numeradas: atual destacada, respondidas clicáveis, pendentes bloqueadas (sem pular a ordem)
+function renderDots() {
+  const current = state.doc?.posicao;
+  const dots = Array.from({ length: state.total }, (_, i) => {
+    const pos = i + 1;
+    const id = state.answered.get(pos);
+    const status = pos === current ? "atual" : id ? "respondido" : "pendente";
+    return el("button", {
+      type: "button", class: `dot ${status}`, title: `Documento ${pos}: ${status}`,
+      "aria-current": pos === current ? "true" : null,
+      disabled: !id || pos === current,
+      onclick: () => openAnswer(id),
+    }, String(pos));
+  });
+  $("bolinhas").replaceChildren(...dots);
+  const previous = [...state.answered.keys()].filter((p) => !current || p < current).pop();
+  $("anterior").disabled = !previous;
+  $("anterior").onclick = () => previous && openAnswer(state.answered.get(previous));
+}
+
 function showProgress(respondidos, total) {
+  state.total = total;
   $("contagem").textContent = `${respondidos} de ${total} respondidos`;
   $("barra").style.width = total ? `${(100 * respondidos) / total}%` : "0%";
 }
@@ -132,6 +157,7 @@ function showDocument(doc, editing) {
   $("voltar").classList.toggle("hidden", !editing);
   $("erro").textContent = "";
   fillForm(doc.resposta);
+  renderDots();
   $("texto").scrollTop = 0;
 }
 
@@ -144,6 +170,7 @@ async function loadNext() {
     $("documento").classList.add("hidden");
     $("concluido").classList.remove("hidden");
     $("posicao").textContent = "Rodada concluída";
+    renderDots();
     startPolling();
   } else {
     stopPolling();
@@ -153,6 +180,7 @@ async function loadNext() {
 
 async function loadAnswers() {
   const answers = await api("GET", `/api/avaliacao/${state.dataset}/respostas`);
+  state.answered = new Map(answers.map((a) => [a.posicao, a.id_anonimo]));
   $("respostas").replaceChildren(...answers.map((a) =>
     el("li", {},
       el("span", {}, `#${a.posicao} · ${a.rotulo_escolhido}`),
@@ -165,6 +193,7 @@ async function openAnswer(idAnonimo) {
   stopPolling();
   const doc = await api("GET", `/api/avaliacao/${state.dataset}/documentos/${encodeURIComponent(idAnonimo)}`);
   showDocument(doc, true);
+  $("documento").scrollIntoView({ block: "start" });
 }
 
 async function save(event) {

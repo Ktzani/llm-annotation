@@ -18,6 +18,7 @@ class OptionsOut(BaseModel):
     classes: List[ClassGuide]
     opcao_indecidivel: str
     sim_nao: List[str]
+    avisos: List[str] = []
 
 
 class DatasetProgressOut(BaseModel):

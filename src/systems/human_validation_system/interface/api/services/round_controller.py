@@ -13,7 +13,9 @@ from loguru import logger
 from src.config.datasets_collected import LABEL_MEANINGS
 from src.config.human_validation import (
     CLASS_DEFINITIONS,
+    EVALUATOR_NAMES,
     EXAMPLE_MAX_CHARS,
+    GUIDE_NOTES,
     INSUFFICIENT_INFO_OPTION,
     PRIMARY_METRIC,
 )
@@ -98,7 +100,7 @@ class RoundController:
             specific_date=self.settings.experiments[dataset],
             results_dir=self.settings.results_dir,
             increment_size=self.settings.increment_size,
-            evaluators=self.settings.evaluators,
+            evaluators=self.settings.evaluators_for(dataset),
             export_sheets=False,
         )
 
@@ -124,12 +126,13 @@ class RoundController:
                 for k in sorted(meanings, key=int)
             ],
             "opcao_indecidivel": INSUFFICIENT_INFO_OPTION,
+            "avisos": GUIDE_NOTES.get(dataset, []),
         }
 
     # ------------------------------------------------------------- status
     def progress(self, dataset: str, round_number: int) -> Dict[str, Dict[str, int]]:
         total = self.store.round_size(self.store_key(dataset), round_number)
-        answered = self.store.progress(self.store_key(dataset), round_number, self.settings.evaluators)
+        answered = self.store.progress(self.store_key(dataset), round_number, self.settings.evaluators_for(dataset))
         return {e: {"respondidos": n, "total": total, "faltam": total - n} for e, n in answered.items()}
 
     def last_result(self, dataset: str, round_number: int) -> Optional[Dict]:
@@ -241,6 +244,7 @@ class RoundController:
             "fechada_em": info["fechada_em"],
             "duracao_segundos": info["duracao_segundos"],
             "progresso": progress,
+            "nomes": {e: EVALUATOR_NAMES.get(e, e) for e in progress},
             "pode_fechar": state == "aberta" and complete,
             "pode_iniciar": state == "fechada" and not (result and result["todos_pararam"]),
             "proxima_automatica": self.automation()[self.AUTO_NEXT_KEY],
@@ -437,7 +441,7 @@ class RoundController:
                     dataset_name=dataset,
                     specific_date=self.settings.experiments[dataset],
                     results_dir=self.settings.results_dir,
-                    evaluators=self.settings.evaluators,
+                    evaluators=self.settings.evaluators_for(dataset),
                 ),
                 response_source=DatabaseResponseSource(self.store, self.store_key(dataset)),
             )

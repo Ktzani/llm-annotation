@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 
 from src.systems.human_validation_system.interface.api.core.settings import InterfaceSettings
 from src.systems.human_validation_system.interface.api.server import create_app
-from tests.human_validation_system.conftest import ADMIN_CODE, CODES, DATASET, DATE, login, synthetic_consensus
+from tests.human_validation_system.conftest import ADMIN_CODE, CODES, EVALUATORS_MAP, DATASET, DATE, login, synthetic_consensus
 
 NEW_DATE = "sem_csv"
 
@@ -14,7 +14,7 @@ NEW_DATE = "sem_csv"
 @pytest.fixture
 def empty_client(results_dir):
     """Experimento cujo CSV ainda não está no servidor."""
-    client = TestClient(create_app(InterfaceSettings({DATASET: NEW_DATE}, str(results_dir), CODES, ADMIN_CODE)))
+    client = TestClient(create_app(InterfaceSettings({DATASET: NEW_DATE}, str(results_dir), CODES, ADMIN_CODE, evaluators_by_dataset=EVALUATORS_MAP)))
     return client, login(client, "admin", ADMIN_CODE)
 
 

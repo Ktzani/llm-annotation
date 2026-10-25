@@ -18,6 +18,8 @@ DATE = "sintetico"
 N_CLASSES = 8
 DOCS_PER_STRATUM = 40
 CODES = {"avaliador_1": "c1", "avaliador_2": "c2", "avaliador_3": "c3"}
+# Nos testes, os mesmos 3 avaliadores atendem qualquer dataset
+EVALUATORS_MAP = {"books": list(CODES), "dblp": list(CODES)}
 ADMIN_CODE = "adm"
 MODELS = ("m1", "m2", "m3")
 
@@ -58,7 +60,7 @@ def results_dir(tmp_path: Path) -> Path:
 
 @pytest.fixture
 def client(results_dir: Path) -> TestClient:
-    settings = InterfaceSettings({DATASET: DATE}, str(results_dir), CODES, ADMIN_CODE)
+    settings = InterfaceSettings({DATASET: DATE}, str(results_dir), CODES, ADMIN_CODE, evaluators_by_dataset=EVALUATORS_MAP)
     return TestClient(create_app(settings))
 
 
