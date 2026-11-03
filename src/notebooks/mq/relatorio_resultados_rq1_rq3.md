@@ -31,7 +31,7 @@
 - **κ de Fleiss** recalculado com -1 como categoria própria. O cálculo do pipeline descarta os votos -1 mas mantém n = 3 na fórmula, o que gera uma diferença pequena (≤ 0,004).
 - **Métricas por modelo:** acurácia e macro-F1 sobre as predições válidas (≠ -1). A taxa de inválidas é reportada à parte; é a convenção do `evaluate_model_metrics`.
 
-**Pendência:** a curva β da RQ2 ainda não foi executada (ver §3.6).
+**Pendência:** os resultados por fold do benchmark humano recebidos para o AGNews (aba `effect-fold`) estão incorretos: a média deles é 91,73, e o RoBERTa publicado é 94,2. Eles serão substituídos pelos valores corretos, que o orientador vai enviar. Até lá, os números do benchmark humano no AGNews e a comparação pareada do AGNews são provisórios (ver §2.4).
 
 ## Resumo geral: fine-tuning do RoBERTa-base
 
@@ -118,7 +118,7 @@ Acurácia das consolidadas (o benchmark publica só macro-F1):
 **AGNews: os folds da planilha não reproduzem o valor publicado.**
 - Em Movie Review, Books e DBLP, a média e o IC calculados sobre os folds da aba `effect-fold` coincidem com a Tabela 2 de Cunha et al. (2025).
 - Em AGNews, a mesma aba dá 91,73 (0,23), mas o RoBERTa publicado é 94,2 (0,2). O valor por fold fica perto do LSVM (91,8) e do LR (91,5) da mesma tabela, não do RoBERTa.
-- A comparação pareada do AGNews em §2.5 e §3.4 usa esses folds e deve ser tratada como **provisória** até que os 5 valores por fold do RoBERTa publicado sejam confirmados. O repositório público (`waashk/atcBench`) não traz os resultados por fold.
+- Os resultados por fold recebidos para o AGNews estão incorretos e serão substituídos pelos valores corretos, que o orientador vai enviar. Até lá, a comparação pareada do AGNews em §2.5 e §3.4 é **provisória**.
 - Mesmo sem pareamento, a conclusão não muda: com 94,2 (0,2) contra 87,19 (0,17) sem filtro, os ICs ficam a cerca de 7 pp de distância.
 
 ### 2.5 Fine-tuning: consolidada × benchmark, pareado por fold
@@ -238,15 +238,89 @@ Erro por tipo de remoção e padrão de concordância:
 - **Redução do treino: confirmada, com uma ressalva.**
   - Com 27,8% a 37,2% menos instâncias, o desempenho é equivalente em Books e DBLP e ligeiramente superior em AGNews.
   - Em Movie Review custa 0,66 pp. É o dataset com a maior fração removida (37,2%) e o classificador fraco mais fraco (F1 0,756).
+  - A curva (§3.6) estende o resultado: mantendo só 23% a 32% da entrada (β = 0,65), a perda máxima é de 1,27 pp (Movie Review), e AGNews segue acima do sem filtro.
 
-### 3.6 Curva % mantido × macro-F1: pendente
+### 3.6 Curva % mantido × macro-F1
 
-Ainda não foi executada. O código existe, mas a execução não.
-- **O que já existe:**
-  - `FineTuningPipeline.run_instance_selection_curve`, que grava `<run>/curve.csv` com as colunas `beta, kept_instances, retention, f1_macro_mean, f1_macro_std, accuracy_mean`.
-  - Os jobs `src/api/experiments/fine_tuning/rodada2/*_curva_bio_is.json`, com β ∈ {0,35; 0,45; 0,55; 0,65} e θ = 0,5.
-  - Os pontos β = 0 (sem filtro) e β = 0,25 já estão nas Tabelas 3.3.
-- **Ponto de atenção:** a remoção redundante só sorteia entre os acertos do classificador fraco (`beta_saturated`). Em Movie Review, onde o classificador fraco acerta cerca de 76%, β alto pode saturar.
+**Configuração.** θ fica fixo em 0,5 e β varia: 0 (sem filtro), 0,25 (a execução das §3.3 e §3.4), 0,35, 0,45, 0,55 e 0,65.
+- θ fixo significa que a **remoção de ruído é a mesma em todos os pontos** (1.294, 3.521, 2.824 e 2.817 instâncias). Ao longo da curva, só cresce a remoção de **redundantes**.
+- "% mantido" é a fração da entrada da biO-IS que sobra (mantidas ÷ entrada), a mesma base da §3.1.
+- Cada ponto é comparado ao sem filtro de forma pareada por fold, com Δ = com filtro − sem filtro.
+- Correção de múltiplas comparações:
+  - β = 0,25 usa a família da §3.3 (m = 4);
+  - os pontos de β = 0,35 a 0,65 formam uma família própria (m = 16, 4 pontos × 4 datasets).
+- Nenhum ponto saturou: em todos, a remoção redundante pedida (β × entrada) coube entre os acertos do classificador fraco.
+
+![Curva da biO-IS](figuras/curva_bio_is.png)
+
+*Figura: macro-F1 (IC 95%) conforme a fração mantida. Os pontos vão, da esquerda para a direita, de β = 0 (sem filtro) a β = 0,65. A faixa cinza é o IC 95% do sem filtro. Os quatro painéis usam o mesmo eixo x e uma janela de mesma altura no eixo y (4,8 pp), para que as inclinações sejam comparáveis.*
+
+Movie Review:
+
+| β | % mantido | Mantidas | Redundantes / ruidosas removidas | Macro-F1 (IC95) | Δ vs. sem filtro (IC95) | IC Bonferroni | p Bonf. | p BH | Conclusão (IC95) |
+|---|---|---|---|---|---|---|---|---|---|
+| 0 (sem filtro) | 100,0% | 10.639 | — | 88,98 (0,70) | — | — | — | — | — |
+| 0,25 | 62,8% | 6.686 | 2.659 / 1.294 | 88,32 (0,49) | −0,66 [−1,04; −0,27] | [−1,18; −0,13] | 0,0149 | 0,0149 | sem filtro melhor |
+| 0,35 | 52,8% | 5.622 | 3.723 / 1.294 | 88,22 (0,60) | −0,76 [−1,26; −0,26] | [−1,64; +0,12] | 0,1174 | 0,0196 | sem filtro melhor |
+| 0,45 | 42,8% | 4.558 | 4.787 / 1.294 | 88,57 (0,58) | −0,41 [−1,00; +0,18] | [−1,45; +0,64] | 1,0000 | 0,1898 | equivalentes |
+| 0,55 | 32,8% | 3.494 | 5.851 / 1.294 | 88,07 (0,76) | −0,91 [−1,28; −0,54] | [−1,56; −0,26] | 0,0053 | 0,0053 | sem filtro melhor |
+| 0,65 | 22,8% | 2.430 | 6.915 / 1.294 | 87,71 (0,70) | −1,27 [−1,89; −0,64] | [−2,37; −0,16] | 0,0209 | 0,0070 | sem filtro melhor |
+
+AGNews:
+
+| β | % mantido | Mantidas | Redundantes / ruidosas removidas | Macro-F1 (IC95) | Δ vs. sem filtro (IC95) | IC Bonferroni | p Bonf. | p BH | Conclusão (IC95) |
+|---|---|---|---|---|---|---|---|---|---|
+| 0 (sem filtro) | 100,0% | 127.261 | — | 87,19 (0,17) | — | — | — | — | — |
+| 0,25 | 72,2% | 91.925 | 31.815 / 3.521 | 87,73 (0,42) | +0,55 [+0,19; +0,91] | [−0,01; +1,10] | 0,0526 | 0,0263 | com filtro melhor |
+| 0,35 | 62,2% | 79.199 | 44.541 / 3.521 | 87,66 (0,56) | +0,47 [−0,15; +1,09] | [−0,95; +1,90] | 1,0000 | 0,1469 | equivalentes |
+| 0,45 | 52,2% | 66.473 | 57.267 / 3.521 | 87,82 (0,71) | +0,63 [−0,00; +1,26] | [−0,82; +2,07] | 0,8065 | 0,0807 | equivalentes |
+| 0,55 | 42,2% | 53.747 | 69.993 / 3.521 | 87,89 (0,18) | +0,70 [+0,39; +1,01] | [−0,01; +1,41] | 0,0520 | 0,0104 | com filtro melhor |
+| 0,65 | 32,2% | 41.021 | 82.719 / 3.521 | 87,86 (0,45) | +0,67 [+0,18; +1,17] | [−0,46; +1,80] | 0,3068 | 0,0438 | com filtro melhor |
+
+Books:
+
+| β | % mantido | Mantidas | Redundantes / ruidosas removidas | Macro-F1 (IC95) | Δ vs. sem filtro (IC95) | IC Bonferroni | p Bonf. | p BH | Conclusão (IC95) |
+|---|---|---|---|---|---|---|---|---|---|
+| 0 (sem filtro) | 100,0% | 32.785 | — | 72,31 (0,69) | — | — | — | — | — |
+| 0,25 | 66,4% | 21.765 | 8.196 / 2.824 | 72,09 (0,49) | −0,22 [−0,70; +0,26] | [−0,88; +0,44] | 1,0000 | 0,3284 | equivalentes |
+| 0,35 | 56,4% | 18.487 | 11.474 / 2.824 | 71,97 (0,44) | −0,34 [−1,01; +0,33] | [−1,52; +0,84] | 1,0000 | 0,3211 | equivalentes |
+| 0,45 | 46,4% | 15.208 | 14.753 / 2.824 | 71,67 (0,49) | −0,64 [−1,27; −0,00] | [−1,76; +0,48] | 0,7842 | 0,0807 | sem filtro melhor¹ |
+| 0,55 | 36,4% | 11.930 | 18.031 / 2.824 | 71,87 (0,44) | −0,44 [−1,01; +0,13] | [−1,45; +0,56] | 1,0000 | 0,1515 | equivalentes |
+| 0,65 | 26,4% | 8.651 | 21.310 / 2.824 | 71,43 (0,40) | −0,88 [−1,76; −0,00] | [−2,43; +0,67] | 0,7858 | 0,0807 | sem filtro melhor¹ |
+
+DBLP:
+
+| β | % mantido | Mantidas | Redundantes / ruidosas removidas | Macro-F1 (IC95) | Δ vs. sem filtro (IC95) | IC Bonferroni | p Bonf. | p BH | Conclusão (IC95) |
+|---|---|---|---|---|---|---|---|---|---|
+| 0 (sem filtro) | 100,0% | 36.999 | — | 61,51 (0,45) | — | — | — | — | — |
+| 0,25 | 67,4% | 24.933 | 9.249 / 2.817 | 61,19 (0,41) | −0,33 [−0,79; +0,14] | [−0,96; +0,31] | 0,5873 | 0,1958 | equivalentes |
+| 0,35 | 57,4% | 21.233 | 12.949 / 2.817 | 61,45 (0,52) | −0,07 [−0,34; +0,20] | [−0,55; +0,41] | 1,0000 | 0,5946 | equivalentes |
+| 0,45 | 47,4% | 17.533 | 16.649 / 2.817 | 60,99 (0,41) | −0,52 [−0,80; −0,23] | [−1,02; −0,01] | 0,0449 | 0,0104 | sem filtro melhor |
+| 0,55 | 37,4% | 13.833 | 20.349 / 2.817 | 61,37 (0,40) | −0,15 [−0,50; +0,21] | [−0,78; +0,49] | 1,0000 | 0,4089 | equivalentes |
+| 0,65 | 27,4% | 10.133 | 24.049 / 2.817 | 60,85 (0,58) | −0,66 [−0,96; −0,37] | [−1,19; −0,14] | 0,0112 | 0,0056 | sem filtro melhor |
+
+¹ O limite superior do IC 95% fica a menos de 0,01 pp do zero. Com Bonferroni os dois pontos são equivalentes ao sem filtro.
+
+**Leitura para o texto (curva)**
+- **A curva é quase plana.** Mesmo mantendo só 22,8% a 32,2% da entrada (β = 0,65), o macro-F1 fica a no máximo 1,27 pp do sem filtro:
+  - −1,27 no Movie Review;
+  - −0,88 em Books;
+  - −0,66 em DBLP;
+  - +0,67 em AGNews.
+  Essas perdas são uma ordem de grandeza menores que a distância para a anotação humana (de 4,5 a 19,9 pp, §2.5).
+- **Por dataset, com Bonferroni:**
+  - **AGNews:** nenhum ponto perde. Todos ficam de 0,47 a 0,70 pp acima do sem filtro, mas nenhum ganho resiste à correção (o mais forte, β = 0,55, tem p = 0,052). Dá para treinar com 32% dos dados sem perda.
+  - **Books:** todos os pontos são equivalentes ao sem filtro. A perda máxima é de 0,88 pp, com 26,4% dos dados.
+  - **DBLP:** perdas pequenas mas significativas em β = 0,45 (−0,52) e β = 0,65 (−0,66). β = 0,35 (57,4% mantido) e β = 0,55 (37,4%) são equivalentes.
+  - **Movie Review:** é o único com queda clara. Todo ponto perde de 0,41 a 1,27 pp e a perda é significativa com Bonferroni em β = 0,25, 0,55 e 0,65. O Movie Review também é o dataset com o classificador fraco mais fraco (F1 0,756), o que torna a escolha dos redundantes menos precisa.
+- **Não há um "joelho" nítido.** A queda é gradual e oscila dentro do IC (por exemplo, β = 0,45 fica abaixo de β = 0,55 em Books e DBLP). O ponto a partir do qual a remoção passa a custar desempenho depende do dataset:
+  - em AGNews, nenhum;
+  - em Books, nenhum dentro da faixa testada;
+  - em DBLP, por volta de 47% mantido;
+  - em Movie Review, já no primeiro ponto (62,8%).
+- **O que varia na curva é a redundância.** Como a remoção de ruído é fixa (θ = 0,5), todo o efeito ao longo da curva vem de tirar redundantes. Em β = 0,65, 65% da entrada sai como redundante e o desempenho se mantém a menos de 1,3 pp do sem filtro. A anotação gerada pelos LLMs é, portanto, muito redundante.
+
+**Ressalvas:**
 - **Base de treino dos pontos (decisão aceita):** os pontos novos (β = 0,35 a 0,65) rodam com a remoção dos textos de voto inválido (§0), e o sem filtro e o β = 0,25 rodaram sem ela. Os pontos antigos treinam, portanto, com alguns textos a mais:
 
   | Dataset | Textos a mais nos pontos antigos | % dos textos |
@@ -259,7 +333,6 @@ Ainda não foi executada. O código existe, mas a execução não.
   - Quase todos os votos inválidos são do DeepSeek-R1; a única exceção é 1 texto do Llama 3.1 em Movie Review.
   - A diferença foi considerada pequena demais para re-rodar o sem filtro e o β = 0,25. Ela deve ser citada como limitação ao apresentar a curva.
   - A avaliação não muda: o conjunto de teste de cada fold continua sendo o do benchmark completo, com esses textos incluídos.
-- **Comparação:** quando a curva sair, cada ponto deve ser pareado por fold contra o sem filtro. A classe `SupervisionComparison` ignora as execuções de curva de propósito, então isso exige um contraste novo.
 
 ## 4. RQ3: restrição do espaço de rótulos (Books e DBLP)
 
@@ -472,3 +545,4 @@ DBLP:
   - `ConfusabilityAnalyzer` calcula o erro condicional, a matriz condicional, a entropia e os pares.
 - **Consenso de 2 fases da rodada final:** gerado com `scripts/run_consensus_two_phase.py --run <09-18> --skip-baseline`. Grava `fold_*/filtered/consensus/`.
 - **Notebook:** [resultados_rq1_rq3.ipynb](resultados_rq1_rq3.ipynb). Gera todas as tabelas deste relatório; as tabelas Markdown foram montadas a partir dos CSVs em `data/results/mq/resultados_rq1_rq3/`.
+- **Curva da biO-IS:** tabela em `data/results/mq/resultados_rq1_rq3/rq2_curva.csv`; figura em [figuras/curva_bio_is.png](figuras/curva_bio_is.png). Os pontos vêm das subpastas `beta0.35/` a `beta0.65/` de `finetuning/v*_roberta-base_bio-is_curva-beta/`, lidas por `SupervisionComparison.locate_curve_points`.

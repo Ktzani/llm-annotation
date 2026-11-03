@@ -21,6 +21,7 @@ class SupervisionComparison(RegimeComparison):
     """
 
     REGIMES = [AGGREGATED, AGGREGATED_IS]
+    BASE_BETA, BASE_THETA = 0.25, 0.5  # parâmetros da execução biO-IS principal
     # Cada família é corrigida separadamente (Bonferroni/BH entre datasets), diff = A − B
     FAMILIES = {
         "rq1_benchmark_vs_consolidado": ([(BENCHMARK, AGGREGATED)], ["f1_macro"]),
@@ -47,6 +48,63 @@ class SupervisionComparison(RegimeComparison):
         if missing:
             logger.warning(f"[{dataset}] sistemas sem execução concluída: {sorted(missing)}")
         return runs
+
+    def locate_curve_points(self, dataset: str) -> Dict[str, Path]:
+        """Pontos concluídos da curva de biO-IS (subpastas <param><valor> da última execução de curva), como aggregated_bio-is_<param><valor>"""
+        points = {}
+        for results_path in (self.annotation_dir(dataset) / "finetuning").glob("v*/*/*_fine_tuning_results.json"):
+            point_dir, run_dir = results_path.parent, results_path.parent.parent
+            if not self._is_curve(run_dir):
+                continue
+            system = f"{AGGREGATED_IS}_{point_dir.name}"
+            if system not in points or self._version(run_dir) > self._version(points[system].parent):
+                points[system] = point_dir
+        return points
+
+    @staticmethod
+    def _is_curve(run_dir: Path) -> bool:
+        config_path = run_dir / "config.json"
+        if config_path.exists():
+            return bool(json.loads(config_path.read_text(encoding="utf-8")).get("instance_selection", {}).get("sweep"))
+        return "curva" in run_dir.name
+
+    def load_folds(self) -> pd.DataFrame:
+        """Folds dos sistemas principais, do benchmark e dos pontos da curva"""
+        rows = [super().load_folds()]
+        for dataset in self.annotation_dates:
+            for system, point_dir in self.locate_curve_points(dataset).items():
+                rows.append(pd.DataFrame(self._run_rows(dataset, system, point_dir)))
+        return pd.concat(rows, ignore_index=True)
+
+    def curve(self, individual: pd.DataFrame) -> pd.DataFrame:
+        """Curva % mantido × macro-F1: sem filtro (β=0), execução biO-IS principal e pontos da curva"""
+        rows = []
+        for dataset in self.annotation_dates:
+            is_dir = self.annotation_dir(dataset) / "instance_selection"
+            points = {AGGREGATED: (0.0, 1.0), AGGREGATED_IS: (self.BASE_BETA, self._retention(is_dir, self.BASE_BETA))}
+            for system in self.locate_curve_points(dataset):
+                beta = float(system.rsplit("beta", 1)[1])
+                points[system] = (beta, self._retention(is_dir, beta))
+            for system, (beta, retention) in points.items():
+                f1 = individual[(individual.dataset == dataset) & (individual.system == system) & (individual.metric == "f1_macro")]
+                if f1.empty:
+                    continue
+                r = f1.iloc[0]
+                rows.append({"dataset": dataset, "system": system, "beta": beta, "retencao": retention,
+                             "f1_macro": r["mean"], "ci_low": r.ci_low, "ci_high": r.ci_high, "n_folds": r.n_folds})
+        return pd.DataFrame(rows).sort_values(["dataset", "beta"]).reset_index(drop=True)
+
+    @staticmethod
+    def _retention(is_dir: Path, beta: float) -> Optional[float]:
+        """Fração mantida pela seleção (kept / rotuladas), da seleção versionada ou do relatório legado (β=0,25)"""
+        candidates = [is_dir / f"bio-is_beta{beta:g}_theta{SupervisionComparison.BASE_THETA:g}_seed42" / "instance_selection_report.json"]
+        if beta == SupervisionComparison.BASE_BETA:
+            candidates.append(is_dir / "instance_selection_report.json")
+        for path in candidates:
+            if path.exists():
+                report = json.loads(path.read_text(encoding="utf-8"))
+                return report["kept_instances"] / report["labeled_instances"]
+        return None
 
     @staticmethod
     def _system(run_dir: Path) -> Optional[str]:
@@ -75,10 +133,19 @@ class SupervisionComparison(RegimeComparison):
                 if not table.empty:
                     paired.append(table.assign(family=family))
 
+        # Curva: cada ponto contra o sem filtro; família = pontos × datasets
+        curve_systems = sorted({s for s in folds["system"].unique() if s.startswith(f"{AGGREGATED_IS}_")})
+        for metric in ["f1_macro", "accuracy"]:
+            table = self.comparator.paired(folds, metric, [(s, AGGREGATED) for s in curve_systems])
+            if not table.empty:
+                paired.append(table.assign(family="rq2_curva_vs_sem_is"))
+
+        individual = self.comparator.individual(folds)
         return {
             "folds": folds,
-            "individual": self.comparator.individual(folds),
+            "individual": individual,
             "paired": pd.concat(paired, ignore_index=True),
+            "curve": self.curve(individual),
         }
 
     def export(self, tables: Dict[str, pd.DataFrame], output_dir: Path) -> Path:
