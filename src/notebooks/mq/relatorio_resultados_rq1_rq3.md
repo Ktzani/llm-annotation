@@ -15,7 +15,7 @@
 | Books | `books/2026-09-13_07-19-54` | `v1_roberta-base_aggregated` | `v2_roberta-base_aggregated_bio-is` | `books/two_phase/2026-09-18_17-03-05` |
 | DBLP | `dblp/2026-09-13_18-46-30` | `v1_roberta-base_aggregated` | `v2_roberta-base_aggregated_bio-is` | `dblp/two_phase/2026-09-18_17-03-44` |
 
-- **Benchmark por fold:** `data/results/mq/Roberta - Catizani.xlsx`, aba `effect-fold` (`mac0…mac9`). Médias: Movie Review 89,04, AGNews 91,73, Books 87,21 e DBLP 81,44. As três primeiras batem com o RoBERTa publicado por Cunha et al. (2025); AGNews não bate (publicado: 94,2), ver §2.4.
+- **Benchmark por fold:** `data/results/mq/Roberta - Catizani.xlsx`, aba `effect-fold` (`mac0…mac9`). Médias: Movie Review 89,04, AGNews 94,26, Books 87,21 e DBLP 81,44. Os quatro batem com o RoBERTa publicado por Cunha et al. (2025).
 - **Métrica principal:** macro-F1. A acurácia vem em paralelo. Todos os valores estão em pontos percentuais (pp).
 - **Comparação de sistemas = comparação pareada por fold:**
   - Calcula-se dᵢ = Aᵢ − Bᵢ em cada fold; a conclusão vem do **IC 95% (t de Student) da média de dᵢ**: se o IC contém 0, os sistemas são equivalentes.
@@ -31,8 +31,6 @@
 - **κ de Fleiss** recalculado com -1 como categoria própria. O cálculo do pipeline descarta os votos -1 mas mantém n = 3 na fórmula, o que gera uma diferença pequena (≤ 0,004).
 - **Métricas por modelo:** acurácia e macro-F1 sobre as predições válidas (≠ -1). A taxa de inválidas é reportada à parte; é a convenção do `evaluate_model_metrics`.
 
-**Pendência:** os resultados por fold do benchmark humano recebidos para o AGNews (aba `effect-fold`) estão incorretos: a média deles é 91,73, e o RoBERTa publicado é 94,2. Eles serão substituídos pelos valores corretos, que o orientador vai enviar. Até lá, os números do benchmark humano no AGNews e a comparação pareada do AGNews são provisórios (ver §2.4).
-
 ## Resumo geral: fine-tuning do RoBERTa-base
 
 Macro-F1 médio entre os folds, com a meia-largura do IC 95% entre parênteses (t de Student). Em todas as colunas, a avaliação é sempre contra os benchmark labels do conjunto de teste. Os testes e os ICs das diferenças estão nas §2.5, §3.3 e §3.4.
@@ -40,13 +38,11 @@ Macro-F1 médio entre os folds, com a meia-largura do IC 95% entre parênteses (
 | Dataset | Classes | Folds | κ de Fleiss (3 LLMs) | Anotação humana (benchmark) | Consolidada sem filtro | Consolidada com filtro (biO-IS) |
 |---|---|---|---|---|---|---|
 | Movie Review | 2 | 10 | 0,842 | 89,04 (0,67) | 88,98 (0,70) | 88,32 (0,49) |
-| AGNews | 4 | 5 | 0,907 | 91,73 (0,23)¹ | 87,19 (0,17) | 87,73 (0,42) |
+| AGNews | 4 | 5 | 0,907 | 94,26 (0,28) | 87,19 (0,17) | 87,73 (0,42) |
 | Books | 8 | 10 | 0,744 | 87,21 (0,58) | 72,31 (0,69) | 72,09 (0,49) |
 | DBLP | 10 | 10 | 0,738 | 81,44 (0,53) | 61,51 (0,45) | 61,19 (0,41) |
 
 O κ de Fleiss mede a concordância entre os três anotadores sobre todos os textos do dataset, com a resposta inválida (-1) tratada como categoria própria (detalhes na §2.2).
-
-¹ Calculado sobre os folds da aba `effect-fold`. O valor publicado por Cunha et al. (2025) para o RoBERTa no AGNews é 94,2 (0,2) (ver §2.4). Nos outros três datasets, os folds reproduzem o valor publicado.
 
 ## 2. RQ1: anotação consolidada × anotação humana
 
@@ -102,7 +98,7 @@ Macro-F1 médio entre os folds e, entre parênteses, a meia-largura do IC 95% (t
 | Dataset | Folds | Benchmark RoBERTa publicado (Cunha et al., 2025) | Benchmark por fold (`effect-fold`) | Consolidada sem filtro | Consolidada com biO-IS | Benchmark + biO-IS publicado (humano) |
 |---|---|---|---|---|---|---|
 | Movie Review | 10 | 89,0 (0,7) | 89,04 (0,67) | 88,98 (0,70) | 88,32 (0,49) | 88,3 (0,4) |
-| AGNews | 5 | **94,2 (0,2)** | **91,73 (0,23)** | 87,19 (0,17) | 87,73 (0,42) | 94,0 (0,2) |
+| AGNews | 5 | 94,2 (0,2) | 94,26 (0,28) | 87,19 (0,17) | 87,73 (0,42) | 94,0 (0,2) |
 | Books | 10 | 87,2 (0,6) | 87,21 (0,58) | 72,31 (0,69) | 72,09 (0,49) | 86,5 (0,6) |
 | DBLP | 10 | 81,4 (0,5) | 81,44 (0,53) | 61,51 (0,45) | 61,19 (0,41) | 80,5 (0,6) |
 
@@ -115,18 +111,14 @@ Acurácia das consolidadas (o benchmark publica só macro-F1):
 | Books | 71,12 (0,72) | 70,82 (0,54) |
 | DBLP | 63,79 (0,24) | 63,57 (0,44) |
 
-**AGNews: os folds da planilha não reproduzem o valor publicado.**
-- Em Movie Review, Books e DBLP, a média e o IC calculados sobre os folds da aba `effect-fold` coincidem com a Tabela 2 de Cunha et al. (2025).
-- Em AGNews, a mesma aba dá 91,73 (0,23), mas o RoBERTa publicado é 94,2 (0,2). O valor por fold fica perto do LSVM (91,8) e do LR (91,5) da mesma tabela, não do RoBERTa.
-- Os resultados por fold recebidos para o AGNews estão incorretos e serão substituídos pelos valores corretos, que o orientador vai enviar. Até lá, a comparação pareada do AGNews em §2.5 e §3.4 é **provisória**.
-- Mesmo sem pareamento, a conclusão não muda: com 94,2 (0,2) contra 87,19 (0,17) sem filtro, os ICs ficam a cerca de 7 pp de distância.
+Nos quatro datasets, a média e o IC calculados sobre os folds da aba `effect-fold` coincidem com a Tabela 2 de Cunha et al. (2025). A diferença no AGNews (94,26 contra 94,2) é só de arredondamento.
 
 ### 2.5 Fine-tuning: consolidada × benchmark, pareado por fold
 
 | Dataset | Folds | Benchmark (F1, IC95) | Consolidada (F1, IC95) | Δ = bench − cons. (IC95) | IC Bonferroni | p Bonf. | p BH | Conclusão (IC95) |
 |---|---|---|---|---|---|---|---|---|
 | Movie Review | 10 | 89,04 [88,37; 89,71] | 88,98 [88,27; 89,68] | +0,07 [−0,58; +0,71] | [−0,82; +0,95] | 1,0000 | 0,8182 | equivalentes |
-| AGNews | 5 | 91,73 [91,50; 91,96] | 87,19 [87,02; 87,36] | +4,54 [+4,28; +4,80] | [+4,14; +4,95] | <10⁻⁴ | <10⁻⁴ | benchmark melhor |
+| AGNews | 5 | 94,26 [93,98; 94,54] | 87,19 [87,02; 87,36] | +7,07 [+6,92; +7,23] | [+6,84; +7,31] | <10⁻⁴ | <10⁻⁴ | benchmark melhor |
 | Books | 10 | 87,21 [86,63; 87,78] | 72,31 [71,62; 73,01] | +14,89 [+14,23; +15,56] | [+13,98; +15,81] | <10⁻⁴ | <10⁻⁴ | benchmark melhor |
 | DBLP | 10 | 81,44 [80,92; 81,97] | 61,51 [61,06; 61,97] | +19,93 [+19,45; +20,41] | [+19,27; +20,59] | <10⁻⁴ | <10⁻⁴ | benchmark melhor |
 
@@ -136,7 +128,7 @@ Acurácia das consolidadas (o benchmark publica só macro-F1):
 **Leitura para o texto (RQ1)**
 - **Movie Review (2 classes):** a anotação consolidada é **estatisticamente equivalente** ao benchmark. A diferença pareada é de +0,07 pp com IC [−0,58; +0,71], que contém o zero (p corrigido = 1,0).
 - **Demais datasets:** o benchmark é superior. O gap cresce com a granularidade:
-  - +4,5 pp no AGNews (4 classes) com os folds da planilha, ou cerca de 7,0 pp contra o valor publicado de 94,2 (ver §2.4);
+  - +7,1 pp no AGNews (4 classes);
   - +14,9 pp em Books (8 classes);
   - +19,9 pp em DBLP (10 classes).
   - Todos esses gaps têm p < 10⁻⁴ após a correção.
@@ -161,6 +153,20 @@ A entrada da biO-IS é o `dataset_consenso.csv` sem os 1x1x1. Por isso "Entrada"
 - **Erro nas mantidas = 8,17%** (§3.2): das 6.686 que seguem para o treino, 546 estão erradas.
 
 A pergunta "para onde vão os erros?" é respondida pela segunda tabela da §3.2, que divide o total de erros da entrada entre os três destinos e soma 100%.
+
+**Classificador fraco da biO-IS (regressão logística sobre TF-IDF).**
+
+| Dataset | Classes | Instâncias | Acurácia | Macro-F1 |
+|---|---|---|---|---|
+| Movie Review | 2 | 10.639 | 75,67 | 75,63 |
+| AGNews | 4 | 127.261 | 94,47 | 94,17 |
+| Books | 8 | 32.785 | 82,77 | 82,83 |
+| DBLP | 10 | 36.999 | 84,77 | 78,36 |
+
+- **Contra o quê é medido:** as métricas são calculadas **contra o rótulo consolidado dos LLMs**, que é a supervisão que a biO-IS usa, e **não contra o benchmark label**. Elas medem o quanto a regressão logística consegue reproduzir a anotação dos LLMs.
+- **Como é avaliado:** cada instância recebe a predição de um modelo que não a viu no treino (validação cruzada estratificada de 5 partes sobre toda a entrada).
+- **Mesmo classificador em toda a curva:** o classificador fraco não depende de β, então é o mesmo em todos os pontos da curva (§3.6), com valores idênticos nos relatórios de β = 0,25 a 0,65.
+- **Papel na seleção:** os acertos dele definem o grupo de onde saem as redundantes e os erros definem o grupo de onde saem as ruidosas. Por isso, quanto mais fraco o classificador, menos precisa é a separação entre os dois grupos. O Movie Review é o caso mais fraco (75,6 de macro-F1).
 
 ### 3.2 A filtragem limpa o conjunto que sobra?
 
@@ -221,7 +227,7 @@ Erro por tipo de remoção e padrão de concordância:
 | Dataset | Δ F1 = bench − com filtro (IC95) | IC Bonferroni | p Bonf. | p BH | Conclusão (IC95) | Humano: NoSel → biO-IS (Cunha et al., não pareado) |
 |---|---|---|---|---|---|---|
 | Movie Review | +0,72 [+0,19; +1,26] | [−0,01; +1,46] | 0,0529 | 0,0132 | benchmark melhor | 89.0(0.7) → 88.3(0.4) |
-| AGNews | +4,00 [+3,65; +4,34] | [+3,46; +4,54] | <10⁻⁴ | <10⁻⁴ | benchmark melhor | 94.2(0.2) → 94.0(0.2) |
+| AGNews | +6,53 [+6,16; +6,89] | [+5,95; +7,10] | <10⁻⁴ | <10⁻⁴ | benchmark melhor | 94.2(0.2) → 94.0(0.2) |
 | Books | +15,11 [+14,54; +15,69] | [+14,32; +15,91] | <10⁻⁴ | <10⁻⁴ | benchmark melhor | 87.2(0.6) → 86.5(0.6) |
 | DBLP | +20,26 [+19,76; +20,75] | [+19,58; +20,94] | <10⁻⁴ | <10⁻⁴ | benchmark melhor | 81.4(0.5) → 80.5(0.6) |
 
@@ -307,7 +313,7 @@ DBLP:
   - −0,88 em Books;
   - −0,66 em DBLP;
   - +0,67 em AGNews.
-  Essas perdas são uma ordem de grandeza menores que a distância para a anotação humana (de 4,5 a 19,9 pp, §2.5).
+  Essas perdas são bem menores que a distância para a anotação humana nos datasets multiclasse (de 7,1 a 19,9 pp, §2.5).
 - **Por dataset, com Bonferroni:**
   - **AGNews:** nenhum ponto perde. Todos ficam de 0,47 a 0,70 pp acima do sem filtro, mas nenhum ganho resiste à correção (o mais forte, β = 0,55, tem p = 0,052). Dá para treinar com 32% dos dados sem perda.
   - **Books:** todos os pontos são equivalentes ao sem filtro. A perda máxima é de 0,88 pp, com 26,4% dos dados.
@@ -545,4 +551,21 @@ DBLP:
   - `ConfusabilityAnalyzer` calcula o erro condicional, a matriz condicional, a entropia e os pares.
 - **Consenso de 2 fases da rodada final:** gerado com `scripts/run_consensus_two_phase.py --run <09-18> --skip-baseline`. Grava `fold_*/filtered/consensus/`.
 - **Notebook:** [resultados_rq1_rq3.ipynb](resultados_rq1_rq3.ipynb). Gera todas as tabelas deste relatório; as tabelas Markdown foram montadas a partir dos CSVs em `data/results/mq/resultados_rq1_rq3/`.
+- **κ de Cohen par a par (apêndice da 5.1):**
+  - figura com os 4 datasets em [figuras/cohens_kappa_pares.png](figuras/cohens_kappa_pares.png);
+  - uma figura por dataset em `data/results/<dataset>/<data>/consensus/cohens_kappa.png`;
+  - tabela em `data/results/mq/resultados_rq1_rq3/rq1_cohen_pares.csv`.
+
+  | Dataset | DeepSeek-R1 × Qwen3 | DeepSeek-R1 × Llama 3.1 | Qwen3 × Llama 3.1 |
+  |---|---|---|---|
+  | Movie Review | 0,857 | 0,811 | 0,858 |
+  | AGNews | 0,919 | 0,889 | 0,914 |
+  | Books | 0,723 | 0,702 | 0,808 |
+  | DBLP | 0,795 | 0,684 | 0,741 |
+
+  O par DeepSeek-R1 × Llama 3.1 é o de menor concordância nos quatro datasets.
+- **Matrizes de confusão condicionais (apêndice da 5.3):** ficam em `figures/` da execução de 2 fases mais recente (`books/two_phase/2026-09-18_17-03-05/figures/` e `dblp/two_phase/2026-09-18_17-03-44/figures/`).
+  - `confusao_condicional_consenso.png`: o consenso, igual à Tabela 4.5.
+  - `confusao_condicional_modelos.png`: os três modelos lado a lado.
+  - As duas usam a anotação restrita, só com os textos em que a classe verdadeira está entre as 3 candidatas, e são normalizadas por linha.
 - **Curva da biO-IS:** tabela em `data/results/mq/resultados_rq1_rq3/rq2_curva.csv`; figura em [figuras/curva_bio_is.png](figuras/curva_bio_is.png). Os pontos vêm das subpastas `beta0.35/` a `beta0.65/` de `finetuning/v*_roberta-base_bio-is_curva-beta/`, lidas por `SupervisionComparison.locate_curve_points`.
