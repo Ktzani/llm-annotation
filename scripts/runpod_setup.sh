@@ -139,7 +139,10 @@ poetry install
 
 # -------------------------------------------------------------
 step "7. Ollama + modelos (com num_thread limitado à cota de CPU)"
-command -v ollama > /dev/null || curl -fsSL https://ollama.com/install.sh | sh
+# Versão fixa: o comportamento do raciocínio (think) muda entre versões; todas as execuções usam a mesma
+OLLAMA_VERSION="${OLLAMA_VERSION:-0.17.1}"
+ollama --version 2>&1 | grep -q "$OLLAMA_VERSION" || curl -fsSL https://ollama.com/install.sh | OLLAMA_VERSION="$OLLAMA_VERSION" sh
+ollama --version 2>&1 | grep -q "$OLLAMA_VERSION" || { echo "ERRO: Ollama instalado não é a versão $OLLAMA_VERSION" >&2; exit 1; }
 tmux kill-session -t ollama 2>/dev/null || true
 tmux new-session -d -s ollama "source $WORKSPACE/env.sh; CUDA_VISIBLE_DEVICES=$GPU ollama serve; exec bash"
 for _ in $(seq 1 60); do curl -sf localhost:11434/api/tags > /dev/null && break; sleep 1; done
