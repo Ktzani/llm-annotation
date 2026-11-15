@@ -17,6 +17,7 @@ from src.config.human_validation import (
     VALIDATION_DATASETS,
     SMTP_DEFAULT_HOST,
     SMTP_DEFAULT_PORT,
+    RESEND_DEFAULT_SENDER,
 )
 from src.systems.human_validation_system.pipeline import HumanValidationPipeline
 
@@ -29,7 +30,7 @@ class InterfaceSettings:
     - Definir quais experimentos (dataset -> data) a interface conduz
     - Guardar os avaliadores de cada dataset e os códigos de acesso (vindos do .env)
     - Resolver o caminho do banco SQLite (padrão: `data/validacao_humana/validacao_humana.db`)
-    - Guardar destinatário e credenciais SMTP do aviso por email (vindos do .env)
+    - Guardar destinatário e credenciais (Resend ou SMTP) do aviso por email (vindos do .env)
     """
 
     def __init__(
@@ -47,6 +48,8 @@ class InterfaceSettings:
         smtp_port: int = SMTP_DEFAULT_PORT,
         smtp_user: Optional[str] = None,
         smtp_password: Optional[str] = None,
+        resend_api_key: Optional[str] = None,
+        resend_sender: str = RESEND_DEFAULT_SENDER,
         evaluators_by_dataset: Optional[Dict[str, List[str]]] = None,
     ):
         if not admin_code:
@@ -75,6 +78,8 @@ class InterfaceSettings:
         self.smtp_port = smtp_port
         self.smtp_user = smtp_user
         self.smtp_password = smtp_password
+        self.resend_api_key = resend_api_key
+        self.resend_sender = resend_sender
         logger.debug(f"InterfaceSettings: {list(experiments)} | banco em {self.db_path}")
 
     def evaluators_for(self, dataset: str) -> List[str]:
@@ -118,4 +123,6 @@ class InterfaceSettings:
             smtp_user=os.getenv("HV_SMTP_USER") or None,
             # Senhas de app do Gmail são exibidas com espaços; o SMTP aceita sem eles
             smtp_password=(os.getenv("HV_SMTP_PASSWORD") or "").replace(" ", "") or None,
+            resend_api_key=os.getenv("HV_RESEND_API_KEY") or None,
+            resend_sender=os.getenv("HV_RESEND_FROM") or RESEND_DEFAULT_SENDER,
         )

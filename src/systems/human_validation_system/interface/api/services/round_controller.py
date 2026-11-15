@@ -69,7 +69,8 @@ class RoundController:
         self.consensus = ConsensusFileManager(settings.results_dir)
         self.text_cleaner = DisplayTextCleaner()
         self.notifier = notifier or EmailNotifier(
-            settings.notify_email, settings.smtp_host, settings.smtp_port, settings.smtp_user, settings.smtp_password
+            settings.notify_email, settings.smtp_host, settings.smtp_port, settings.smtp_user, settings.smtp_password,
+            settings.resend_api_key, settings.resend_sender,
         )
         # Serializa abrir/fechar (botão do admin x verificação automática); reentrante pois fechar abre a próxima
         self._lock = threading.RLock()

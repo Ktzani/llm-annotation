@@ -103,9 +103,13 @@ AUTO_START_NEXT_ROUND = True
 # (tempo para revisão; 0 desliga o fechamento automático)
 REVIEW_WINDOW_MINUTES = 5
 AUTO_CLOSE_CHECK_SECONDS = 30
-# Aviso por email ao fechar uma rodada (SMTP; credenciais no .env: HV_NOTIFY_EMAIL, HV_SMTP_*)
+# Aviso por email ao fechar uma rodada (credenciais no .env: HV_NOTIFY_EMAIL + HV_RESEND_* ou HV_SMTP_*)
 SMTP_DEFAULT_HOST = "smtp.gmail.com"
 SMTP_DEFAULT_PORT = 587
+# Resend (HTTPS): usado quando HV_RESEND_API_KEY existe, pois o Railway Hobby bloqueia SMTP.
+# O remetente de teste só entrega para o email dono da conta Resend
+RESEND_API_URL = "https://api.resend.com/emails"
+RESEND_DEFAULT_SENDER = "Validação humana <onboarding@resend.dev>"
 INTERFACE_HOST = "0.0.0.0"
 INTERFACE_PORT = 8001
 # Códigos de acesso vêm do .env (nunca do repositório):

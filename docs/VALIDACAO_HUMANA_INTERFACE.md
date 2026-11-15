@@ -72,7 +72,19 @@ O **Painel por dataset** no `/admin` mostra, para cada rodada fechada, duração
 ## Aviso por email
 
 Ao fechar uma rodada, o app envia um email com a duração, o critério de parada por grupo e se a próxima
-rodada já foi aberta. Configure no `.env`:
+rodada já foi aberta. Há dois canais; com a chave do Resend, ele tem prioridade.
+
+**Resend (HTTPS), obrigatório no Railway Hobby**, que bloqueia SMTP (portas 25/465/587/2525 só abrem no Pro):
+
+```
+HV_NOTIFY_EMAIL=<email dono da conta Resend>
+HV_RESEND_API_KEY=<chave criada em https://resend.com/api-keys>
+```
+
+Sem domínio verificado, o remetente padrão `onboarding@resend.dev` só entrega para o email dono da conta
+Resend; para outro remetente, verifique um domínio e defina `HV_RESEND_FROM`.
+
+**SMTP (Gmail), para uso local:**
 
 ```
 HV_NOTIFY_EMAIL=<quem recebe>
@@ -81,7 +93,8 @@ HV_SMTP_PASSWORD=<senha de app do Gmail>
 ```
 
 A senha de app é criada em https://myaccount.google.com/apppasswords (exige verificação em duas etapas).
-Sem essas variáveis, o aviso fica desativado e só aparece no log.
+Sem essas variáveis, o aviso fica desativado e só aparece no log. Falhas de envio aparecem nos logs como
+`Falha ao enviar email via <canal>`.
 
 ## Deploy no Railway (recomendado)
 
@@ -104,9 +117,8 @@ uma única instância). Custo esperado: plano Hobby (US$5/mês com US$5 de uso i
    HV_EVALUATOR_DBLP_1_CODE=<código>
    HV_EVALUATOR_DBLP_2_CODE=<código>
    HV_EVALUATOR_DBLP_3_CODE=<código>
-   HV_NOTIFY_EMAIL=<quem recebe o aviso>
-   HV_SMTP_USER=<gmail que envia>
-   HV_SMTP_PASSWORD=<senha de app>
+   HV_NOTIFY_EMAIL=<email dono da conta Resend>
+   HV_RESEND_API_KEY=<chave do Resend>
    HV_INCREMENT_SIZE=10
    ```
 5. **Endereço público:** *Settings → Networking → Generate Domain* → `https://<nome>.up.railway.app`.

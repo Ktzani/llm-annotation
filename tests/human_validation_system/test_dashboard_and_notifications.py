@@ -146,6 +146,32 @@ def test_email_notifier_is_disabled_without_credentials():
     notifier.send("assunto", "corpo")  # não envia nem levanta erro
 
 
+def test_email_notifier_prefers_resend_when_key_exists(monkeypatch):
+    notifier = EmailNotifier("admin@exemplo.com", "smtp.gmail.com", 587, None, None, resend_api_key="re_123")
+    assert notifier.enabled and notifier.channel == "resend"
+
+    captured = {}
+
+    class FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+    def fake_urlopen(request, timeout):
+        captured["request"] = request
+        return FakeResponse()
+
+    monkeypatch.setattr(
+        "src.systems.human_validation_system.interface.api.services.email_notifier.urllib.request.urlopen", fake_urlopen
+    )
+    notifier._deliver("assunto", "corpo")
+    request = captured["request"]
+    assert request.get_header("Authorization") == "Bearer re_123"
+    assert b'"to": ["admin@exemplo.com"]' in request.data
+
+
 def test_smtp_settings_from_env(monkeypatch):
     monkeypatch.setenv("HV_NOTIFY_EMAIL", "admin@exemplo.com")
     monkeypatch.setenv("HV_SMTP_USER", "remetente@gmail.com")
@@ -157,6 +183,10 @@ def test_smtp_settings_from_env(monkeypatch):
     settings = InterfaceSettings.from_env({DATASET: DATE}, "data/results")
     assert settings.smtp_password == "abcdefghijklmnop"
     assert settings.notify_email == "admin@exemplo.com"
+    assert settings.resend_api_key is None
+
+    monkeypatch.setenv("HV_RESEND_API_KEY", "re_123")
+    assert InterfaceSettings.from_env({DATASET: DATE}, "data/results").resend_api_key == "re_123"
 
 
 def test_experiments_come_from_one_variable_per_dataset(monkeypatch):
