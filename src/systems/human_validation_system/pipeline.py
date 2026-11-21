@@ -15,6 +15,8 @@ no registro, então pode mudar entre rodadas (ex.: 10 -> 20).
 A partir da 2ª rodada, só os grupos que ainda não atingiram o critério de
 parada são sorteados: o status vem da estimativa da última rodada
 (`run_human_validation.py`, mode="estimativa"), que precisa existir antes do pedido.
+As vagas dos grupos parados vão para os ativos (REDISTRIBUTE_STOPPED_QUOTA):
+com incremento 10, são 15 por grupo com 2 ativos e 30 com 1.
 
 Estrutura de saída (em ``data/validacao_humana/<dataset>/<date>/``, irmã de ``data/results``:
 as pastas de experimento guardam só os resultados de anotação/consenso/fine-tuning):
@@ -44,6 +46,7 @@ from src.config.human_validation import (
     INITIAL_ROUND_SIZE,
     INSUFFICIENT_INFO_OPTION,
     MIN_PER_CLASS_FIRST_ROUND,
+    REDISTRIBUTE_STOPPED_QUOTA,
 )
 from src.systems.human_validation_system.estimation.stopping_status import StoppingStatusReader
 from src.systems.human_validation_system.output.anonymizer import AnonymousIdGenerator
@@ -77,6 +80,7 @@ class HumanValidationConfig:
         overwrite_guide: bool = False,
         skip_stopped_groups: bool = True,
         export_sheets: bool = True,
+        redistribute_stopped_quota: bool = REDISTRIBUTE_STOPPED_QUOTA,
     ):
         self.dataset_name = dataset_name
         # Data explícita: `latest` (por mtime) pode apontar para outro experimento
@@ -93,6 +97,8 @@ class HumanValidationConfig:
         self.skip_stopped_groups = skip_stopped_groups
         # False na interface web: as respostas vêm do banco, não de planilhas
         self.export_sheets = export_sheets
+        # Mantém a carga da rodada quando grupos param (10 -> 15 com 2 ativos, -> 30 com 1)
+        self.redistribute_stopped_quota = redistribute_stopped_quota
 
 
 class HumanValidationPipeline:
@@ -197,9 +203,17 @@ class HumanValidationPipeline:
             logger.info(f"Grupos que já atingiram o critério de parada (não sorteados): {stopped}")
         return [g for g in groups if g not in stopped]
 
+    def _round_size(self, round_number: int, groups: List[str]) -> int:
+        """Documentos por grupo ativo; com redistribuição, as vagas dos grupos parados vão para os ativos."""
+        if round_number == 1:
+            return self.config.initial_size
+        if not self.config.redistribute_stopped_quota:
+            return self.config.increment_size
+        return self.config.increment_size * len(self.sampler.GROUPS) // len(groups)
+
     def _draw_round(self, pool: pd.DataFrame, round_number: int, groups: List[str], anon_ids: Dict[str, str]) -> None:
         """Sorteia a próxima rodada e a acrescenta ao registro."""
-        size = self.config.initial_size if round_number == 1 else self.config.increment_size
+        size = self._round_size(round_number, groups)
         selected, allocation = self.sampler.next_round(
             pool, self.ledger.delivered_ids(), size, self.ledger.min_per_class if round_number == 1 else 0, groups
         )

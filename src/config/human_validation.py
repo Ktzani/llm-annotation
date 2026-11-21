@@ -12,6 +12,10 @@ HUMAN_VALIDATION_SEED = 42
 INITIAL_ROUND_SIZE = 30
 INCREMENT_SIZE = 10
 
+# Quando um grupo para, suas vagas vão para os ativos: a carga da rodada fica em
+# INCREMENT_SIZE x 3 grupos (3 ativos: 10 cada; 2 ativos: 15 cada; 1 ativo: 30)
+REDISTRIBUTE_STOPPED_QUOTA = True
+
 # Mínimo por classe na 1ª rodada (o estimador de variância estratificado exige n_h >= 2)
 MIN_PER_CLASS_FIRST_ROUND = 2
 

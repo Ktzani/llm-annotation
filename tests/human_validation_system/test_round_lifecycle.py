@@ -142,3 +142,30 @@ def test_outputs_stay_out_of_experiment_folder(client, admin, evaluators, result
     assert client.app.state.settings.db_path == validation / "validacao_humana.db"
     assert (validation / DATASET / DATE / f"validacao_consolidada_{DATASET}.xlsx").exists()
     assert sorted(p.name for p in (results_dir / DATASET / DATE).iterdir()) == ["consensus"]
+
+
+def test_stopped_group_quota_goes_to_active_groups(client, admin, evaluators, monkeypatch):
+    """Com incremento 10: 2 grupos ativos recebem 15 cada; 1 grupo ativo recebe 30."""
+    import json
+    from collections import Counter
+
+    from src.config.human_validation import INCREMENT_SIZE
+    from src.systems.human_validation_system.estimation.stopping_status import StoppingStatusReader
+
+    stopped = []
+    monkeypatch.setattr(StoppingStatusReader, "stopped_groups", lambda self, d, n: list(stopped))
+    ledger_path = client.app.state.controller.validation_dir(DATASET) / "amostragem.json"
+
+    def close_round_and_read_next():
+        for headers in evaluators.values():
+            answer_all(client, headers)
+        client.post(f"/api/admin/{DATASET}/fechar", headers=admin)
+        last = json.loads(ledger_path.read_text(encoding="utf-8"))["rounds"][-1]
+        return last["size_per_group"], Counter(row["grupo"] for row in last["rows"])
+
+    client.post(f"/api/admin/{DATASET}/rodadas", headers=admin)
+    assert close_round_and_read_next() == (INCREMENT_SIZE, {"A": 10, "B": 10, "C": 10})
+    stopped.append("A")
+    assert close_round_and_read_next() == (15, {"B": 15, "C": 15})
+    stopped.append("C")
+    assert close_round_and_read_next() == (30, {"B": 30})
