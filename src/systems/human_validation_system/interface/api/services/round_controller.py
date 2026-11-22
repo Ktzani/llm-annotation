@@ -154,7 +154,8 @@ class RoundController:
                 "status": primary["status"],
                 "metricas": {
                     m: {k: float(by_metric.loc[m, k]) for k in ("theta", "ic_inferior", "ic_superior", "moe")}
-                    for m in (PRIMARY_METRIC, *SituationClassifier.SITUATIONS)
+                    # Resumos antigos podem não ter desfechos criados depois (ex.: unresolved_disagreement)
+                    for m in (PRIMARY_METRIC, *SituationClassifier.SITUATIONS) if m in by_metric.index
                 },
             }
         stopped = all(g["status"] == StoppingStatusReader.STOP for g in groups.values())

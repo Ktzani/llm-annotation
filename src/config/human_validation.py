@@ -42,7 +42,8 @@ ESTIMATION_METRICS = {
     # Situações do RQ4 (denominador: todos os documentos completos)
     "benchmark_correct": "humanos convergem para o rótulo de referência",
     "benchmark_mislabeling": "humanos convergem para outra classe",
-    "genuine_ambiguity": "avaliadores sem maioria ou lado oposto do conflito defensável para a maioria",
+    "genuine_ambiguity": "maioria escolheu um rótulo e também considera o lado oposto do conflito adequado",
+    "unresolved_disagreement": "sem maioria: os três avaliadores escolheram rótulos distintos",
     "insufficient_information": "maioria escolheu 'informação insuficiente'",
     # Obs.: acerto_referencia e acerto_llm contam documentos sem maioria como 0
 }

@@ -2,7 +2,7 @@
 Pipeline de ESTIMAÇÃO da validação humana (margem de erro e critério de parada).
 
 Lê as planilhas preenchidas de todas as rodadas entregues, consolida os
-avaliadores por maioria, classifica cada documento nas quatro situações do RQ4
+avaliadores por maioria, classifica cada documento nos cinco desfechos do RQ4
 (SituationClassifier) e estima, por grupo de concordância, cada métrica com o
 estimador estratificado por classe (pesos N_h do `amostragem.json`) e IC de
 Wald. O grupo pode parar quando a métrica principal tem MoE <= ε e ao menos

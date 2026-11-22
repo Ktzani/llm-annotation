@@ -1,5 +1,5 @@
 """
-Maioria entre os três avaliadores e classificação nas quatro situações (com fronteiras).
+Maioria entre os três avaliadores e classificação nos cinco desfechos (com fronteiras).
 """
 import pandas as pd
 import pytest
@@ -69,8 +69,10 @@ def test_three_way_divergence_counts_as_not_confirmed():
     ([("history", "sim", "romance"), ("history", *NO), ("romance", *NO)], "genuine_ambiguity"),
     # alternativa fora do conflito não gera ambiguidade
     ([("romance", "sim", "poetry"), ("romance", "sim", "poetry"), ("romance", *NO)], "benchmark_mislabeling"),
-    # avaliadores não convergem
-    ([("romance", *NO), ("history", *NO), ("poetry", *NO)], "genuine_ambiguity"),
+    # avaliadores não convergem: ausência de decisão, não ambiguidade
+    ([("romance", *NO), ("history", *NO), ("poetry", *NO)], "unresolved_disagreement"),
+    ([("romance", "sim", "history"), ("history", "sim", "romance"), ("poetry", *NO)], "unresolved_disagreement"),
+    ([(UNDECIDABLE, *NO), ("romance", *NO), ("history", *NO)], "unresolved_disagreement"),
     # não é possível decidir
     ([(UNDECIDABLE, *NO), (UNDECIDABLE, *NO), ("romance", *NO)], "insufficient_information"),
     ([(UNDECIDABLE, *NO), ("romance", *NO), ("romance", *NO)], "benchmark_mislabeling"),
@@ -98,5 +100,7 @@ def test_situation_indicators_are_exclusive():
         ("b", "history", "romance", [("romance", *NO)] * 3),
         ("c", "history", "romance", [("romance", *NO), ("history", *NO), ("poetry", *NO)]),
         ("d", "history", "romance", [(UNDECIDABLE, *NO)] * 3),
+        ("e", "history", "romance", [("romance", "sim", "history"), ("romance", "sim", "history"), ("romance", *NO)]),
     ])
     assert (docs[list(SituationClassifier.SITUATIONS)].sum(axis=1) == 1).all()
+    assert set(docs["situacao"]) == set(SituationClassifier.SITUATIONS)

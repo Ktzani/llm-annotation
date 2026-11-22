@@ -197,3 +197,19 @@ def test_experiments_come_from_one_variable_per_dataset(monkeypatch):
 
     monkeypatch.setenv("HV_EXPERIMENT_DBLP", "2026-09-13_18-46-30")
     assert InterfaceSettings.experiments_from_env() == {"books": "2026-09-13_07-19-54", "dblp": "2026-09-13_18-46-30"}
+
+
+def test_old_summary_without_new_outcome_still_renders(client, admin, evaluators, notifier):
+    """Resumo gravado antes de unresolved_disagreement existir: o status não quebra, só omite a métrica."""
+    import pandas as pd
+
+    from src.systems.human_validation_system.estimation.stopping_status import StoppingStatusReader
+
+    run_round(client, admin, evaluators)
+    path = StoppingStatusReader.summary_path(client.app.state.controller.validation_dir(DATASET), 1)
+    summary = pd.read_csv(path)
+    summary[summary["metrica"] != "unresolved_disagreement"].to_csv(path, index=False)
+
+    result = state_of(client, admin, DATASET)["resultado"]
+    assert "unresolved_disagreement" not in result["grupos"]["A"]["metricas"]
+    assert "acerto_referencia" in result["grupos"]["A"]["metricas"]

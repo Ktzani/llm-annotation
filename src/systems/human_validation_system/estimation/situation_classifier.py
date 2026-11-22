@@ -1,5 +1,5 @@
 """
-Situation Classifier - Classifica cada documento nas quatro situações do RQ4
+Situation Classifier - Classifica cada documento nos cinco desfechos do RQ4
 """
 from collections import Counter
 from typing import Dict, Optional
@@ -18,15 +18,22 @@ class SituationClassifier:
     a maioria escolheu a referência, e a referência caso contrário; se referência
     e LLMs coincidem (grupo C), é o alternativo com mais apoio.
 
-    Regras (em ordem):
+    Regras (em ordem; a primeira que se aplica decide):
     - insufficient_information: maioria escolheu a opção de informação insuficiente
-    - genuine_ambiguity: sem maioria (cada avaliador escolheu um rótulo) ou
-      lado oposto do conflito com apoio da maioria
+    - unresolved_disagreement: sem maioria (cada avaliador escolheu um rótulo); é ausência de
+      decisão, não evidência de ambiguidade, por isso fica separado de genuine_ambiguity
+    - genuine_ambiguity: maioria escolheu um rótulo e o lado oposto do conflito tem apoio da maioria
     - benchmark_correct: maioria = referência
     - benchmark_mislabeling: maioria = outra classe
     """
 
-    SITUATIONS = ("benchmark_correct", "benchmark_mislabeling", "genuine_ambiguity", "insufficient_information")
+    SITUATIONS = (
+        "benchmark_correct",
+        "benchmark_mislabeling",
+        "genuine_ambiguity",
+        "unresolved_disagreement",
+        "insufficient_information",
+    )
 
     def __init__(self, n_evaluators: int, insufficient_option: str):
         self.min_support = n_evaluators // 2 + 1
@@ -56,7 +63,7 @@ class SituationClassifier:
         if doc["rotulo_humano"] == self.insufficient_option:
             return {"situacao": "insufficient_information", "rotulo_oposto": np.nan, "apoio_oposto": np.nan}
         if pd.isna(doc["rotulo_humano"]):
-            return {"situacao": "genuine_ambiguity", "rotulo_oposto": np.nan, "apoio_oposto": np.nan}
+            return {"situacao": "unresolved_disagreement", "rotulo_oposto": np.nan, "apoio_oposto": np.nan}
 
         support = self._support(answers)
         majority = doc["rotulo_humano"]

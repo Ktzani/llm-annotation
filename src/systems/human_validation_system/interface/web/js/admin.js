@@ -10,6 +10,7 @@ const SITUATIONS = {
   benchmark_correct: "Benchmark correto",
   benchmark_mislabeling: "Benchmark mislabeling",
   genuine_ambiguity: "Ambiguidade genuína",
+  unresolved_disagreement: "Discordância não resolvida",
   insufficient_information: "Informação insuficiente",
 };
 const PRIMARY = "acerto_referencia";
@@ -20,6 +21,7 @@ const METRIC_GROUPS = [
     benchmark_correct: "Benchmark correto",
     benchmark_mislabeling: "Benchmark mislabeling",
     genuine_ambiguity: "Ambiguidade genuína",
+    unresolved_disagreement: "Discordância não resolvida",
     insufficient_information: "Informação insuficiente",
   }],
   ["Ambiguidade declarada", { outro_rotulo_possivel: "Outro rótulo possível" }],
@@ -43,7 +45,8 @@ function duration(seconds) {
 const since = (iso) => duration((Date.now() - new Date(iso).getTime()) / 1000);
 const when = (iso) => (iso ? new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—");
 
-const pm = (m) => `${pct(m.theta)} ± ${pct(m.moe)}`;
+// Sem a métrica (resumo de rodada anterior à criação do desfecho): mostra "—"
+const pm = (m) => (m ? `${pct(m.theta)} ± ${pct(m.moe)}` : "—");
 const pct = (v) => (v === null || v === undefined || Number.isNaN(v) ? "—" : `${(100 * v).toFixed(1)}%`);
 const num = (v) => (v === null || v === undefined || Number.isNaN(v) ? "—" : v.toFixed(2));
 
