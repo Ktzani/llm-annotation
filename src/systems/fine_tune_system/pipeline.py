@@ -34,6 +34,10 @@ from src.systems.fine_tune_system.fine_tune.fine_tune_factory import FineTunerFa
 from src.systems.llm_annotation_system.perspectivism.pipeline import PerspectivismConfig, PerspectivismPipeline
 from src.systems.llm_annotation_system.perspectivism.perspectivism_dataset_builder import PerspectivismDatasetBuilder
 from src.systems.llm_annotation_system.soft_labels.soft_label_dataset_builder import SoftLabelDatasetBuilder
+from src.systems.llm_annotation_system.soft_labels.control_target_builder import (
+    LabelSmoothingTargetBuilder,
+    ShuffledMinorityTargetBuilder,
+)
 from src.systems.llm_annotation_system.consensus.pipeline import ConsensusConfig, ConsensusPipeline
 
 from src.systems.fine_tune_system.core.hf_tokenizer import HFTokenizer
@@ -136,9 +140,12 @@ class FineTuningConfig:
 class FineTuningPipeline:
     """Pipeline principal para fine-tuning"""
 
-    # Regimes de treino (RQ6): majoritário, majoritário replicado, perspectivista e soft labels
+    # Regimes de treino (RQ6): majoritário, majoritário replicado, perspectivista, soft labels e controles (label smoothing, minoria embaralhada)
     REPLICATION_FACTOR = 3  # majoritário replicado: uma cópia por LLM anotadora
     DUPLICATE_ID_MODES = {"aggregated_replicated", "perspectivism"}
+    CONTROL_MODES = {"label_smoothing", "shuffled_minority"}  # diferem de soft_labels só nos textos 2x1
+    SOFT_TARGET_MODES = {"soft_labels", *CONTROL_MODES}  # alvo em distribuição (entropia cruzada suave)
+    SHUFFLED_MINORITY_MAPPING = "shuffled_minority_mapping.csv"
     
     def __init__(self, config: FineTuningConfig):
         self.config = config
@@ -532,12 +539,28 @@ class FineTuningPipeline:
             "aggregated_replicated": self.load_replicated_data,
             "perspectivism": self.load_perspectivism_data,
             "soft_labels": self.load_soft_label_data,
+            "label_smoothing": self.load_soft_label_data,
+            "shuffled_minority": self.load_soft_label_data,
         }
-        return self.remove_invalid_vote_instances(loaders[self.config.training_mode]())
+        df_annotations = self.remove_invalid_vote_instances(loaders[self.config.training_mode]())
+        # Controles: o alvo é derivado da distribuição dos votos já sem textos inválidos (só 3x0 e 2x1)
+        if self.config.training_mode in self.CONTROL_MODES:
+            df_annotations = self.control_target_builder().transform(df_annotations)
+        return df_annotations
+
+    def control_target_builder(self):
+        """Builder do alvo de controle; a minoria embaralhada salva o mapeamento texto → classe sorteada na pasta da execução"""
+        if self.config.training_mode == "label_smoothing":
+            return LabelSmoothingTargetBuilder()
+        return ShuffledMinorityTargetBuilder(
+            classes=SoftLabelDatasetBuilder(self.config.dataset_name).classes,
+            seed=self.config.seed,
+            mapping_path=self.fine_tune_output_dir / self.SHUFFLED_MINORITY_MAPPING,
+        )
 
     @property
     def trainer_builder(self) -> type[TrainerBuilder]:
-        return SoftLabelTrainerBuilder if self.config.training_mode == "soft_labels" else TrainerBuilder
+        return SoftLabelTrainerBuilder if self.config.training_mode in self.SOFT_TARGET_MODES else TrainerBuilder
 
     def _results_path(self, output_dir: Path) -> Path:
         """Arquivo de resultados do treino (sufixo por modo para não sobrescrever o agregado)"""
@@ -636,8 +659,8 @@ class FineTuningPipeline:
             with open(output_path, encoding="utf-8") as f:
                 return json.load(f)
 
-        # Soft labels: o rótulo de treino passa a ser a distribuição dos votos (avaliação segue com o benchmark label)
-        if training_mode == "soft_labels":
+        # Soft labels e controles: o rótulo de treino passa a ser a distribuição (avaliação segue com o benchmark label)
+        if training_mode in self.SOFT_TARGET_MODES:
             df_annotations = df_annotations.assign(label=df_annotations["soft_label"]).drop(columns="soft_label")
 
         cv_aligned_annotaded_splits = self.align_datasets_splits(

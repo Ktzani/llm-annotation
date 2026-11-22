@@ -1,8 +1,8 @@
-"""Regime Comparison - Compara por fold os quatro regimes de treino (RQ6) entre si e com o benchmark"""
+"""Regime Comparison - Compara por fold os regimes de treino da RQ6 (e os controles de soft labels) entre si e com o benchmark"""
 
 import json
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 
 import pandas as pd
 from loguru import logger
@@ -11,7 +11,7 @@ from src.systems.fine_tune_system.core.run_versioner import FineTuningRunVersion
 from src.systems.fine_tune_system.evaluation.paired_comparator import PairedSystemComparator
 from src.utils.get_latest_results_date import get_latest_results_date
 
-REGIMES = ["aggregated", "aggregated_replicated", "perspectivism", "soft_labels"]
+REGIMES = ["aggregated", "aggregated_replicated", "perspectivism", "soft_labels", "label_smoothing", "shuffled_minority"]
 BENCHMARK = "benchmark"
 
 
@@ -29,6 +29,8 @@ class RegimeComparison:
         ("perspectivism", "aggregated_replicated"),  # preservar a divergência, mesmo nº de linhas
         ("soft_labels", "aggregated"),               # preservar a divergência, uma linha por texto
         ("soft_labels", "perspectivism"),            # duas formas de preservar
+        ("soft_labels", "label_smoothing"),          # minoria real × massa espalhada igualmente (só nos 2x1)
+        ("soft_labels", "shuffled_minority"),        # minoria real × minoria sorteada (só nos 2x1)
     ]
     BENCHMARK_CONTRASTS = [(BENCHMARK, regime) for regime in REGIMES]
     CALIBRATION_METRICS = ["ece", "brier"]
@@ -53,16 +55,25 @@ class RegimeComparison:
             date = get_latest_results_date(self.results_dir, dataset)
         return self.results_dir / dataset / date
 
+    @staticmethod
+    def run_info(run_dir: Path) -> Tuple[str, bool, bool]:
+        """(training_mode, com IS, curva) do config.json ou, nas execuções antigas sem ele, do nome da pasta"""
+        config_path = run_dir / "config.json"
+        if config_path.exists():
+            config = json.loads(config_path.read_text(encoding="utf-8"))
+            selection = config.get("instance_selection", {})
+            return config.get("training_mode", "aggregated"), bool(selection.get("enabled")), bool(selection.get("sweep"))
+        name = run_dir.name
+        mode = next((m for m in REGIMES[1:] if m in name), "aggregated")
+        return mode, "bio-is" in name, "curva" in name
+
     def locate_runs(self, dataset: str) -> Dict[str, Path]:
         """Última execução (maior vN) concluída, sem seleção de instâncias, de cada regime"""
         runs = {}
-        for config_path in (self.annotation_dir(dataset) / "finetuning").glob("v*/config.json"):
-            run_dir = config_path.parent
-            config = json.loads(config_path.read_text(encoding="utf-8"))
-            mode = config.get("training_mode")
-            if mode not in self.REGIMES or config.get("instance_selection", {}).get("enabled"):
-                continue
-            if not any(run_dir.glob("*_fine_tuning_results.json")):
+        for results_path in (self.annotation_dir(dataset) / "finetuning").glob("v*/*_fine_tuning_results.json"):
+            run_dir = results_path.parent
+            mode, with_is, _ = self.run_info(run_dir)
+            if mode not in self.REGIMES or with_is:
                 continue
             if mode not in runs or self._version(run_dir) > self._version(runs[mode]):
                 runs[mode] = run_dir

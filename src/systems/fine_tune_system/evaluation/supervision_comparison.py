@@ -109,16 +109,7 @@ class SupervisionComparison(RegimeComparison):
     @staticmethod
     def _system(run_dir: Path) -> Optional[str]:
         """aggregated / aggregated_bio-is a partir do config.json ou, nas execuções antigas sem ele, do nome da pasta"""
-        config_path = run_dir / "config.json"
-        if config_path.exists():
-            config = json.loads(config_path.read_text(encoding="utf-8"))
-            mode = config.get("training_mode", AGGREGATED)
-            with_is = bool(config.get("instance_selection", {}).get("enabled"))
-            curve = bool(config.get("instance_selection", {}).get("sweep"))
-        else:
-            name = run_dir.name
-            mode = next((m for m in ["aggregated_replicated", "perspectivism", "soft_labels"] if m in name), AGGREGATED)
-            with_is, curve = "bio-is" in name, "curva" in name
+        mode, with_is, curve = RegimeComparison.run_info(run_dir)
         if mode != AGGREGATED or curve:
             return None
         return AGGREGATED_IS if with_is else AGGREGATED

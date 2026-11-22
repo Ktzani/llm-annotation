@@ -51,13 +51,18 @@ class FineTuningRequest(BaseModel):
         description="Tipo de execução: 'cross-validation' ou 'single' (teste rápido)",
     )
 
-    training_mode: Literal["aggregated", "aggregated_replicated", "perspectivism", "soft_labels"] = Field(
+    training_mode: Literal[
+        "aggregated", "aggregated_replicated", "perspectivism", "soft_labels", "label_smoothing", "shuffled_minority"
+    ] = Field(
         default="aggregated",
         description=(
             "Regime de rotulagem do treino: 'aggregated' (voto majoritário, uma linha por texto), "
             "'aggregated_replicated' (voto majoritário repetido 3× — controle da repetição), "
-            "'perspectivism' (uma linha por anotação de LLM) ou 'soft_labels' (uma linha por texto "
-            "com a distribuição dos votos). Textos com voto inválido (-1) de alguma LLM ficam de fora em todos."
+            "'perspectivism' (uma linha por anotação de LLM), 'soft_labels' (uma linha por texto "
+            "com a distribuição dos votos) e os controles 'label_smoothing' (nos 2x1, a fração da minoria "
+            "dividida igualmente entre todas as outras classes) e 'shuffled_minority' (nos 2x1, a fração da "
+            "minoria numa única classe sorteada por texto, ≠ majoritária, com semente fixa). "
+            "Textos com voto inválido (-1) de alguma LLM ficam de fora em todos."
         ),
     )
 
