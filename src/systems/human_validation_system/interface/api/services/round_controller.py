@@ -447,7 +447,11 @@ class RoundController:
                 ),
                 response_source=DatabaseResponseSource(self.store, self.store_key(dataset)),
             )
-            summary = estimation.run()
+            # Rodadas anteriores são recalculadas com as regras atuais (ex.: desfecho criado depois),
+            # para o painel comparar rodada a rodada com a mesma definição
+            for previous in range(1, round_number):
+                self._save_round_metrics(dataset, previous, estimation.run(previous))
+            summary = estimation.run(round_number)
             self._save_round_metrics(dataset, round_number, summary)
             self._write_workbook(dataset, round_number, summary)
         except Exception:

@@ -176,7 +176,8 @@ class HumanValidationEstimationPipeline:
         history.sort_values(["rodadas", "grupo"], kind="stable").to_csv(history_path, index=False)
         logger.success(f"Estimativas salvas em: {self.output_dir}")
 
-    def run(self) -> pd.DataFrame:
+    def run(self, n_rounds: Optional[int] = None) -> pd.DataFrame:
+        """Estima com as rodadas 1..n_rounds (padrão: todas as registradas)."""
         logger.info("=" * 60)
         logger.info(f"Estimação da validação humana — {self.config.dataset_name}")
         logger.info("=" * 60)
@@ -184,7 +185,9 @@ class HumanValidationEstimationPipeline:
         if not self.ledger.exists():
             raise FileNotFoundError(f"Registro de amostragem não encontrado: {self.ledger.path}")
         self.ledger.load()
-        n_rounds = self.ledger.last_round
+        n_rounds = n_rounds or self.ledger.last_round
+        if not 1 <= n_rounds <= self.ledger.last_round:
+            raise ValueError(f"Rodada {n_rounds} inválida: registradas 1..{self.ledger.last_round}")
 
         responses, answer_key = self.loader.load(self.validation_dir, n_rounds)
         docs = self.aggregator.aggregate(responses, answer_key)

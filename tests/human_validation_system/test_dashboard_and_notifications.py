@@ -213,3 +213,19 @@ def test_old_summary_without_new_outcome_still_renders(client, admin, evaluators
     result = state_of(client, admin, DATASET)["resultado"]
     assert "unresolved_disagreement" not in result["grupos"]["A"]["metricas"]
     assert "acerto_referencia" in result["grupos"]["A"]["metricas"]
+
+
+def test_closing_a_round_recomputes_previous_rounds(client, admin, evaluators, notifier):
+    """Métrica criada depois da rodada 1: ao fechar a 2, a rodada 1 é recalculada e aparece no painel."""
+    controller = client.app.state.controller
+    run_round(client, admin, evaluators)
+    key = controller.store_key(DATASET)
+    old = controller.store.round_metrics(key)
+    controller.store.save_round_metrics(key, 1, controller.SCOPE, old[old["metrica"] != "unresolved_disagreement"])
+
+    run_round(client, admin, evaluators)
+    metrics = client.get(f"/api/admin/{DATASET}/painel", headers=admin).json()["metricas"]
+    rounds = {m["rodada"] for m in metrics if m["metrica"] == "unresolved_disagreement"}
+    assert rounds == {1, 2}
+    n1 = {m["grupo"]: m["n"] for m in metrics if m["rodada"] == 1 and m["metrica"] == "acerto_referencia"}
+    assert n1 == {"A": INITIAL_ROUND_SIZE, "B": INITIAL_ROUND_SIZE, "C": INITIAL_ROUND_SIZE}  # rodada 1 só com os seus docs
